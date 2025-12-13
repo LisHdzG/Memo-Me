@@ -8,6 +8,7 @@
 import SwiftUI
 import PhotosUI
 import Combine
+import FirebaseStorage
 
 @MainActor
 class RegistrationViewModel: ObservableObject {
@@ -27,8 +28,15 @@ class RegistrationViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     
+    // MARK: - Services
+    private let userService = UserService()
+    private let storage = Storage.storage()
+    
     // MARK: - Combine
     private var cancellables = Set<AnyCancellable>()
+    
+    // MARK: - Authentication Manager
+    var authenticationManager: AuthenticationManager?
     
     // MARK: - Data Sources
     let nationalities: [String] = [
@@ -156,14 +164,90 @@ class RegistrationViewModel: ObservableObject {
             return false
         }
         
+        guard let appleId = authenticationManager?.userIdentifier else {
+            errorMessage = "No se encontró el ID de Apple. Por favor, inicia sesión nuevamente."
+            return false
+        }
+        
         isLoading = true
         errorMessage = nil
         
-        // Simular procesamiento (aquí iría la lógica real de guardado)
-        try? await Task.sleep(for: .seconds(0.5))
+        do {
+            // 1. Subir foto de perfil si existe
+            var photoUrl: String? = nil
+            if let image = profileImage {
+                photoUrl = try await uploadProfileImage(image, appleId: appleId)
+            }
+            
+            // 2. Preparar áreas (si se seleccionó expertiseArea)
+            var areas: [String]? = nil
+            if let expertise = expertiseArea {
+                areas = [expertise]
+            }
+            
+            // 3. Crear el usuario
+            let user = User(
+                id: nil,
+                appleId: appleId,
+                name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                nationality: nationality,
+                areas: areas,
+                interests: nil,
+                photoUrl: photoUrl
+            )
+            
+            // 4. Guardar en Firestore
+            let userId = try await userService.createUser(user)
+            var savedUser = user
+            savedUser.id = userId
+            
+            // 5. Notificar al AuthenticationManager
+            authenticationManager?.completeRegistration(user: savedUser)
+            
+            isLoading = false
+            return true
+        } catch {
+            isLoading = false
+            errorMessage = "Error al guardar el registro: \(error.localizedDescription)"
+            print("❌ Error al registrar usuario: \(error.localizedDescription)")
+            return false
+        }
+    }
+    
+    // MARK: - Photo Upload
+    private func uploadProfileImage(_ image: UIImage, appleId: String) async throws -> String {
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            throw NSError(domain: "RegistrationViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "Error al convertir la imagen"])
+        }
         
-        isLoading = false
-        return true
+        let fileName = "\(appleId)_\(UUID().uuidString).jpg"
+        let storageRef = storage.reference().child("profile_images/\(fileName)")
+        
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            storageRef.putData(imageData, metadata: metadata) { metadata, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                
+                storageRef.downloadURL { url, error in
+                    if let error = error {
+                        continuation.resume(throwing: error)
+                        return
+                    }
+                    
+                    guard let downloadURL = url else {
+                        continuation.resume(throwing: NSError(domain: "RegistrationViewModel", code: 2, userInfo: [NSLocalizedDescriptionKey: "No se pudo obtener la URL de descarga"]))
+                        return
+                    }
+                    
+                    continuation.resume(returning: downloadURL.absoluteString)
+                }
+            }
+        }
     }
     
     // MARK: - Error Handling

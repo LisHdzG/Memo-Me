@@ -9,6 +9,7 @@ import SwiftUI
 import PhotosUI
 
 struct RegistrationView: View {
+    @EnvironmentObject var authManager: AuthenticationManager
     @StateObject private var viewModel = RegistrationViewModel()
     @FocusState private var focusedField: Field?
     @State private var showPhotoPermissionAlert = false
@@ -248,7 +249,7 @@ struct RegistrationView: View {
                         Task {
                             let success = await viewModel.submitRegistration()
                             if success {
-                                // Aquí iría la navegación a la siguiente pantalla
+                                // La navegación se maneja automáticamente por el AuthenticationManager
                                 print("Registro exitoso")
                             }
                         }
@@ -280,6 +281,15 @@ struct RegistrationView: View {
                 }
             }
             .scrollDismissesKeyboard(.interactively)
+        }
+        .onAppear {
+            // Configurar el AuthenticationManager en el ViewModel
+            viewModel.authenticationManager = authManager
+            
+            // Si hay un nombre de Apple disponible, usarlo como valor inicial
+            if let appleName = authManager.userName, viewModel.name.isEmpty {
+                viewModel.name = appleName
+            }
         }
         .customPicker($viewModel.nationalityConfig, items: viewModel.nationalities)
         .customPicker($viewModel.expertiseConfig, items: viewModel.expertiseAreas)

@@ -8,12 +8,14 @@
 import Foundation
 import Combine
 import AuthenticationServices
+import FirebaseFirestore
 
 enum AuthenticationState: Equatable {
     case idle
     case loading
     case authenticated
     case unauthenticated
+    case needsRegistration
     case error(String)
     
     static func == (lhs: AuthenticationState, rhs: AuthenticationState) -> Bool {
@@ -21,7 +23,8 @@ enum AuthenticationState: Equatable {
         case (.idle, .idle),
              (.loading, .loading),
              (.authenticated, .authenticated),
-             (.unauthenticated, .unauthenticated):
+             (.unauthenticated, .unauthenticated),
+             (.needsRegistration, .needsRegistration):
             return true
         case (.error(let lhsMessage), .error(let rhsMessage)):
             return lhsMessage == rhsMessage
@@ -74,12 +77,16 @@ class AuthenticationManager: ObservableObject {
     @Published var userIdentifier: String?
     @Published var userEmail: String?
     @Published var userName: String?
+    @Published var currentUser: User?
     
     private let userDefaults = UserDefaults.standard
     private let appleUserIDKey = "appleUserID"
     private let isAuthenticatedKey = "isAuthenticated"
     private let savedUserEmailKey = "savedUserEmail"
     private let savedUserNameKey = "savedUserName"
+    private let cachedUserKey = "cachedUser"
+    
+    private let userService = UserService()
     
     init() {
         checkAuthenticationStatus()
@@ -108,25 +115,72 @@ class AuthenticationManager: ObservableObject {
             self.userEmail = userDefaults.string(forKey: savedUserEmailKey)
         }
         
+        // Obtener nombre si está disponible
+        var appleName: String? = nil
         if let fullName = appleIDCredential.fullName {
             let name = PersonNameComponentsFormatter().string(from: fullName)
             self.userName = name
+            appleName = name
             userDefaults.set(name, forKey: savedUserNameKey)
         } else {
             // Intentar recuperar nombre guardado
             self.userName = userDefaults.string(forKey: savedUserNameKey)
         }
         
-        // Guardar el estado de autenticación
+        // Guardar el appleId temporalmente
         userDefaults.set(userID, forKey: appleUserIDKey)
-        userDefaults.set(true, forKey: isAuthenticatedKey)
         
-        // Marcar como autenticado
+        // Verificar si el usuario existe en Firestore
+        Task {
+            await checkUserInFirestore(appleId: userID, appleName: appleName)
+        }
+    }
+    
+    private func checkUserInFirestore(appleId: String, appleName: String?) async {
+        do {
+            if let existingUser = try await userService.checkUserExists(appleId: appleId) {
+                // Usuario existe - autenticado
+                self.currentUser = existingUser
+                self.userName = existingUser.name
+                self.userDefaults.set(true, forKey: isAuthenticatedKey)
+                self.isAuthenticated = true
+                self.authenticationState = .authenticated
+                self.errorMessage = nil
+                
+                // Guardar usuario en caché local
+                saveUserToCache(existingUser)
+                
+                print("✅ Usuario encontrado en Firestore - User ID: \(appleId)")
+            } else {
+                // Usuario no existe - necesita registro
+                // Guardar el nombre de Apple si está disponible para usarlo en el registro
+                if let name = appleName {
+                    self.userName = name
+                    userDefaults.set(name, forKey: savedUserNameKey)
+                }
+                self.authenticationState = .needsRegistration
+                self.isAuthenticated = false
+                print("📝 Usuario no encontrado - necesita registro - Apple ID: \(appleId)")
+            }
+        } catch {
+            print("❌ Error al verificar usuario en Firestore: \(error.localizedDescription)")
+            self.handleError(error)
+        }
+    }
+    
+    /// Marca al usuario como autenticado después de completar el registro
+    func completeRegistration(user: User) {
+        self.currentUser = user
+        self.userName = user.name
+        self.userDefaults.set(true, forKey: isAuthenticatedKey)
         self.isAuthenticated = true
         self.authenticationState = .authenticated
         self.errorMessage = nil
         
-        print("✅ Sign in exitoso - User ID: \(userID)")
+        // Guardar usuario en caché local
+        saveUserToCache(user)
+        
+        print("✅ Registro completado - Usuario autenticado")
     }
     
     func handleError(_ error: Error) {
@@ -171,6 +225,21 @@ class AuthenticationManager: ObservableObject {
             return
         }
         
+        // Primero intentar cargar el usuario desde caché local
+        if let cachedUser = loadUserFromCache(), cachedUser.appleId == userID {
+            // Usuario encontrado en caché - usar datos locales sin llamar a Firestore
+            self.currentUser = cachedUser
+            self.userIdentifier = userID
+            self.userName = cachedUser.name
+            self.userEmail = self.userDefaults.string(forKey: self.savedUserEmailKey)
+            self.isAuthenticated = true
+            self.authenticationState = .authenticated
+            self.errorMessage = nil
+            print("✅ Usuario cargado desde caché local - User ID: \(userID)")
+            return
+        }
+        
+        // Si no hay usuario en caché, verificar con Apple y Firestore
         authenticationState = .loading
         
         let provider = ASAuthorizationAppleIDProvider()
@@ -186,13 +255,30 @@ class AuthenticationManager: ObservableObject {
                 
                 switch credentialState {
                 case .authorized:
-                    self.isAuthenticated = true
                     self.userIdentifier = userID
                     self.userEmail = self.userDefaults.string(forKey: self.savedUserEmailKey)
                     self.userName = self.userDefaults.string(forKey: self.savedUserNameKey)
-                    self.authenticationState = .authenticated
-                    self.errorMessage = nil
-                    print("✅ Usuario autorizado - User ID: \(userID)")
+                    
+                    // Verificar si el usuario existe en Firestore (solo si no está en caché)
+                    if let existingUser = try? await self.userService.checkUserExists(appleId: userID) {
+                        self.currentUser = existingUser
+                        self.userName = existingUser.name
+                        self.isAuthenticated = true
+                        self.authenticationState = .authenticated
+                        self.userDefaults.set(true, forKey: self.isAuthenticatedKey)
+                        self.errorMessage = nil
+                        
+                        // Guardar usuario en caché local
+                        self.saveUserToCache(existingUser)
+                        
+                        print("✅ Usuario autorizado y encontrado en Firestore - User ID: \(userID)")
+                    } else {
+                        // Usuario autorizado por Apple pero no existe en Firestore
+                        // Esto puede pasar si el usuario se registró pero no completó el registro
+                        self.isAuthenticated = false
+                        self.authenticationState = .needsRegistration
+                        print("⚠️ Usuario autorizado por Apple pero no encontrado en Firestore - necesita registro")
+                    }
                     
                 case .revoked:
                     self.clearAuthenticationData()
@@ -223,10 +309,51 @@ class AuthenticationManager: ObservableObject {
         userIdentifier = nil
         userEmail = nil
         userName = nil
+        currentUser = nil
         userDefaults.removeObject(forKey: appleUserIDKey)
         userDefaults.removeObject(forKey: isAuthenticatedKey)
         userDefaults.removeObject(forKey: savedUserEmailKey)
         userDefaults.removeObject(forKey: savedUserNameKey)
+        userDefaults.removeObject(forKey: cachedUserKey)
+    }
+    
+    // MARK: - Cache Management
+    
+    /// Guarda el usuario en caché local (UserDefaults)
+    private func saveUserToCache(_ user: User) {
+        do {
+            let encoder = JSONEncoder()
+            let userData = try encoder.encode(user)
+            userDefaults.set(userData, forKey: cachedUserKey)
+            print("💾 Usuario guardado en caché local")
+        } catch {
+            print("⚠️ Error al guardar usuario en caché: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Carga el usuario desde caché local (UserDefaults)
+    private func loadUserFromCache() -> User? {
+        guard let userData = userDefaults.data(forKey: cachedUserKey) else {
+            return nil
+        }
+        
+        do {
+            let decoder = JSONDecoder()
+            let user = try decoder.decode(User.self, from: userData)
+            print("📦 Usuario cargado desde caché local")
+            return user
+        } catch {
+            print("⚠️ Error al cargar usuario desde caché: \(error.localizedDescription)")
+            // Si hay error al decodificar, limpiar el caché corrupto
+            userDefaults.removeObject(forKey: cachedUserKey)
+            return nil
+        }
+    }
+    
+    /// Actualiza el usuario en caché (útil para actualizar datos temporales)
+    func updateCachedUser(_ user: User) {
+        saveUserToCache(user)
+        self.currentUser = user
     }
     
     func signOut() {

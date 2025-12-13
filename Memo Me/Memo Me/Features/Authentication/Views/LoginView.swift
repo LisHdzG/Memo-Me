@@ -16,6 +16,10 @@ struct LoginView: View {
             if viewModel.isAuthenticated {
                 ContentView()
                     .transition(.opacity)
+            } else if viewModel.authenticationState == .needsRegistration {
+                RegistrationView()
+                    .environmentObject(viewModel)
+                    .transition(.opacity)
             } else {
                 ZStack {
                     // Fondo con gradiente morado degradado (mismo que SplashView)
