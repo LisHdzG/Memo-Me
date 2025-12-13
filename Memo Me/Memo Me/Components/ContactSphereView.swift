@@ -208,6 +208,7 @@ struct ContactSphereView: UIViewRepresentable {
             let circularImage = createCircularImage(
                 imageName: contact.imageName,
                 imageUrl: contact.imageUrl,
+                contactName: contact.name,
                 size: CGSize(width: 200, height: 200)
             )
             
@@ -230,6 +231,7 @@ struct ContactSphereView: UIViewRepresentable {
         
         private func preloadImages() async {
             loadedImages.removeAll()
+            let imageLoader = ImageLoaderService.shared
             
             for contact in contacts {
                 let key = contact.imageUrl ?? contact.imageName ?? ""
@@ -240,15 +242,12 @@ struct ContactSphereView: UIViewRepresentable {
                 
                 var image: UIImage?
                 
-                if let imageUrl = contact.imageUrl, let url = URL(string: imageUrl) {
-                    do {
-                        let (data, _) = try await URLSession.shared.data(from: url)
-                        image = UIImage(data: data)
-                    } catch {
-                        continue
-                    }
+                // Intentar cargar desde URL usando el servicio
+                if let imageUrl = contact.imageUrl {
+                    image = await imageLoader.loadImage(from: imageUrl)
                 }
                 
+                // Si no hay imagen desde URL, intentar desde assets locales
                 if image == nil, let imageName = contact.imageName {
                     image = UIImage(named: imageName)
                 }
@@ -259,7 +258,7 @@ struct ContactSphereView: UIViewRepresentable {
             }
         }
         
-        private func createCircularImage(imageName: String?, imageUrl: String?, size: CGSize) -> UIImage? {
+        private func createCircularImage(imageName: String?, imageUrl: String?, contactName: String, size: CGSize) -> UIImage? {
             var image: UIImage?
             
             let key = imageUrl ?? imageName ?? ""
@@ -270,7 +269,7 @@ struct ContactSphereView: UIViewRepresentable {
             }
             
             guard let finalImage = image else {
-                return createFallbackCircularImage(size: size)
+                return createFallbackCircularImage(contactName: contactName, size: size)
             }
             
             let renderer = UIGraphicsImageRenderer(size: size)
@@ -311,15 +310,37 @@ struct ContactSphereView: UIViewRepresentable {
             }
         }
         
-        private func createFallbackCircularImage(size: CGSize) -> UIImage {
+        private func createFallbackCircularImage(contactName: String, size: CGSize) -> UIImage {
             let renderer = UIGraphicsImageRenderer(size: size)
             return renderer.image { context in
                 let rect = CGRect(origin: .zero, size: size)
                 let path = UIBezierPath(ovalIn: rect)
                 
+                // Fondo con gradiente púrpura
                 UIColor.systemPurple.setFill()
                 path.fill()
                 
+                // Dibujar la inicial del nombre
+                let initial = contactName.prefix(1).uppercased()
+                let fontSize = size.width * 0.4
+                let font = UIFont.systemFont(ofSize: fontSize, weight: .bold)
+                let attributes: [NSAttributedString.Key: Any] = [
+                    .font: font,
+                    .foregroundColor: UIColor.white
+                ]
+                
+                let attributedString = NSAttributedString(string: initial, attributes: attributes)
+                let stringSize = attributedString.size()
+                let stringRect = CGRect(
+                    x: (rect.width - stringSize.width) / 2,
+                    y: (rect.height - stringSize.height) / 2,
+                    width: stringSize.width,
+                    height: stringSize.height
+                )
+                
+                attributedString.draw(in: stringRect)
+                
+                // Borde
                 UIColor.white.withAlphaComponent(0.3).setStroke()
                 path.lineWidth = 2
                 path.stroke()

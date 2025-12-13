@@ -62,10 +62,6 @@ struct RegistrationView: View {
                             photoLibrary: .shared()
                         ) {
                             ZStack {
-                                Circle()
-                                    .fill(Color.white.opacity(0.2))
-                                    .frame(width: 120, height: 120)
-                                
                                 if let image = viewModel.profileImage {
                                     Image(uiImage: image)
                                         .resizable()
@@ -73,9 +69,22 @@ struct RegistrationView: View {
                                         .frame(width: 120, height: 120)
                                         .clipShape(Circle())
                                 } else {
-                                    Image(systemName: "camera.fill")
-                                        .font(.system(size: 40))
-                                        .foregroundColor(Color("SplashTextColor").opacity(0.6))
+                                    AsyncImageView(
+                                        imageUrl: nil,
+                                        placeholderText: viewModel.name.isEmpty ? nil : viewModel.name,
+                                        contentMode: .fill,
+                                        size: 120
+                                    )
+                                    .clipShape(Circle())
+                                    .overlay(
+                                        Group {
+                                            if viewModel.name.isEmpty {
+                                                Image(systemName: "camera.fill")
+                                                    .font(.system(size: 40))
+                                                    .foregroundColor(Color("SplashTextColor").opacity(0.6))
+                                            }
+                                        }
+                                    )
                                 }
                                 
                                 if viewModel.isLoading {

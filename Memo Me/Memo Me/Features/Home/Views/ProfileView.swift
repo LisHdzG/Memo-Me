@@ -161,25 +161,14 @@ struct ProfileView: View {
                                             .aspectRatio(contentMode: .fill)
                                             .frame(width: 120, height: 120)
                                             .clipShape(Circle())
-                                    } else if let photoUrl = authManager.currentUser?.photoUrl, let url = URL(string: photoUrl) {
-                                        AsyncImage(url: url) { image in
-                                            image
-                                                .resizable()
-                                                .aspectRatio(contentMode: .fill)
-                                        } placeholder: {
-                                            Circle()
-                                                .fill(Color.white.opacity(0.2))
-                                        }
-                                        .frame(width: 120, height: 120)
-                                        .clipShape(Circle())
                                     } else {
-                                        Circle()
-                                            .fill(Color.white.opacity(0.2))
-                                            .frame(width: 120, height: 120)
-                                        
-                                        Text(String(userName.prefix(1)))
-                                            .font(.system(size: 48, weight: .bold))
-                                            .foregroundColor(.white)
+                                        AsyncImageView(
+                                            imageUrl: authManager.currentUser?.photoUrl,
+                                            placeholderText: userName,
+                                            contentMode: .fill,
+                                            size: 120
+                                        )
+                                        .clipShape(Circle())
                                     }
                                     
                                     if viewModel.isLoading {
@@ -204,36 +193,17 @@ struct ProfileView: View {
                     } else {
                         // Vista de solo lectura de foto
                         VStack(spacing: 16) {
-                            if let photoUrl = authManager.currentUser?.photoUrl, let url = URL(string: photoUrl) {
-                                AsyncImage(url: url) { image in
-                                    image
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                } placeholder: {
-                                    Circle()
-                                        .fill(Color.white.opacity(0.2))
-                                }
-                                .frame(width: 120, height: 120)
-                                .clipShape(Circle())
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.white.opacity(0.3), lineWidth: 3)
-                                )
-                            } else {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.white.opacity(0.2))
-                                        .frame(width: 120, height: 120)
-                                    
-                                    Text(String(userName.prefix(1)))
-                                        .font(.system(size: 48, weight: .bold))
-                                        .foregroundColor(.white)
-                                }
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.white.opacity(0.3), lineWidth: 3)
-                                )
-                            }
+                            AsyncImageView(
+                                imageUrl: authManager.currentUser?.photoUrl,
+                                placeholderText: userName,
+                                contentMode: .fill,
+                                size: 120
+                            )
+                            .clipShape(Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 3)
+                            )
                             
                             Text(userName)
                                 .font(.system(size: 24, weight: .bold))
