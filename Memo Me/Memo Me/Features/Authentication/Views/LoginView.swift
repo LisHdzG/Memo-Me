@@ -15,6 +15,7 @@ struct LoginView: View {
         Group {
             if viewModel.isAuthenticated {
                 ContentView()
+                    .environmentObject(viewModel)
                     .transition(.opacity)
             } else if viewModel.authenticationState == .needsRegistration {
                 RegistrationView()

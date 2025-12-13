@@ -11,12 +11,14 @@ import SwiftUI
 struct Contact: Identifiable {
     let id: UUID
     let name: String
-    let imageName: String
+    let imageName: String?
+    let imageUrl: String?
     
-    init(id: UUID = UUID(), name: String, imageName: String) {
+    init(id: UUID = UUID(), name: String, imageName: String? = nil, imageUrl: String? = nil) {
         self.id = id
         self.name = name
         self.imageName = imageName
+        self.imageUrl = imageUrl
     }
 }
 
@@ -38,7 +40,8 @@ extension Contact {
             let imageNumber = String(format: "%02d", index + 1)
             return Contact(
                 name: names[safe: index] ?? "Contacto \(index + 1)",
-                imageName: "dummy_profile_\(imageNumber)"
+                imageName: "dummy_profile_\(imageNumber)",
+                imageUrl: nil
             )
         }
     }

@@ -74,6 +74,7 @@ struct ContactSphereView: UIViewRepresentable {
         var lastPanLocation: CGPoint = .zero
         var isUserInteracting: Bool = false
         var contactsContainer: SCNNode?
+        var loadedImages: [String: UIImage] = [:] // Cache de imágenes cargadas
         
         init(contacts: [Contact], rotationSpeed: Double, isAutoRotating: Bool) {
             self.contacts = contacts
@@ -82,6 +83,20 @@ struct ContactSphereView: UIViewRepresentable {
         }
         
         func createScene() {
+            guard let sceneView = sceneView else { return }
+            
+            // Precargar todas las imágenes de forma asíncrona antes de crear la escena
+            Task {
+                await preloadImages()
+                
+                // Crear la escena en el hilo principal después de cargar las imágenes
+                await MainActor.run {
+                    self.createSceneWithLoadedImages()
+                }
+            }
+        }
+        
+        private func createSceneWithLoadedImages() {
             guard let sceneView = sceneView else { return }
             
             let scene = SCNScene()
@@ -127,8 +142,8 @@ struct ContactSphereView: UIViewRepresentable {
                 var y = Float(minY + (maxY - minY) * Float(normalizedRandom))
                 
                 // Posición en el perímetro del cilindro
-                var x = Float(cos(theta)) * cylinderRadius
-                var z = Float(sin(theta)) * cylinderRadius
+                let x = Float(cos(theta)) * cylinderRadius
+                let z = Float(sin(theta)) * cylinderRadius
                 
                 // Verificar y ajustar posición para evitar traslapes
                 var attempts = 0
@@ -221,7 +236,11 @@ struct ContactSphereView: UIViewRepresentable {
             let finalSize = baseSize * sizeMultiplier
             
             // Crear imagen circular recortada
-            let circularImage = createCircularImage(from: contact.imageName, size: CGSize(width: 200, height: 200))
+            let circularImage = createCircularImage(
+                imageName: contact.imageName,
+                imageUrl: contact.imageUrl,
+                size: CGSize(width: 200, height: 200)
+            )
             
             // Crear plano para la imagen
             let plane = SCNPlane(width: finalSize, height: finalSize)
@@ -242,16 +261,72 @@ struct ContactSphereView: UIViewRepresentable {
             return imageNode
         }
         
-        private func createCircularImage(from imageName: String, size: CGSize) -> UIImage? {
-            // Intentar cargar la imagen
-            guard let image = UIImage(named: imageName) else {
-                // Debug: imprimir si no se encuentra la imagen
-                print("⚠️ No se pudo cargar la imagen: \(imageName)")
-                // Crear imagen de fallback circular
-                return createFallbackCircularImage(size: size)
+        /// Precarga todas las imágenes de forma asíncrona
+        private func preloadImages() async {
+            loadedImages.removeAll()
+            
+            for contact in contacts {
+                let key = contact.imageUrl ?? contact.imageName ?? ""
+                
+                // Si ya está en el cache, no cargar de nuevo
+                if loadedImages[key] != nil {
+                    continue
+                }
+                
+                var image: UIImage?
+                
+                // Priorizar URL si está disponible
+                if let imageUrl = contact.imageUrl, let url = URL(string: imageUrl) {
+                    do {
+                        // Cargar imagen desde URL de forma asíncrona
+                        let (data, _) = try await URLSession.shared.data(from: url)
+                        if let loadedImage = UIImage(data: data) {
+                            image = loadedImage
+                            print("✅ Imagen cargada desde URL: \(imageUrl)")
+                        } else {
+                            print("⚠️ No se pudo decodificar la imagen desde URL: \(imageUrl)")
+                        }
+                    } catch {
+                        print("⚠️ Error al cargar imagen desde URL: \(error.localizedDescription)")
+                    }
+                }
+                
+                // Si no hay imagen desde URL, intentar cargar desde nombre local
+                if image == nil, let imageName = contact.imageName {
+                    image = UIImage(named: imageName)
+                    if image != nil {
+                        print("✅ Imagen cargada desde bundle: \(imageName)")
+                    } else {
+                        print("⚠️ No se pudo cargar la imagen desde bundle: \(imageName)")
+                    }
+                }
+                
+                // Guardar en cache
+                if let finalImage = image {
+                    loadedImages[key] = finalImage
+                }
+            }
+        }
+        
+        private func createCircularImage(imageName: String?, imageUrl: String?, size: CGSize) -> UIImage? {
+            var image: UIImage?
+            
+            // Intentar obtener desde cache primero
+            let key = imageUrl ?? imageName ?? ""
+            if let cachedImage = loadedImages[key] {
+                image = cachedImage
+            } else {
+                // Si no está en cache, intentar cargar desde nombre local (fallback)
+                if let imageName = imageName {
+                    image = UIImage(named: imageName)
+                }
             }
             
-            print("✅ Imagen cargada: \(imageName)")
+            // Si no se pudo cargar ninguna imagen, usar fallback
+            guard let finalImage = image else {
+                print("⚠️ Usando imagen de fallback")
+                return createFallbackCircularImage(size: size)
+            }
             
             let renderer = UIGraphicsImageRenderer(size: size)
             return renderer.image { context in
@@ -262,7 +337,7 @@ struct ContactSphereView: UIViewRepresentable {
                 path.addClip()
                 
                 // Calcular aspect fill para que la imagen cubra todo el círculo (se puede cortar)
-                let imageSize = image.size
+                let imageSize = finalImage.size
                 let imageAspect = imageSize.width / imageSize.height
                 let rectAspect = rect.width / rect.height
                 
@@ -289,7 +364,7 @@ struct ContactSphereView: UIViewRepresentable {
                 }
                 
                 // Dibujar imagen con aspect fill (cubre todo, se puede cortar)
-                image.draw(in: drawRect)
+                finalImage.draw(in: drawRect)
                 
                 // Agregar borde sutil
                 UIColor.white.withAlphaComponent(0.3).setStroke()
