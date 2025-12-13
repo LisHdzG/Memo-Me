@@ -13,25 +13,10 @@ struct ContentView: View {
     
     var body: some View {
         Group {
-            // Si hay un espacio guardado, ir directamente al detalle
-            if let selectedSpace = spaceSelectionService.selectedSpace {
-                NavigationView {
-                    ContactDetailView(space: selectedSpace)
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarLeading) {
-                                Button(action: {
-                                    spaceSelectionService.clearSelectedSpace()
-                                }) {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "chevron.left")
-                                        Text("Espacios")
-                                    }
-                                    .foregroundColor(.white)
-                                }
-                            }
-                        }
-                }
+            // Si hay un espacio guardado, mostrar el TabView principal
+            if spaceSelectionService.selectedSpace != nil {
+                MainTabView()
+                    .environmentObject(authManager)
             } else {
                 // Si no hay espacio guardado, mostrar la lista
                 SpacesListView()

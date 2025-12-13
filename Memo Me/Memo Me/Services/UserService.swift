@@ -91,4 +91,9 @@ class UserService: ObservableObject {
         
         return users
     }
+    
+    /// Elimina un usuario de Firestore
+    func deleteUser(userId: String) async throws {
+        try await db.collection(usersCollection).document(userId).delete()
+    }
 }
