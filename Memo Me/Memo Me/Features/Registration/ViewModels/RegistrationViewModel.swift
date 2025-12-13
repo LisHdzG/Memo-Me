@@ -173,19 +173,16 @@ class RegistrationViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            // 1. Subir foto de perfil si existe
             var photoUrl: String? = nil
             if let image = profileImage {
                 photoUrl = try await uploadProfileImage(image, appleId: appleId)
             }
             
-            // 2. Preparar áreas (si se seleccionó expertiseArea)
             var areas: [String]? = nil
             if let expertise = expertiseArea {
                 areas = [expertise]
             }
             
-            // 3. Crear el usuario
             let user = User(
                 id: nil,
                 appleId: appleId,
@@ -196,12 +193,10 @@ class RegistrationViewModel: ObservableObject {
                 photoUrl: photoUrl
             )
             
-            // 4. Guardar en Firestore
             let userId = try await userService.createUser(user)
             var savedUser = user
             savedUser.id = userId
             
-            // 5. Notificar al AuthenticationManager
             authenticationManager?.completeRegistration(user: savedUser)
             
             isLoading = false
@@ -209,7 +204,6 @@ class RegistrationViewModel: ObservableObject {
         } catch {
             isLoading = false
             errorMessage = "Error al guardar el registro: \(error.localizedDescription)"
-            print("❌ Error al registrar usuario: \(error.localizedDescription)")
             return false
         }
     }

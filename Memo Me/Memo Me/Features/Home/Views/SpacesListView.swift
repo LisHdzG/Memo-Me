@@ -15,7 +15,6 @@ struct SpacesListView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Fondo con gradiente morado degradado
                 LinearGradient(
                     gradient: Gradient(colors: [
                         Color("PurpleGradientTop"),
@@ -28,7 +27,6 @@ struct SpacesListView: View {
                 .ignoresSafeArea()
                 
                 if viewModel.isLoading && viewModel.spaces.isEmpty {
-                    // Estado de carga inicial
                     VStack(spacing: 20) {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
@@ -39,7 +37,6 @@ struct SpacesListView: View {
                             .foregroundColor(.white.opacity(0.8))
                     }
                 } else if viewModel.spaces.isEmpty {
-                    // Estado vacío
                     VStack(spacing: 20) {
                         Image(systemName: "rectangle.3.group")
                             .font(.system(size: 60))
@@ -54,12 +51,10 @@ struct SpacesListView: View {
                             .foregroundColor(.white.opacity(0.7))
                     }
                 } else {
-                    // Lista de espacios
                     ScrollView {
                         LazyVStack(spacing: 16) {
                             ForEach(viewModel.spaces) { space in
                                 Button(action: {
-                                    // Guardar espacio seleccionado y navegar
                                     spaceSelectionService.saveSelectedSpace(space)
                                 }) {
                                     SpaceCardView(space: space)
@@ -77,7 +72,6 @@ struct SpacesListView: View {
                     }
                 }
                 
-                // Mensaje de error
                 if let errorMessage = viewModel.errorMessage {
                     VStack {
                         Spacer()
@@ -111,7 +105,6 @@ struct SpacesListView: View {
             }
         }
         .task {
-            // Cargar espacios cuando la vista aparece
             if let userId = authManager.currentUser?.id {
                 await viewModel.loadActiveSpaces(userId: userId)
             }
@@ -119,13 +112,11 @@ struct SpacesListView: View {
     }
 }
 
-// Vista de tarjeta para cada espacio
 struct SpaceCardView: View {
     let space: Space
     
     var body: some View {
         HStack(spacing: 16) {
-            // Imagen del banner o placeholder
             if !space.bannerUrl.isEmpty {
                 AsyncImage(url: URL(string: space.bannerUrl)) { image in
                     image
@@ -138,7 +129,6 @@ struct SpaceCardView: View {
                 .frame(width: 80, height: 80)
                 .cornerRadius(12)
             } else {
-                // Placeholder cuando no hay banner
                 ZStack {
                     Rectangle()
                         .fill(Color.white.opacity(0.2))
@@ -151,7 +141,6 @@ struct SpaceCardView: View {
                 }
             }
             
-            // Información del espacio
             VStack(alignment: .leading, spacing: 8) {
                 Text(space.name)
                     .font(.system(size: 18, weight: .semibold))
@@ -174,7 +163,6 @@ struct SpaceCardView: View {
             
             Spacer()
             
-            // Flecha de navegación
             Image(systemName: "chevron.right")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(.white.opacity(0.5))
@@ -188,9 +176,3 @@ struct SpaceCardView: View {
         )
     }
 }
-
-#Preview {
-    SpacesListView()
-        .environmentObject(AuthenticationManager())
-}
-

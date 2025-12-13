@@ -50,11 +50,6 @@ class OnboardingViewModel: ObservableObject {
         }
     }
     
-    func skipToRegistration() {
-        // Esta función será llamada cuando el usuario presione Skip
-        // La navegación se manejará en la vista
-    }
-    
     var isLastPage: Bool {
         currentPage == totalPages - 1
     }

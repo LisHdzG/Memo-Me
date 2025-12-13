@@ -20,7 +20,6 @@ struct RegistrationView: View {
     
     var body: some View {
         ZStack {
-            // Fondo con gradiente morado degradado
             LinearGradient(
                 gradient: Gradient(colors: [
                     Color("PurpleGradientTop"),
@@ -34,7 +33,6 @@ struct RegistrationView: View {
             
             ScrollView {
                 VStack(spacing: 24) {
-                    // Header
                     VStack(spacing: 16) {
                         Image("MemoMe")
                             .resizable()
@@ -52,7 +50,6 @@ struct RegistrationView: View {
                     .padding(.top, 20)
                     .padding(.bottom, 10)
                     
-                    // Photo Section
                     VStack(spacing: 12) {
                         Text("Foto de perfil (opcional)")
                             .font(.system(size: 14, weight: .medium))
@@ -101,7 +98,6 @@ struct RegistrationView: View {
                     }
                     .padding(.horizontal, 20)
                     
-                    // Name Section
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Text("Nombre")
@@ -130,7 +126,6 @@ struct RegistrationView: View {
                     }
                     .padding(.horizontal, 20)
                     
-                    // Nationality Section
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Nacionalidad (opcional)")
                             .font(.system(size: 16, weight: .semibold))
@@ -175,7 +170,6 @@ struct RegistrationView: View {
                     }
                     .padding(.horizontal, 20)
                     
-                    // Expertise Section
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Área de expertise (opcional)")
                             .font(.system(size: 16, weight: .semibold))
@@ -220,7 +214,6 @@ struct RegistrationView: View {
                     }
                     .padding(.horizontal, 20)
                     
-                    // Error Message
                     if let errorMessage = viewModel.errorMessage {
                         VStack(spacing: 8) {
                             Text(errorMessage)
@@ -244,13 +237,11 @@ struct RegistrationView: View {
                         .padding(.top, 8)
                     }
                     
-                    // Submit Button
                     Button(action: {
                         Task {
                             let success = await viewModel.submitRegistration()
                             if success {
-                                // La navegación se maneja automáticamente por el AuthenticationManager
-                                print("Registro exitoso")
+                                // Navigation handled automatically by AuthenticationManager
                             }
                         }
                     }) {
@@ -283,10 +274,8 @@ struct RegistrationView: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .onAppear {
-            // Configurar el AuthenticationManager en el ViewModel
             viewModel.authenticationManager = authManager
             
-            // Si hay un nombre de Apple disponible, usarlo como valor inicial
             if let appleName = authManager.userName, viewModel.name.isEmpty {
                 viewModel.name = appleName
             }
@@ -294,7 +283,6 @@ struct RegistrationView: View {
         .customPicker($viewModel.nationalityConfig, items: viewModel.nationalities)
         .customPicker($viewModel.expertiseConfig, items: viewModel.expertiseAreas)
         .onChange(of: viewModel.nationalityConfig.text) { oldValue, newValue in
-            // Solo actualizar si el valor cambió y no es el placeholder
             if newValue != "Seleccionar nacionalidad" && 
                newValue != oldValue && 
                viewModel.nationality != newValue {
@@ -302,7 +290,6 @@ struct RegistrationView: View {
             }
         }
         .onChange(of: viewModel.expertiseConfig.text) { oldValue, newValue in
-            // Solo actualizar si el valor cambió y no es el placeholder
             if newValue != "Seleccionar área" && 
                newValue != oldValue && 
                viewModel.expertiseArea != newValue {
@@ -323,8 +310,4 @@ struct CustomTextFieldStyle: TextFieldStyle {
             .foregroundColor(Color("SplashTextColor"))
             .font(.system(size: 16))
     }
-}
-
-#Preview {
-    RegistrationView()
 }

@@ -44,29 +44,3 @@ struct CustomPageIndicator: View {
     }
 }
 
-#Preview {
-    VStack(spacing: 30) {
-        CustomPageIndicator(
-            totalPages: 3,
-            currentPage: 0,
-            activeColor: .purple,
-            inactiveColor: .purple.opacity(0.5)
-        )
-        
-        CustomPageIndicator(
-            totalPages: 3,
-            currentPage: 1,
-            activeColor: .purple,
-            inactiveColor: .purple.opacity(0.5)
-        )
-        
-        CustomPageIndicator(
-            totalPages: 3,
-            currentPage: 2,
-            activeColor: .purple,
-            inactiveColor: .purple.opacity(0.5)
-        )
-    }
-    .padding()
-}
-

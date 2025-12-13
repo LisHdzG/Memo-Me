@@ -13,12 +13,10 @@ struct ContentView: View {
     
     var body: some View {
         Group {
-            // Si hay un espacio guardado, mostrar el TabView principal
             if spaceSelectionService.selectedSpace != nil {
                 MainTabView()
                     .environmentObject(authManager)
             } else {
-                // Si no hay espacio guardado, mostrar la lista
                 SpacesListView()
                     .environmentObject(authManager)
             }

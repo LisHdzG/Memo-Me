@@ -147,23 +147,16 @@ class AuthenticationManager: ObservableObject {
                 self.authenticationState = .authenticated
                 self.errorMessage = nil
                 
-                // Guardar usuario en caché local
                 saveUserToCache(existingUser)
-                
-                print("✅ Usuario encontrado en Firestore - User ID: \(appleId)")
             } else {
-                // Usuario no existe - necesita registro
-                // Guardar el nombre de Apple si está disponible para usarlo en el registro
                 if let name = appleName {
                     self.userName = name
                     userDefaults.set(name, forKey: savedUserNameKey)
                 }
                 self.authenticationState = .needsRegistration
                 self.isAuthenticated = false
-                print("📝 Usuario no encontrado - necesita registro - Apple ID: \(appleId)")
             }
         } catch {
-            print("❌ Error al verificar usuario en Firestore: \(error.localizedDescription)")
             self.handleError(error)
         }
     }
@@ -177,10 +170,7 @@ class AuthenticationManager: ObservableObject {
         self.authenticationState = .authenticated
         self.errorMessage = nil
         
-        // Guardar usuario en caché local
         saveUserToCache(user)
-        
-        print("✅ Registro completado - Usuario autenticado")
     }
     
     func handleError(_ error: Error) {
@@ -197,8 +187,6 @@ class AuthenticationManager: ObservableObject {
         self.authenticationState = .error(authError.errorDescription ?? "Error desconocido")
         self.errorMessage = authError.errorDescription
         self.isAuthenticated = false
-        
-        print("❌ Error de autenticación: \(authError.errorDescription ?? "Desconocido")")
     }
     
     private func mapASAuthorizationError(_ error: ASAuthorizationError) -> AuthenticationError {
@@ -225,9 +213,7 @@ class AuthenticationManager: ObservableObject {
             return
         }
         
-        // Primero intentar cargar el usuario desde caché local
         if let cachedUser = loadUserFromCache(), cachedUser.appleId == userID {
-            // Usuario encontrado en caché - usar datos locales sin llamar a Firestore
             self.currentUser = cachedUser
             self.userIdentifier = userID
             self.userName = cachedUser.name
@@ -235,11 +221,9 @@ class AuthenticationManager: ObservableObject {
             self.isAuthenticated = true
             self.authenticationState = .authenticated
             self.errorMessage = nil
-            print("✅ Usuario cargado desde caché local - User ID: \(userID)")
             return
         }
         
-        // Si no hay usuario en caché, verificar con Apple y Firestore
         authenticationState = .loading
         
         let provider = ASAuthorizationAppleIDProvider()
@@ -259,7 +243,6 @@ class AuthenticationManager: ObservableObject {
                     self.userEmail = self.userDefaults.string(forKey: self.savedUserEmailKey)
                     self.userName = self.userDefaults.string(forKey: self.savedUserNameKey)
                     
-                    // Verificar si el usuario existe en Firestore (solo si no está en caché)
                     if let existingUser = try? await self.userService.checkUserExists(appleId: userID) {
                         self.currentUser = existingUser
                         self.userName = existingUser.name
@@ -268,16 +251,10 @@ class AuthenticationManager: ObservableObject {
                         self.userDefaults.set(true, forKey: self.isAuthenticatedKey)
                         self.errorMessage = nil
                         
-                        // Guardar usuario en caché local
                         self.saveUserToCache(existingUser)
-                        
-                        print("✅ Usuario autorizado y encontrado en Firestore - User ID: \(userID)")
                     } else {
-                        // Usuario autorizado por Apple pero no existe en Firestore
-                        // Esto puede pasar si el usuario se registró pero no completó el registro
                         self.isAuthenticated = false
                         self.authenticationState = .needsRegistration
-                        print("⚠️ Usuario autorizado por Apple pero no encontrado en Firestore - necesita registro")
                     }
                     
                 case .revoked:
@@ -291,14 +268,12 @@ class AuthenticationManager: ObservableObject {
                     self.handleError(AuthenticationError.credentialNotFound)
                     
                 case .transferred:
-                    // Las credenciales fueron transferidas a otro dispositivo
                     self.clearAuthenticationData()
                     self.authenticationState = .unauthenticated
                     self.handleError(AuthenticationError.credentialNotFound)
                     
                 @unknown default:
                     self.authenticationState = .idle
-                    print("⚠️ Estado de credencial desconocido")
                 }
             }
         }
@@ -319,19 +294,16 @@ class AuthenticationManager: ObservableObject {
     
     // MARK: - Cache Management
     
-    /// Guarda el usuario en caché local (UserDefaults)
     private func saveUserToCache(_ user: User) {
         do {
             let encoder = JSONEncoder()
             let userData = try encoder.encode(user)
             userDefaults.set(userData, forKey: cachedUserKey)
-            print("💾 Usuario guardado en caché local")
         } catch {
-            print("⚠️ Error al guardar usuario en caché: \(error.localizedDescription)")
+            // Failed to save user to cache
         }
     }
     
-    /// Carga el usuario desde caché local (UserDefaults)
     private func loadUserFromCache() -> User? {
         guard let userData = userDefaults.data(forKey: cachedUserKey) else {
             return nil
@@ -340,17 +312,13 @@ class AuthenticationManager: ObservableObject {
         do {
             let decoder = JSONDecoder()
             let user = try decoder.decode(User.self, from: userData)
-            print("📦 Usuario cargado desde caché local")
             return user
         } catch {
-            print("⚠️ Error al cargar usuario desde caché: \(error.localizedDescription)")
-            // Si hay error al decodificar, limpiar el caché corrupto
             userDefaults.removeObject(forKey: cachedUserKey)
             return nil
         }
     }
     
-    /// Actualiza el usuario en caché (útil para actualizar datos temporales)
     func updateCachedUser(_ user: User) {
         saveUserToCache(user)
         self.currentUser = user
@@ -360,7 +328,6 @@ class AuthenticationManager: ObservableObject {
         clearAuthenticationData()
         authenticationState = .unauthenticated
         errorMessage = nil
-        print("👋 Usuario cerró sesión")
     }
     
     func clearError() {

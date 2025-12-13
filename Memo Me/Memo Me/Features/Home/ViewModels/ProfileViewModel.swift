@@ -101,14 +101,12 @@ class ProfileViewModel: ObservableObject {
     func loadUserData() {
         guard let user = authenticationManager?.currentUser else { return }
         
-        // Guardar valores originales
         originalName = user.name
         originalNationality = user.nationality
         originalAreas = user.areas ?? []
         originalInterests = user.interests ?? []
         originalPhotoUrl = user.photoUrl
         
-        // Asignar valores actuales
         name = user.name
         nationality = user.nationality
         
@@ -121,14 +119,12 @@ class ProfileViewModel: ObservableObject {
         selectedAreas = user.areas ?? []
         selectedInterests = user.interests ?? []
         
-        // Cargar imagen de perfil si existe
         if let photoUrl = user.photoUrl, let url = URL(string: photoUrl) {
             Task {
                 await loadImageFromUrl(url)
             }
         }
         
-        // Resetear photo item cuando se cargan datos
         selectedPhotoItem = nil
     }
     
@@ -139,7 +135,7 @@ class ProfileViewModel: ObservableObject {
                 profileImage = image
             }
         } catch {
-            print("⚠️ Error al cargar imagen: \(error.localizedDescription)")
+            // Failed to load image
         }
     }
     
@@ -244,19 +240,15 @@ class ProfileViewModel: ObservableObject {
         successMessage = nil
         
         do {
-            // 1. Subir foto de perfil si existe y cambió
             var photoUrl: String? = currentUser.photoUrl
             if let image = profileImage {
-                // Solo subir si es una imagen nueva (no la que ya está en el perfil)
                 if selectedPhotoItem != nil {
                     photoUrl = try await uploadProfileImage(image, appleId: appleId)
                 }
             } else if selectedPhotoItem == nil && profileImage == nil {
-                // Si se eliminó la foto
                 photoUrl = nil
             }
             
-            // 2. Crear el usuario actualizado
             var updatedUser = User(
                 id: userId,
                 appleId: appleId,
@@ -267,24 +259,20 @@ class ProfileViewModel: ObservableObject {
                 photoUrl: photoUrl
             )
             
-            // 3. Actualizar en Firestore
             try await userService.updateUser(updatedUser)
             
-            // 4. Actualizar el usuario en AuthenticationManager
             authenticationManager?.updateCachedUser(updatedUser)
             
-            // 5. Actualizar valores originales después de guardar
             originalName = trimmedName
             originalNationality = nationality
             originalAreas = selectedAreas
             originalInterests = selectedInterests
             originalPhotoUrl = photoUrl
-            selectedPhotoItem = nil // Resetear el selector de foto
+            selectedPhotoItem = nil
             
             isLoading = false
             successMessage = "Perfil actualizado correctamente"
             
-            // Limpiar el mensaje de éxito después de 3 segundos
             Task {
                 try? await Task.sleep(for: .seconds(3))
                 await MainActor.run {
@@ -296,7 +284,6 @@ class ProfileViewModel: ObservableObject {
         } catch {
             isLoading = false
             errorMessage = "Error al actualizar el perfil: \(error.localizedDescription)"
-            print("❌ Error al actualizar perfil: \(error.localizedDescription)")
             return false
         }
     }
@@ -349,10 +336,8 @@ class ProfileViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            // Eliminar el usuario de Firestore
             try await userService.deleteUser(userId: userId)
             
-            // Cerrar sesión (esto limpiará todos los datos locales)
             authenticationManager?.signOut()
             
             isLoading = false
@@ -360,7 +345,6 @@ class ProfileViewModel: ObservableObject {
         } catch {
             isLoading = false
             errorMessage = "Error al eliminar la cuenta: \(error.localizedDescription)"
-            print("❌ Error al eliminar cuenta: \(error.localizedDescription)")
             return false
         }
     }

@@ -98,8 +98,3 @@ struct OnboardingPageView: View {
         Color("PurpleGradientTop")
     }
 }
-
-#Preview {
-    OnboardingView()
-}
-

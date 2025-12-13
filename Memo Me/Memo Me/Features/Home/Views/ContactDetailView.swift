@@ -10,11 +10,9 @@ import SwiftUI
 struct ContactDetailView: View {
     let space: Space?
     
-    @State private var contacts: [Contact] = []
-    @State private var rotationSpeed: Double = 0.5 // Velocidad de rotación (radianes por segundo)
+    @StateObject private var viewModel = ContactDetailViewModel()
+    @State private var rotationSpeed: Double = 0.5
     @State private var isAutoRotating: Bool = true
-    @State private var isLoading: Bool = true
-    @State private var errorMessage: String?
     @ObservedObject private var spaceSelectionService = SpaceSelectionService.shared
     
     init(space: Space? = nil) {
@@ -23,7 +21,6 @@ struct ContactDetailView: View {
     
     var body: some View {
         ZStack {
-            // Fondo con gradiente
             LinearGradient(
                 gradient: Gradient(colors: [
                     Color("PurpleGradientTop"),
@@ -36,9 +33,7 @@ struct ContactDetailView: View {
             .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Header
                 VStack(spacing: 12) {
-                    // Título y botón de cambiar espacio
                     HStack {
                         Text(space?.name ?? "Mis Contactos")
                             .font(.system(size: 32, weight: .bold, design: .rounded))
@@ -46,7 +41,6 @@ struct ContactDetailView: View {
                         
                         Spacer()
                         
-                        // Botón para cambiar de espacio
                         Button(action: {
                             spaceSelectionService.clearSelectedSpace()
                         }) {
@@ -78,12 +72,12 @@ struct ContactDetailView: View {
                     }
                     .padding(.horizontal, 20)
                     
-                    if isLoading {
+                    if viewModel.isLoading {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             .scaleEffect(0.8)
                     } else {
-                        Text("\(contacts.count) contactos")
+                        Text("\(viewModel.contacts.count) contactos")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.white.opacity(0.7))
                     }
@@ -91,8 +85,7 @@ struct ContactDetailView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 10)
                 
-                // Mensaje de error
-                if let errorMessage = errorMessage {
+                if let errorMessage = viewModel.errorMessage {
                     Text(errorMessage)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white)
@@ -102,15 +95,14 @@ struct ContactDetailView: View {
                         .padding(.horizontal, 20)
                 }
                 
-                // Esfera de contactos
-                if !contacts.isEmpty {
+                if !viewModel.contacts.isEmpty {
                     ContactSphereView(
-                        contacts: contacts,
+                        contacts: viewModel.contacts,
                         rotationSpeed: $rotationSpeed,
                         isAutoRotating: $isAutoRotating
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if !isLoading {
+                } else if !viewModel.isLoading {
                     VStack(spacing: 20) {
                         Image(systemName: "person.3.fill")
                             .font(.system(size: 60))
@@ -123,9 +115,7 @@ struct ContactDetailView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 
-                // Controles
                 VStack(spacing: 16) {
-                    // Control de velocidad
                     VStack(spacing: 8) {
                         HStack {
                             Text("Velocidad")
@@ -142,7 +132,6 @@ struct ContactDetailView: View {
                     }
                     .padding(.horizontal, 24)
                     
-                    // Botón de pausa/reanudar
                     Button(action: {
                         withAnimation(.easeInOut(duration: 0.3)) {
                             isAutoRotating.toggle()
@@ -179,60 +168,7 @@ struct ContactDetailView: View {
             }
         }
         .task {
-            await loadContacts()
-        }
-    }
-    
-    /// Carga los contactos del espacio desde Firestore
-    private func loadContacts() async {
-        guard let space = space, !space.memberIds.isEmpty else {
-            // Si no hay espacio o no hay miembros, usar dummys como fallback
-            contacts = Contact.generateDummyContacts()
-            isLoading = false
-            return
-        }
-        
-        isLoading = true
-        errorMessage = nil
-        
-        do {
-            // Obtener los usuarios del espacio
-            let userService = UserService()
-            let users = try await userService.getUsers(userIds: space.memberIds)
-            
-            // Convertir usuarios a Contact
-            contacts = users.map { user in
-                // Usar la URL de la foto de perfil si está disponible
-                // Si no hay photoUrl, usar una imagen dummy como fallback
-                let imageIndex = abs(user.id?.hashValue ?? 0) % 37 + 1
-                let imageNumber = String(format: "%02d", imageIndex)
-                
-                return Contact(
-                    id: UUID(uuidString: user.id ?? UUID().uuidString) ?? UUID(),
-                    name: user.name,
-                    imageName: user.photoUrl == nil ? "dummy_profile_\(imageNumber)" : nil,
-                    imageUrl: user.photoUrl
-                )
-            }
-            
-            // Si no hay usuarios, usar dummys como fallback
-            if contacts.isEmpty {
-                contacts = Contact.generateDummyContacts()
-            }
-            
-            isLoading = false
-            print("✅ Contactos cargados: \(contacts.count)")
-        } catch {
-            errorMessage = "Error al cargar contactos: \(error.localizedDescription)"
-            print("❌ Error al cargar contactos: \(error.localizedDescription)")
-            // En caso de error, usar dummys como fallback
-            contacts = Contact.generateDummyContacts()
-            isLoading = false
+            await viewModel.loadContacts(for: space)
         }
     }
 }
-
-#Preview {
-    ContactDetailView()
-}
-

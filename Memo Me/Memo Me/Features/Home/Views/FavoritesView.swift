@@ -8,14 +8,11 @@
 import SwiftUI
 
 struct FavoritesView: View {
-    @State private var favoriteContacts: [Contact] = []
-    @State private var isLoading: Bool = true
-    @State private var errorMessage: String?
+    @StateObject private var viewModel = FavoritesViewModel()
     @ObservedObject private var spaceSelectionService = SpaceSelectionService.shared
     
     var body: some View {
         ZStack {
-            // Fondo con gradiente
             LinearGradient(
                 gradient: Gradient(colors: [
                     Color("PurpleGradientTop"),
@@ -28,7 +25,6 @@ struct FavoritesView: View {
             .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Header
                 VStack(spacing: 12) {
                     HStack {
                         Text("Mis Favoritos")
@@ -39,12 +35,12 @@ struct FavoritesView: View {
                     }
                     .padding(.horizontal, 20)
                     
-                    if isLoading {
+                    if viewModel.isLoading {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             .scaleEffect(0.8)
                     } else {
-                        Text("\(favoriteContacts.count) favoritos")
+                        Text("\(viewModel.favoriteContacts.count) favoritos")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.white.opacity(0.7))
                     }
@@ -52,8 +48,7 @@ struct FavoritesView: View {
                 .padding(.top, 20)
                 .padding(.bottom, 10)
                 
-                // Mensaje de error
-                if let errorMessage = errorMessage {
+                if let errorMessage = viewModel.errorMessage {
                     Text(errorMessage)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white)
@@ -63,18 +58,17 @@ struct FavoritesView: View {
                         .padding(.horizontal, 20)
                 }
                 
-                // Lista de favoritos
-                if !favoriteContacts.isEmpty {
+                if !viewModel.favoriteContacts.isEmpty {
                     ScrollView {
                         LazyVStack(spacing: 16) {
-                            ForEach(favoriteContacts) { contact in
+                            ForEach(viewModel.favoriteContacts) { contact in
                                 FavoriteContactCard(contact: contact)
                             }
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 20)
                     }
-                } else if !isLoading {
+                } else if !viewModel.isLoading {
                     VStack(spacing: 20) {
                         Image(systemName: "heart.slash.fill")
                             .font(.system(size: 60))
@@ -95,33 +89,16 @@ struct FavoritesView: View {
             }
         }
         .task {
-            await loadFavoriteContacts()
-        }
-    }
-    
-    /// Carga los contactos favoritos
-    private func loadFavoriteContacts() async {
-        isLoading = true
-        errorMessage = nil
-        
-        // Por ahora, cargar algunos contactos de ejemplo
-        // TODO: Implementar lógica para cargar favoritos desde Firestore
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            // Placeholder: Usar contactos dummy como ejemplo
-            // En el futuro, esto debería cargar solo los contactos marcados como favoritos
-            favoriteContacts = []
-            isLoading = false
+            await viewModel.loadFavoriteContacts()
         }
     }
 }
 
-// Vista de tarjeta para cada contacto favorito
 struct FavoriteContactCard: View {
     let contact: Contact
     
     var body: some View {
         HStack(spacing: 16) {
-            // Imagen del contacto
             if let imageName = contact.imageName {
                 Image(imageName)
                     .resizable()
@@ -150,7 +127,6 @@ struct FavoriteContactCard: View {
                     )
             }
             
-            // Información del contacto
             VStack(alignment: .leading, spacing: 4) {
                 Text(contact.name)
                     .font(.system(size: 18, weight: .semibold))
@@ -159,7 +135,6 @@ struct FavoriteContactCard: View {
             
             Spacer()
             
-            // Icono de favorito
             Image(systemName: "heart.fill")
                 .font(.system(size: 20))
                 .foregroundColor(.pink)
@@ -173,8 +148,3 @@ struct FavoriteContactCard: View {
         )
     }
 }
-
-#Preview {
-    FavoritesView()
-}
-

@@ -16,23 +16,19 @@ class SpacesViewModel: ObservableObject {
     
     private let spaceService = SpaceService()
     
-    /// Carga los espacios activos para un usuario
     func loadActiveSpaces(userId: String) async {
         isLoading = true
         errorMessage = nil
         
         do {
             spaces = try await spaceService.getActiveSpaces(userId: userId)
-            print("✅ Espacios cargados: \(spaces.count)")
         } catch {
             errorMessage = "Error al cargar los espacios: \(error.localizedDescription)"
-            print("❌ Error al cargar espacios: \(error.localizedDescription)")
         }
         
         isLoading = false
     }
     
-    /// Recarga los espacios activos
     func refreshSpaces(userId: String) async {
         await loadActiveSpaces(userId: userId)
     }

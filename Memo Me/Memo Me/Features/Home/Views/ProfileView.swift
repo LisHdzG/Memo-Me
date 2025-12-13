@@ -636,8 +636,3 @@ struct ProfileInfoSection: View {
         }
     }
 }
-
-#Preview {
-    ProfileView()
-        .environmentObject(AuthenticationManager())
-}

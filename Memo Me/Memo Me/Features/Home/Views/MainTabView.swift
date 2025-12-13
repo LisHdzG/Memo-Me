@@ -14,7 +14,6 @@ struct MainTabView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Tab 1: Contactos
             ContactDetailView(space: spaceSelectionService.selectedSpace)
                 .tabItem {
                     Label("Contactos", systemImage: "person.3.fill")
@@ -38,10 +37,5 @@ struct MainTabView: View {
         }
         .accentColor(Color("PurpleGradientTop"))
     }
-}
-
-#Preview {
-    MainTabView()
-        .environmentObject(AuthenticationManager())
 }
 
