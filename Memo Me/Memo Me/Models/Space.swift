@@ -8,7 +8,7 @@
 import Foundation
 import FirebaseFirestore
 
-struct Space: Codable, Identifiable {
+struct Space: Codable, Identifiable, Equatable {
     var id: String?
     let spaceId: String
     let name: String

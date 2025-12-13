@@ -13,7 +13,9 @@ struct ContactDetailView: View {
     @StateObject private var viewModel = ContactDetailViewModel()
     @State private var rotationSpeed: Double = 0.5
     @State private var isAutoRotating: Bool = true
+    @State private var selectedContact: Contact?
     @ObservedObject private var spaceSelectionService = SpaceSelectionService.shared
+    @EnvironmentObject var authManager: AuthenticationManager
     
     init(space: Space? = nil) {
         self.space = space
@@ -98,8 +100,15 @@ struct ContactDetailView: View {
                 if !viewModel.contacts.isEmpty {
                     ContactSphereView(
                         contacts: viewModel.contacts,
+                        spaceId: space?.spaceId,
                         rotationSpeed: $rotationSpeed,
-                        isAutoRotating: $isAutoRotating
+                        isAutoRotating: $isAutoRotating,
+                        onContactTapped: { contact in
+                            print("DEBUG ContactDetailView: Contacto tocado - \(contact.name), ID: \(contact.id)")
+                            // Establecer el contacto primero, esto automáticamente mostrará el sheet
+                            selectedContact = contact
+                            print("DEBUG ContactDetailView: selectedContact establecido = \(selectedContact?.name ?? "nil")")
+                        }
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if !viewModel.isLoading {
@@ -168,7 +177,21 @@ struct ContactDetailView: View {
             }
         }
         .task {
+            viewModel.currentUserId = authManager.currentUser?.id
             await viewModel.loadContacts(for: space)
+        }
+        .onChange(of: authManager.currentUser?.id) { oldValue, newValue in
+            viewModel.currentUserId = newValue
+        }
+        .sheet(item: $selectedContact) { contact in
+            let user = viewModel.getUser(for: contact)
+            ContactDetailSheet(
+                user: user,
+                contact: contact,
+                spaceId: space?.spaceId
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
     }
 }

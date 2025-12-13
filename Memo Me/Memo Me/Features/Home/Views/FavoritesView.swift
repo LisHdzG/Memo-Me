@@ -10,6 +10,8 @@ import SwiftUI
 struct FavoritesView: View {
     @StateObject private var viewModel = FavoritesViewModel()
     @ObservedObject private var spaceSelectionService = SpaceSelectionService.shared
+    @State private var selectedContact: Contact?
+    @EnvironmentObject var authManager: AuthenticationManager
     
     var body: some View {
         ZStack {
@@ -62,7 +64,12 @@ struct FavoritesView: View {
                     ScrollView {
                         LazyVStack(spacing: 16) {
                             ForEach(viewModel.favoriteContacts) { contact in
-                                FavoriteContactCard(contact: contact)
+                                FavoriteContactCard(
+                                    contact: contact,
+                                    onTap: {
+                                        selectedContact = contact
+                                    }
+                                )
                             }
                         }
                         .padding(.horizontal, 20)
@@ -89,62 +96,70 @@ struct FavoritesView: View {
             }
         }
         .task {
-            await viewModel.loadFavoriteContacts()
+            viewModel.currentUserId = authManager.currentUser?.id
+            await viewModel.loadFavoriteContacts(for: spaceSelectionService.selectedSpace)
+        }
+        .onChange(of: spaceSelectionService.selectedSpace) { oldValue, newValue in
+            Task {
+                await viewModel.loadFavoriteContacts(for: newValue)
+            }
+        }
+        .onChange(of: authManager.currentUser?.id) { oldValue, newValue in
+            viewModel.currentUserId = newValue
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("FavoritesChanged"))) { _ in
+            Task {
+                await viewModel.refreshFavorites(for: spaceSelectionService.selectedSpace)
+            }
+        }
+        .sheet(item: $selectedContact) { contact in
+            let user = viewModel.getUser(for: contact)
+            ContactDetailSheet(
+                user: user,
+                contact: contact,
+                spaceId: spaceSelectionService.selectedSpace?.spaceId
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
     }
 }
 
 struct FavoriteContactCard: View {
     let contact: Contact
+    let onTap: () -> Void
     
     var body: some View {
-        HStack(spacing: 16) {
-            if let imageName = contact.imageName {
-                Image(imageName)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 60, height: 60)
-                    .clipShape(Circle())
-            } else if let imageUrl = contact.imageUrl, let url = URL(string: imageUrl) {
-                AsyncImage(url: url) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Circle()
-                        .fill(Color.white.opacity(0.2))
-                }
-                .frame(width: 60, height: 60)
+        Button(action: onTap) {
+            HStack(spacing: 16) {
+                AsyncImageView(
+                    imageUrl: contact.imageUrl,
+                    placeholderText: contact.name,
+                    contentMode: .fill,
+                    size: 60
+                )
                 .clipShape(Circle())
-            } else {
-                Circle()
-                    .fill(Color.white.opacity(0.2))
-                    .frame(width: 60, height: 60)
-                    .overlay(
-                        Text(String(contact.name.prefix(1)))
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundColor(.white)
-                    )
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(contact.name)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.pink)
             }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(contact.name)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
-            }
-            
-            Spacer()
-            
-            Image(systemName: "heart.fill")
-                .font(.system(size: 20))
-                .foregroundColor(.pink)
+            .padding(16)
+            .background(Color.white.opacity(0.1))
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+            )
         }
-        .padding(16)
-        .background(Color.white.opacity(0.1))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.2), lineWidth: 1)
-        )
+        .buttonStyle(PlainButtonStyle())
     }
 }

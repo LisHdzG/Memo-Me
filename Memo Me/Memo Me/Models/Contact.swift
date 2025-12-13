@@ -13,11 +13,13 @@ struct Contact: Identifiable {
     let name: String
     let imageName: String?
     let imageUrl: String?
+    let userId: String?
     
-    init(id: UUID = UUID(), name: String, imageName: String? = nil, imageUrl: String? = nil) {
+    init(id: UUID = UUID(), name: String, imageName: String? = nil, imageUrl: String? = nil, userId: String? = nil) {
         self.id = id
         self.name = name
         self.imageName = imageName
         self.imageUrl = imageUrl
+        self.userId = userId
     }
 }
