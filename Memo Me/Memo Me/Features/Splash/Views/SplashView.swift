@@ -18,7 +18,7 @@ struct SplashView: View {
     
     var body: some View {
         if isActive {
-            LoginView()
+            RegistrationView()
                 .transition(.opacity)
         } else {
             ZStack {
