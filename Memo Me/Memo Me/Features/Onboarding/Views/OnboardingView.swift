@@ -8,10 +8,10 @@
 import SwiftUI
 
 struct OnboardingView: View {
+
     @EnvironmentObject var authManager: AuthenticationManager
     @StateObject private var viewModel = OnboardingViewModel()
-    @State private var navigateToLogin = false
-    @State private var navigateToRegistration = false
+    private let onboardingService = OnboardingService.shared
 
     var body: some View {
         NavigationStack {
@@ -20,15 +20,21 @@ struct OnboardingView: View {
                     .opacity(0.7)
                     .ignoresSafeArea()
 
-                AnimatedPeopleCirclesView(
-                    currentPage: viewModel.currentPage,
-                    baseOpacity: 0.25
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .ignoresSafeArea()
+                if viewModel.currentPage < 3 {
+                    AnimatedPeopleCirclesView(
+                        currentPage: viewModel.currentPage,
+                        baseOpacity: 0.10
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .ignoresSafeArea()
+                    .opacity(viewModel.currentPage < 3 ? 1.0 : 0.0)
+                    .animation(.easeInOut(duration: 0.6), value: viewModel.currentPage)
+                }
 
                 VStack(spacing: 0) {
-                    skipButton
+                    if viewModel.currentPage < 3 {
+                        skipButton
+                    }
 
                     Spacer()
 
@@ -38,11 +44,18 @@ struct OnboardingView: View {
                                 page: viewModel.pages[index],
                                 pageIndex: index
                             )
+                            .environmentObject(authManager)
                             .tag(index)
                         }
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))
                     .indexViewStyle(.page(backgroundDisplayMode: .never))
+                    .animation(.spring(response: 0.6, dampingFraction: 0.8), value: viewModel.currentPage)
+                    .onChange(of: viewModel.currentPage) { _, newValue in
+                        if newValue == 3 {
+                            onboardingService.markSignInReached()
+                        }
+                    }
 
                     Spacer()
 
@@ -50,20 +63,7 @@ struct OnboardingView: View {
                         totalPages: viewModel.totalPages,
                         currentPage: viewModel.currentPage
                     )
-                    .padding(.bottom, 50)
-
-                    if viewModel.isLastPage {
-                        continueButton
-                    }
                 }
-            }
-            .navigationDestination(isPresented: $navigateToLogin) {
-                LoginView()
-                    .environmentObject(authManager)
-            }
-            .navigationDestination(isPresented: $navigateToRegistration) {
-                RegistrationView()
-                    .environmentObject(authManager)
             }
         }
     }
@@ -71,47 +71,25 @@ struct OnboardingView: View {
     private var skipButton: some View {
         HStack {
             Spacer()
-            Button(action: {
-                navigateToLogin = true
-            }) {
-                Text("Skip")
-                    .font(.system(size: 16, weight: .medium, design: .rounded))
-                    .foregroundColor(.blue)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 20)
-                            .fill(Color.white)
-                            .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
-                    )
+            Button {
+                viewModel.currentPage = 3
+            } label: {
+                Text("onboarding.skip", comment: "Skip button on onboarding")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
             }
             .padding(.top, 8)
             .padding(.trailing, 20)
+            .buttonStyle(.glass)
+            .foregroundStyle(.primaryDark)
         }
     }
 
-    private var continueButton: some View {
-        Button(action: {
-            navigateToLogin = true
-        }) {
-            Text("Continuar")
-                .font(.system(size: 18, weight: .semibold, design: .rounded))
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(.black)
-                )
-                .padding(.horizontal, 40)
-                .padding(.bottom, 30)
-        }
-    }
 }
 
 struct OnboardingPageView: View {
     let page: OnboardingPage
     let pageIndex: Int
+    @EnvironmentObject var authManager: AuthenticationManager
 
     var body: some View {
         switch pageIndex {
@@ -121,6 +99,9 @@ struct OnboardingPageView: View {
             OnboardingSecondPageView(page: page)
         case 2:
             OnboardingThirdPageView(page: page)
+        case 3:
+            OnboardingFourthPageView(showBackground: false)
+                .environmentObject(authManager)
         default:
             EmptyView()
         }

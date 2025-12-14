@@ -11,33 +11,93 @@ struct OnboardingSecondPageView: View {
     let page: OnboardingPage
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 0) {
+            Spacer()
+                .frame(height: 60)
+
             Text(page.title)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundColor(purpleColor)
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .foregroundColor(.primaryDark)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 30)
+                .lineSpacing(8)
+                .padding(.horizontal, 32)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer()
+                .frame(height: 40)
 
             Text(page.subtitle)
-                .font(.system(size: 18, weight: .medium, design: .rounded))
-                .foregroundColor(purpleColor.opacity(0.85))
+                .font(.system(size: 20, weight: .medium, design: .rounded))
+                .foregroundColor(.primaryDark.opacity(0.75))
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-                .lineSpacing(4)
+                .lineSpacing(6)
+                .padding(.horizontal, 48)
+
+            Spacer()
 
             if !page.description.isEmpty {
-                Text(page.description)
-                    .font(.system(size: 18, weight: .medium, design: .rounded))
-                    .foregroundColor(purpleColor.opacity(0.85))
+                descriptionText
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-                    .padding(.top, 4)
+                    .lineSpacing(6)
+                    .padding(.horizontal, 48)
             }
+
+            Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var purpleColor: Color {
-        Color("PurpleGradientTop")
+    private var descriptionText: some View {
+        let description = page.description
+        let boldPhrases = [
+            "has its place",
+            "tiene un lugar",
+            "ha il suo posto"
+        ]
+
+        guard let phrase = boldPhrases.first(where: { phrase in
+            description.localizedCaseInsensitiveContains(phrase)
+        }) else {
+            return AnyView(
+                Text(description)
+                    .font(.system(size: 25, weight: .medium, design: .rounded))
+                    .foregroundColor(.primaryDark.opacity(0.75))
+            )
+        }
+
+        let nsString = description as NSString
+        let options: NSString.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
+        let range = nsString.range(of: phrase, options: options)
+
+        guard range.location != NSNotFound else {
+            return AnyView(
+                Text(description)
+                    .font(.system(size: 25, weight: .medium, design: .rounded))
+                    .foregroundColor(.primaryDark.opacity(0.75))
+            )
+        }
+
+        let before = nsString.substring(to: range.location)
+        let phraseText = nsString.substring(with: range)
+        let after = nsString.substring(from: range.location + range.length)
+
+        var attributedString = AttributedString(before)
+        attributedString.font = .system(size: 25, weight: .medium, design: .rounded)
+        attributedString.foregroundColor = .primaryDark.opacity(0.75)
+
+        var phraseAttributed = AttributedString(phraseText)
+        phraseAttributed.font = .system(size: 27, weight: .bold, design: .rounded)
+        phraseAttributed.foregroundColor = .primaryDark.opacity(0.9)
+
+        var afterAttributed = AttributedString(after)
+        afterAttributed.font = .system(size: 25, weight: .medium, design: .rounded)
+        afterAttributed.foregroundColor = .primaryDark.opacity(0.75)
+
+        attributedString.append(phraseAttributed)
+        attributedString.append(afterAttributed)
+
+        return AnyView(
+            Text(attributedString)
+        )
     }
 }

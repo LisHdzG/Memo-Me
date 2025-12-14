@@ -16,9 +16,11 @@
 		C39DF6052EEDDDEB0019BC60 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = C39DF6042EEDDDEB0019BC60 /* FirebaseRemoteConfig */; };
 		C39DF6072EEDDDEB0019BC60 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = C39DF6062EEDDDEB0019BC60 /* FirebaseStorage */; };
 		C39DF6102EEDE0930019BC60 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = C39DF60F2EEDE0930019BC60 /* FirebaseFirestore */; };
+		C3CD5E302EEF4DDD0096334D /* Icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = C3CD5E2F2EEF4DDD0096334D /* Icon.icon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		C3CD5E2F2EEF4DDD0096334D /* Icon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = Icon.icon; sourceTree = "<group>"; };
 		C3E904802EE08FCE00278D2E /* Memo Me.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Memo Me.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -55,6 +57,7 @@
 			children = (
 				C3E904822EE08FCE00278D2E /* Memo Me */,
 				C3E904812EE08FCE00278D2E /* Products */,
+				C3CD5E2F2EEF4DDD0096334D /* Icon.icon */,
 			);
 			sourceTree = "<group>";
 		};
@@ -116,10 +119,12 @@
 				};
 			};
 			buildConfigurationList = C3E9047B2EE08FCE00278D2E /* Build configuration list for PBXProject "Memo Me" */;
-			developmentRegion = en;
+			developmentRegion = es;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				es,
+				it,
 				Base,
 			);
 			mainGroup = C3E904772EE08FCE00278D2E;
@@ -142,6 +147,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C3CD5E302EEF4DDD0096334D /* Icon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -277,7 +283,7 @@
 		C3E9048C2EE08FCF00278D2E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Icon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Memo Me/Memo Me.entitlements";
 				CODE_SIGN_STYLE = Automatic;
@@ -327,7 +333,7 @@
 		C3E9048D2EE08FCF00278D2E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Icon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Memo Me/Memo Me.entitlements";
 				CODE_SIGN_STYLE = Automatic;

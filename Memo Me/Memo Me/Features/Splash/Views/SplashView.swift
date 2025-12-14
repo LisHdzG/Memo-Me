@@ -16,11 +16,16 @@ struct SplashView: View {
     @State private var meReflectionOffset: CGFloat = 30
     @State private var imageOpacity: Double = 0
     @State private var imageScale: CGFloat = 0.8
-    
+    private let onboardingService = OnboardingService.shared
+
     var body: some View {
         if isActive {
             if authManager.isAuthenticated {
                 ContentView()
+                    .environmentObject(authManager)
+                    .transition(.opacity)
+            } else if onboardingService.hasReachedSignIn {
+                OnboardingFourthPageView()
                     .environmentObject(authManager)
                     .transition(.opacity)
             } else {
@@ -32,9 +37,9 @@ struct SplashView: View {
             ZStack {
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        .purpleGradientTop,
-                        .purpleGradientMiddle,
-                        .purpleGradientBottom
+                        .focusRing,
+                        .primaryAccent,
+                        .primaryDark
                     ]),
                     startPoint: .top,
                     endPoint: .bottom

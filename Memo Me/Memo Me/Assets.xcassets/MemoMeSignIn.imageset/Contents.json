@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "Pet Sign.svg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

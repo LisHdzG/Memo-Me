@@ -11,25 +11,37 @@ import Combine
 
 class OnboardingViewModel: ObservableObject {
     @Published var currentPage: Int = 0
-    
-    let totalPages: Int = 3
-    
+    private let onboardingService = OnboardingService.shared
+
+    let totalPages: Int = 4
+
+    init() {
+        if onboardingService.hasReachedSignIn {
+            currentPage = 3
+        }
+    }
+
     var pages: [OnboardingPage] {
         [
             OnboardingPage(
-                title: "¿Te acuerdas de la persona… pero no del contexto?",
-                subtitle: "Los contactos guardan números.\nMemoME guarda historias.",
+                title: String(localized: "onboarding.page1.title"),
+                subtitle: String(localized: "onboarding.page1.subtitle"),
                 description: ""
             ),
             OnboardingPage(
-                title: "Organiza personas por espacios",
-                subtitle: "No más \"¿de dónde lo conozco?\"",
-                description: "Todo tiene un lugar."
+                title: String(localized: "onboarding.page2.title"),
+                subtitle: String(localized: "onboarding.page2.subtitle"),
+                description: String(localized: "onboarding.page2.description")
             ),
             OnboardingPage(
-                title: "Recuerda lo que importa",
-                subtitle: "Contexto. Personas. Memoria.",
-                description: "Eso es MemoME."
+                title: String(localized: "onboarding.page3.title"),
+                subtitle: "",
+                description: String(localized: "onboarding.page3.description")
+            ),
+            OnboardingPage(
+                title: "",
+                subtitle: "",
+                description: ""
             )
         ]
     }

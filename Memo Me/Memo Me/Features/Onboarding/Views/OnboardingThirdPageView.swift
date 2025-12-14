@@ -14,62 +14,111 @@ struct OnboardingThirdPageView: View {
     @State private var showSubtitleWord2 = false
     @State private var showSubtitleWord3 = false
     @State private var showDescription = false
+    @State private var showMascot = false
+    @State private var hasAnimated = false
 
     var body: some View {
-        VStack(spacing: 24) {
-            Text(page.title)
-                .font(.system(size: 32, weight: .bold, design: .rounded))
-                .foregroundColor(purpleColor)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 30)
+        ZStack {
+            VStack(spacing: 0) {
+                Spacer()
+                    .frame(height: 60)
 
-            HStack(spacing: 8) {
-                AnimatedWord(text: "Contexto.", show: showSubtitleWord1, delay: 0.0)
-                AnimatedWord(text: "Personas.", show: showSubtitleWord2, delay: 0.3)
-                AnimatedWord(text: "Memoria.", show: showSubtitleWord3, delay: 0.6)
+                Text(page.title)
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .foregroundColor(.primaryDark)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(8)
+                    .padding(.horizontal, 32)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer()
+
+                HStack(spacing: 8) {
+                    AnimatedWord(
+                        text: String(localized: "onboarding.page3.word1"),
+                        show: showSubtitleWord1,
+                        delay: 0.0
+                    )
+                    AnimatedWord(
+                        text: String(localized: "onboarding.page3.word2"),
+                        show: showSubtitleWord2,
+                        delay: 0.3
+                    )
+                    AnimatedWord(
+                        text: String(localized: "onboarding.page3.word3"),
+                        show: showSubtitleWord3,
+                        delay: 0.6
+                    )
+                }
+                .font(.system(size: 24, weight: .semibold, design: .rounded))
+                .foregroundColor(.primaryDark.opacity(0.9))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 48)
+                .frame(minHeight: 40)
+
+                Spacer()
+
+                Text(page.description)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(.primaryDark)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 48)
+                    .opacity(showDescription ? 1.0 : 0.0)
+                    .offset(y: showDescription ? 0 : 30)
+                    .scaleEffect(showDescription ? 1.0 : 0.9)
+                    .animation(
+                        .spring(response: 0.8, dampingFraction: 0.7)
+                        .delay(0.5),
+                        value: showDescription
+                    )
+
+                Spacer()
             }
-            .font(.system(size: 24, weight: .semibold, design: .rounded))
-            .foregroundColor(purpleColor.opacity(0.9))
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 40)
-            .frame(minHeight: 30)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            Text(page.description)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundColor(purpleColor)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-                .opacity(showDescription ? 1.0 : 0.0)
-                .offset(y: showDescription ? 0 : 60)
-                .scaleEffect(showDescription ? 1.0 : 0.8)
-                .animation(
-                    .spring(response: 0.8, dampingFraction: 0.6)
-                    .delay(1.0),
-                    value: showDescription
-                )
+            HStack {
+                Spacer()
+
+                Image("MemoMeOnboarding")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 150, height: 150)
+                    .opacity(showMascot ? 1.0 : 0.0)
+                    .offset(x: showMascot ? 0 : 100)
+                    .scaleEffect(showMascot ? 1.0 : 0.8)
+                    .animation(
+                        .spring(response: 0.8, dampingFraction: 0.7)
+                        .delay(0.5),
+                        value: showMascot
+                    )
+                    .padding(.trailing, -70)
+            }
+            .padding(.top, 100)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
-            showSubtitleWord1 = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            if !hasAnimated {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    showSubtitleWord1 = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    showSubtitleWord2 = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) {
+                    showSubtitleWord3 = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                    showDescription = true
+                    showMascot = true
+                    hasAnimated = true
+                }
+            } else {
+                showSubtitleWord1 = true
                 showSubtitleWord2 = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                 showSubtitleWord3 = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 showDescription = true
+                showMascot = true
             }
         }
-        .onDisappear {
-            showSubtitleWord1 = false
-            showSubtitleWord2 = false
-            showSubtitleWord3 = false
-            showDescription = false
-        }
-    }
-
-    private var purpleColor: Color {
-        Color("PurpleGradientTop")
     }
 }
