@@ -8,7 +8,6 @@
 import SwiftUI
 import PhotosUI
 import Combine
-import FirebaseStorage
 
 @MainActor
 class ProfileViewModel: ObservableObject {
@@ -39,7 +38,7 @@ class ProfileViewModel: ObservableObject {
     
     // MARK: - Services
     private let userService = UserService()
-    private let storage = Storage.storage()
+    private let profileImageService = ProfileImageService.shared
     
     // MARK: - Combine
     private var cancellables = Set<AnyCancellable>()
@@ -243,9 +242,18 @@ class ProfileViewModel: ObservableObject {
             var photoUrl: String? = currentUser.photoUrl
             if let image = profileImage {
                 if selectedPhotoItem != nil {
-                    photoUrl = try await uploadProfileImage(image, appleId: appleId)
+                    // Si hay una foto anterior, se eliminará automáticamente al subir la nueva
+                    photoUrl = try await profileImageService.uploadProfileImage(
+                        image,
+                        appleId: appleId,
+                        oldPhotoUrl: currentUser.photoUrl
+                    )
                 }
             } else if selectedPhotoItem == nil && profileImage == nil {
+                // Si se eliminó la foto, borrar la imagen del almacenamiento
+                if let oldPhotoUrl = currentUser.photoUrl {
+                    try? await profileImageService.deleteProfileImage(for: appleId, photoUrl: oldPhotoUrl)
+                }
                 photoUrl = nil
             }
             
@@ -288,41 +296,6 @@ class ProfileViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Photo Upload
-    private func uploadProfileImage(_ image: UIImage, appleId: String) async throws -> String {
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
-            throw NSError(domain: "ProfileViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "Error al convertir la imagen"])
-        }
-        
-        let fileName = "\(appleId)_\(UUID().uuidString).jpg"
-        let storageRef = storage.reference().child("profile_images/\(fileName)")
-        
-        let metadata = StorageMetadata()
-        metadata.contentType = "image/jpeg"
-        
-        return try await withCheckedThrowingContinuation { continuation in
-            storageRef.putData(imageData, metadata: metadata) { metadata, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                
-                storageRef.downloadURL { url, error in
-                    if let error = error {
-                        continuation.resume(throwing: error)
-                        return
-                    }
-                    
-                    guard let downloadURL = url else {
-                        continuation.resume(throwing: NSError(domain: "ProfileViewModel", code: 2, userInfo: [NSLocalizedDescriptionKey: "No se pudo obtener la URL de descarga"]))
-                        return
-                    }
-                    
-                    continuation.resume(returning: downloadURL.absoluteString)
-                }
-            }
-        }
-    }
     
     // MARK: - Delete Account
     func deleteAccount() async -> Bool {
