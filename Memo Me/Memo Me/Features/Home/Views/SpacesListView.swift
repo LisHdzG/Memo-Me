@@ -76,17 +76,15 @@ struct SpacesListView: View {
                                     
                                     LazyVStack(spacing: 16) {
                                         ForEach(viewModel.userSpaces) { space in
-                                            if let userId = authManager.currentUser?.id {
-                                                SpaceCardView(
-                                                    space: space,
-                                                    isMember: true,
-                                                    onJoin: {},
-                                                    onView: {
-                                                        spaceSelectionService.saveSelectedSpace(space)
-                                                    },
-                                                    isJoining: false
-                                                )
-                                            }
+                                            SpaceCardView(
+                                                space: space,
+                                                isMember: true,
+                                                onJoin: {},
+                                                onView: {
+                                                    spaceSelectionService.saveSelectedSpace(space)
+                                                },
+                                                isJoining: false
+                                            )
                                         }
                                     }
                                     .padding(.horizontal, 20)
@@ -102,16 +100,16 @@ struct SpacesListView: View {
                                     
                                     LazyVStack(spacing: 16) {
                                         ForEach(viewModel.publicSpaces) { space in
-                                            if let userId = authManager.currentUser?.id {
-                                                let isMember = viewModel.isUserMember(space: space, userId: userId)
+                                            if let currentUserId = authManager.currentUser?.id {
+                                                let isMember = viewModel.isUserMember(space: space, userId: currentUserId)
                                                 
                                                 SpaceCardView(
                                                     space: space,
                                                     isMember: isMember,
                                                     onJoin: {
                                                         Task {
-                                                            await viewModel.joinSpace(space: space, userId: userId)
-                                                            await viewModel.refreshSpaces(userId: userId)
+                                                            await viewModel.joinSpace(space: space, userId: currentUserId)
+                                                            await viewModel.refreshSpaces(userId: currentUserId)
                                                             if let updatedSpace = viewModel.publicSpaces.first(where: { $0.spaceId == space.spaceId }) ?? viewModel.userSpaces.first(where: { $0.spaceId == space.spaceId }) {
                                                                 spaceSelectionService.saveSelectedSpace(updatedSpace)
                                                             }

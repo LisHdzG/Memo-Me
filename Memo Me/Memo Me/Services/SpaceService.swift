@@ -25,68 +25,64 @@ class SpaceService: ObservableObject {
         var spaces: [Space] = []
         
         for document in querySnapshot.documents {
-            do {
-                let data = document.data()
-                
-                var members: [String] = []
-                if let membersData = data["members"] as? [Any] {
-                    for member in membersData {
-                        if let reference = member as? DocumentReference {
-                            members.append(reference.documentID)
-                        } else if let path = member as? String {
-                            if path.contains("/") {
-                                let components = path.split(separator: "/")
-                                if let lastComponent = components.last {
-                                    members.append(String(lastComponent))
-                                }
-                            } else {
-                                members.append(path)
+            let data = document.data()
+            
+            var members: [String] = []
+            if let membersData = data["members"] as? [Any] {
+                for member in membersData {
+                    if let reference = member as? DocumentReference {
+                        members.append(reference.documentID)
+                    } else if let path = member as? String {
+                        if path.contains("/") {
+                            let components = path.split(separator: "/")
+                            if let lastComponent = components.last {
+                                members.append(String(lastComponent))
                             }
+                        } else {
+                            members.append(path)
                         }
                     }
                 }
-                
-                // Verificar si el usuario ya es miembro - si lo es, no incluirlo en espacios públicos
-                let isMember = members.contains { memberId in
-                    memberId == userId || 
-                    memberId == "users/\(userId)" ||
-                    memberId == "/users/\(userId)"
-                }
-                
-                guard !isMember else { continue }
-                
-                let isPublic = data["isPublic"] as? Bool ?? false
-                let isOfficial = data["isOfficial"] as? Bool ?? false
-                let code = data["code"] as? String
-                let description = data["description"] as? String ?? ""
-                let types = data["types"] as? [String] ?? []
-                
-                // Manejar owner como DocumentReference o String
-                var owner = ""
-                if let ownerRef = data["owner"] as? DocumentReference {
-                    owner = "users/\(ownerRef.documentID)"
-                } else if let ownerString = data["owner"] as? String {
-                    owner = ownerString
-                }
-                
-                let space = Space(
-                    id: document.documentID,
-                    spaceId: data["spaceId"] as? String ?? "",
-                    name: data["name"] as? String ?? "",
-                    description: description,
-                    bannerUrl: data["bannerUrl"] as? String ?? "",
-                    members: members,
-                    isPublic: isPublic,
-                    isOfficial: isOfficial,
-                    code: code,
-                    owner: owner,
-                    types: types
-                )
-                
-                spaces.append(space)
-            } catch {
-                continue
             }
+            
+            // Verificar si el usuario ya es miembro - si lo es, no incluirlo en espacios públicos
+            let isMember = members.contains { memberId in
+                memberId == userId || 
+                memberId == "users/\(userId)" ||
+                memberId == "/users/\(userId)"
+            }
+            
+            guard !isMember else { continue }
+            
+            let isPublic = data["isPublic"] as? Bool ?? false
+            let isOfficial = data["isOfficial"] as? Bool ?? false
+            let code = data["code"] as? String
+            let description = data["description"] as? String ?? ""
+            let types = data["types"] as? [String] ?? []
+            
+            // Manejar owner como DocumentReference o String
+            var owner = ""
+            if let ownerRef = data["owner"] as? DocumentReference {
+                owner = "users/\(ownerRef.documentID)"
+            } else if let ownerString = data["owner"] as? String {
+                owner = ownerString
+            }
+            
+            let space = Space(
+                id: document.documentID,
+                spaceId: data["spaceId"] as? String ?? "",
+                name: data["name"] as? String ?? "",
+                description: description,
+                bannerUrl: data["bannerUrl"] as? String ?? "",
+                members: members,
+                isPublic: isPublic,
+                isOfficial: isOfficial,
+                code: code,
+                owner: owner,
+                types: types
+            )
+            
+            spaces.append(space)
         }
         
         return spaces
@@ -228,66 +224,62 @@ class SpaceService: ObservableObject {
         var spaces: [Space] = []
         
         for document in querySnapshot.documents {
-            do {
-                let data = document.data()
-                
-                var members: [String] = []
-                if let membersData = data["members"] as? [Any] {
-                    for member in membersData {
-                        if let reference = member as? DocumentReference {
-                            members.append(reference.documentID)
-                        } else if let path = member as? String {
-                            if path.contains("/") {
-                                let components = path.split(separator: "/")
-                                if let lastComponent = components.last {
-                                    members.append(String(lastComponent))
-                                }
-                            } else {
-                                members.append(path)
+            let data = document.data()
+            
+            var members: [String] = []
+            if let membersData = data["members"] as? [Any] {
+                for member in membersData {
+                    if let reference = member as? DocumentReference {
+                        members.append(reference.documentID)
+                    } else if let path = member as? String {
+                        if path.contains("/") {
+                            let components = path.split(separator: "/")
+                            if let lastComponent = components.last {
+                                members.append(String(lastComponent))
                             }
+                        } else {
+                            members.append(path)
                         }
                     }
                 }
-                
-                let isMember = members.contains { memberId in
-                    memberId == userId || 
-                    memberId == "users/\(userId)" ||
-                    memberId == "/users/\(userId)"
-                }
-                
-                guard isMember else { continue }
-                
-                let isPublic = data["isPublic"] as? Bool ?? false
-                let isOfficial = data["isOfficial"] as? Bool ?? false
-                let code = data["code"] as? String
-                let description = data["description"] as? String ?? ""
-                let types = data["types"] as? [String] ?? []
-                
-                var owner = ""
-                if let ownerRef = data["owner"] as? DocumentReference {
-                    owner = "users/\(ownerRef.documentID)"
-                } else if let ownerString = data["owner"] as? String {
-                    owner = ownerString
-                }
-                
-                let space = Space(
-                    id: document.documentID,
-                    spaceId: data["spaceId"] as? String ?? "",
-                    name: data["name"] as? String ?? "",
-                    description: description,
-                    bannerUrl: data["bannerUrl"] as? String ?? "",
-                    members: members,
-                    isPublic: isPublic,
-                    isOfficial: isOfficial,
-                    code: code,
-                    owner: owner,
-                    types: types
-                )
-                
-                spaces.append(space)
-            } catch {
-                continue
             }
+            
+            let isMember = members.contains { memberId in
+                memberId == userId || 
+                memberId == "users/\(userId)" ||
+                memberId == "/users/\(userId)"
+            }
+            
+            guard isMember else { continue }
+            
+            let isPublic = data["isPublic"] as? Bool ?? false
+            let isOfficial = data["isOfficial"] as? Bool ?? false
+            let code = data["code"] as? String
+            let description = data["description"] as? String ?? ""
+            let types = data["types"] as? [String] ?? []
+            
+            var owner = ""
+            if let ownerRef = data["owner"] as? DocumentReference {
+                owner = "users/\(ownerRef.documentID)"
+            } else if let ownerString = data["owner"] as? String {
+                owner = ownerString
+            }
+            
+            let space = Space(
+                id: document.documentID,
+                spaceId: data["spaceId"] as? String ?? "",
+                name: data["name"] as? String ?? "",
+                description: description,
+                bannerUrl: data["bannerUrl"] as? String ?? "",
+                members: members,
+                isPublic: isPublic,
+                isOfficial: isOfficial,
+                code: code,
+                owner: owner,
+                types: types
+            )
+            
+            spaces.append(space)
         }
         
         return spaces

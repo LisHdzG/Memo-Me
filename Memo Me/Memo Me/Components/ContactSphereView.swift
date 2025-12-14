@@ -77,7 +77,7 @@ struct ContactSphereView: UIViewRepresentable {
         }
         
         func createScene() {
-            guard let sceneView = sceneView else { return }
+            guard sceneView != nil else { return }
             
             Task {
                 await preloadImages()

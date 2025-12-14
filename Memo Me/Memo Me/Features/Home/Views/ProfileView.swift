@@ -149,32 +149,12 @@ struct ProfileView: View {
                                 matching: .images,
                                 photoLibrary: .shared()
                             ) {
-                                ZStack {
-                                    if let image = viewModel.profileImage {
-                                        Image(uiImage: image)
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(width: 120, height: 120)
-                                            .clipShape(Circle())
-                                    } else {
-                                        AsyncImageView(
-                                            imageUrl: authManager.currentUser?.photoUrl,
-                                            placeholderText: userName,
-                                            contentMode: .fill,
-                                            size: 120
-                                        )
-                                        .clipShape(Circle())
-                                    }
-                                    
-                                    if viewModel.isLoading {
-                                        ProgressView()
-                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                    }
-                                }
+                                profileImageContent
                             }
                             .disabled(viewModel.isLoading)
                             
-                            if viewModel.profileImage != nil || authManager.currentUser?.photoUrl != nil {
+                            let hasPhotoUrl = authManager.currentUser?.photoUrl != nil
+                            if viewModel.profileImage != nil || hasPhotoUrl {
                                 Button(action: {
                                     viewModel.removePhoto()
                                 }) {
@@ -185,10 +165,11 @@ struct ProfileView: View {
                             }
                         }
                         .padding(.horizontal, 20)
-                    } else {
-                        VStack(spacing: 16) {
+                        } else {
+                            let photoUrl = authManager.currentUser?.photoUrl
+                            VStack(spacing: 16) {
                             AsyncImageView(
-                                imageUrl: authManager.currentUser?.photoUrl,
+                                imageUrl: photoUrl,
                                 placeholderText: userName,
                                 contentMode: .fill,
                                 size: 120
@@ -271,9 +252,10 @@ struct ProfileView: View {
                         }
                         .padding(.horizontal, 20)
                     } else {
+                        let country = authManager.currentUser?.country ?? "No especificado"
                         ProfileInfoSection(
                             title: "País",
-                            displayValue: authManager.currentUser?.country ?? "No especificado"
+                            displayValue: country
                         )
                         .padding(.horizontal, 20)
                     }
@@ -311,10 +293,11 @@ struct ProfileView: View {
                         }
                         .padding(.horizontal, 20)
                     } else {
-                        if let instagramUrl = authManager.currentUser?.instagramUrl, !instagramUrl.isEmpty {
+                        let instagramUrl = authManager.currentUser?.instagramUrl
+                        if let url = instagramUrl, !url.isEmpty {
                             ProfileInfoSection(
                                 title: "Instagram",
-                                displayValue: instagramUrl
+                                displayValue: url
                             )
                             .padding(.horizontal, 20)
                         }
@@ -347,10 +330,11 @@ struct ProfileView: View {
                         }
                         .padding(.horizontal, 20)
                     } else {
-                        if let linkedinUrl = authManager.currentUser?.linkedinUrl, !linkedinUrl.isEmpty {
+                        let linkedinUrl = authManager.currentUser?.linkedinUrl
+                        if let url = linkedinUrl, !url.isEmpty {
                             ProfileInfoSection(
                                 title: "LinkedIn",
-                                displayValue: linkedinUrl
+                                displayValue: url
                             )
                             .padding(.horizontal, 20)
                         }
@@ -582,22 +566,28 @@ struct ProfileView: View {
         .customPicker($viewModel.areasConfig, items: viewModel.expertiseAreas)
         .customPicker($viewModel.interestsConfig, items: viewModel.interestsOptions)
         .onChange(of: viewModel.countryConfig.text) { oldValue, newValue in
-            if newValue != "Seleccionar país" &&
-               newValue != oldValue &&
-               viewModel.country != newValue {
-                viewModel.selectCountry(newValue)
+            Task { @MainActor in
+                if newValue != "Seleccionar país" &&
+                   newValue != oldValue &&
+                   viewModel.country != newValue {
+                    viewModel.selectCountry(newValue)
+                }
             }
         }
         .onChange(of: viewModel.areasConfig.text) { oldValue, newValue in
-            if newValue != "Seleccionar área" &&
-               newValue != oldValue {
-                viewModel.addArea(newValue)
+            Task { @MainActor in
+                if newValue != "Seleccionar área" &&
+                   newValue != oldValue {
+                    viewModel.addArea(newValue)
+                }
             }
         }
         .onChange(of: viewModel.interestsConfig.text) { oldValue, newValue in
-            if newValue != "Seleccionar interés" &&
-               newValue != oldValue {
-                viewModel.addInterest(newValue)
+            Task { @MainActor in
+                if newValue != "Seleccionar interés" &&
+                   newValue != oldValue {
+                    viewModel.addInterest(newValue)
+                }
             }
         }
         .alert("Eliminar Cuenta", isPresented: $showDeleteAccountAlert) {
@@ -612,10 +602,12 @@ struct ProfileView: View {
         }
     }
     
+    @MainActor
     private var userName: String {
         authManager.currentUser?.name ?? authManager.userName ?? "Usuario"
     }
     
+    @MainActor
     private var areasDisplay: String {
         guard let areas = authManager.currentUser?.areas, !areas.isEmpty else {
             return "No especificadas"
@@ -623,6 +615,7 @@ struct ProfileView: View {
         return areas.joined(separator: ", ")
     }
     
+    @MainActor
     private var interestsDisplay: String {
         guard let interests = authManager.currentUser?.interests, !interests.isEmpty else {
             return "No especificados"
@@ -638,6 +631,33 @@ struct ProfileView: View {
     private func cancelEditing() {
         viewModel.loadUserData()
         isEditing = false
+    }
+    
+    @ViewBuilder
+    private var profileImageContent: some View {
+        ZStack {
+            if let image = viewModel.profileImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 120, height: 120)
+                    .clipShape(Circle())
+            } else {
+                let photoUrl = authManager.currentUser?.photoUrl
+                AsyncImageView(
+                    imageUrl: photoUrl,
+                    placeholderText: userName,
+                    contentMode: .fill,
+                    size: 120
+                )
+                .clipShape(Circle())
+            }
+            
+            if viewModel.isLoading {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+            }
+        }
     }
 }
 

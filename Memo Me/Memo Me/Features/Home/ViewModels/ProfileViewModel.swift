@@ -276,7 +276,7 @@ class ProfileViewModel: ObservableObject {
             let formattedInstagramUrl: String? = trimmedInstagramUrl.isEmpty ? nil : SocialMediaService.shared.formatInstagramURL(trimmedInstagramUrl)
             let formattedLinkedinUrl: String? = trimmedLinkedinUrl.isEmpty ? nil : SocialMediaService.shared.formatLinkedInURL(trimmedLinkedinUrl)
             
-            var updatedUser = User(
+            let updatedUser = User(
                 id: userId,
                 appleId: appleId,
                 name: trimmedName,

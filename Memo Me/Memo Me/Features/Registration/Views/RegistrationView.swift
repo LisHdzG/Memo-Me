@@ -61,37 +61,7 @@ struct RegistrationView: View {
                             matching: .images,
                             photoLibrary: .shared()
                         ) {
-                            ZStack {
-                                if let image = viewModel.profileImage {
-                                    Image(uiImage: image)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 120, height: 120)
-                                        .clipShape(Circle())
-                                } else {
-                                    AsyncImageView(
-                                        imageUrl: nil,
-                                        placeholderText: viewModel.name.isEmpty ? "Usuario" : viewModel.name,
-                                        contentMode: .fill,
-                                        size: 120
-                                    )
-                                    .clipShape(Circle())
-                                    .overlay(
-                                        Group {
-                                            if viewModel.name.isEmpty {
-                                                Image(systemName: "camera.fill")
-                                                    .font(.system(size: 40))
-                                                    .foregroundColor(Color("SplashTextColor").opacity(0.6))
-                                            }
-                                        }
-                                    )
-                                }
-                                
-                                if viewModel.isLoading {
-                                    ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                }
-                            }
+                            registrationProfileImageContent
                         }
                         .disabled(viewModel.isLoading)
                         
@@ -121,8 +91,10 @@ struct RegistrationView: View {
                         TextField("Ingresa tu nombre", text: $viewModel.name)
                             .textFieldStyle(CustomTextFieldStyle())
                             .focused($focusedField, equals: .name)
-                            .onChange(of: viewModel.name) { _, _ in
-                                viewModel.validateName()
+                            .onChange(of: viewModel.name) { oldValue, newValue in
+                                Task { @MainActor in
+                                    viewModel.validateName()
+                                }
                             }
                             .submitLabel(.next)
                         
@@ -284,25 +256,65 @@ struct RegistrationView: View {
         }
         .onAppear {
             viewModel.authenticationManager = authManager
-            
-            if let appleName = authManager.userName, viewModel.name.isEmpty {
-                viewModel.name = appleName
+            let appleName = authManager.userName
+            if let name = appleName, viewModel.name.isEmpty {
+                viewModel.name = name
             }
         }
         .customPicker($viewModel.countryConfig, items: viewModel.countries)
         .customPicker($viewModel.expertiseConfig, items: viewModel.expertiseAreas)
         .onChange(of: viewModel.countryConfig.text) { oldValue, newValue in
-            if newValue != "Seleccionar país" && 
-               newValue != oldValue && 
-               viewModel.country != newValue {
-                viewModel.selectCountry(newValue)
+            Task { @MainActor in
+                if newValue != "Seleccionar país" && 
+                   newValue != oldValue && 
+                   viewModel.country != newValue {
+                    viewModel.selectCountry(newValue)
+                }
             }
         }
         .onChange(of: viewModel.expertiseConfig.text) { oldValue, newValue in
-            if newValue != "Seleccionar área" && 
-               newValue != oldValue && 
-               viewModel.expertiseArea != newValue {
-                viewModel.selectExpertise(newValue)
+            Task { @MainActor in
+                if newValue != "Seleccionar área" && 
+                   newValue != oldValue && 
+                   viewModel.expertiseArea != newValue {
+                    viewModel.selectExpertise(newValue)
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var registrationProfileImageContent: some View {
+        ZStack {
+            if let image = viewModel.profileImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 120, height: 120)
+                    .clipShape(Circle())
+            } else {
+                let nameText = viewModel.name.isEmpty ? "Usuario" : viewModel.name
+                AsyncImageView(
+                    imageUrl: nil,
+                    placeholderText: nameText,
+                    contentMode: .fill,
+                    size: 120
+                )
+                .clipShape(Circle())
+                .overlay(
+                    Group {
+                        if viewModel.name.isEmpty {
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 40))
+                                .foregroundColor(Color("SplashTextColor").opacity(0.6))
+                        }
+                    }
+                )
+            }
+            
+            if viewModel.isLoading {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
             }
         }
     }

@@ -17,7 +17,7 @@ struct QRCodeScanner: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> QRCodeScannerViewController {
         let controller = QRCodeScannerViewController()
         controller.delegate = context.coordinator
-        controller.permissionDeniedCallback = { [weak controller] in
+        controller.permissionDeniedCallback = {
             DispatchQueue.main.async {
                 context.coordinator.handlePermissionDenied()
             }
