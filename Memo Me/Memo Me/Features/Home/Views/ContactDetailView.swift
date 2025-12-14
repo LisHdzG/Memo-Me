@@ -188,6 +188,10 @@ struct ContactDetailView: View {
         .onChange(of: authManager.currentUser?.id) { oldValue, newValue in
             viewModel.currentUserId = newValue
         }
+        .onDisappear {
+            // Detener el listener cuando la vista desaparece
+            viewModel.stopListening()
+        }
         .sheet(item: $selectedContact) { contact in
             let user = viewModel.getUser(for: contact)
             ContactDetailSheet(

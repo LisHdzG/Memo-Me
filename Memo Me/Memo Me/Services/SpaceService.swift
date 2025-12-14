@@ -13,6 +13,9 @@ import FirebaseFirestore
 class SpaceService: ObservableObject {
     private let db = Firestore.firestore()
     private let spacesCollection = "spaces"
+    private var spaceListener: ListenerRegistration?
+    private var publicSpacesListener: ListenerRegistration?
+    private var userSpacesListener: ListenerRegistration?
     
     func getActiveSpaces(userId: String) async throws -> [Space] {
         // Obtener todos los espacios públicos
@@ -440,6 +443,248 @@ class SpaceService: ObservableObject {
         }
         
         return spaceId
+    }
+    
+    // MARK: - Real-time Listeners
+    
+    /// Escucha cambios en tiempo real de un espacio específico
+    func listenToSpace(spaceId: String, onUpdate: @escaping (Space?) -> Void) {
+        // Primero encontrar el documento por spaceId
+        let query = db.collection(spacesCollection)
+            .whereField("spaceId", isEqualTo: spaceId)
+            .limit(to: 1)
+        
+        // Escuchar cambios en la query
+        spaceListener = query.addSnapshotListener { querySnapshot, error in
+            guard let documents = querySnapshot?.documents, !documents.isEmpty else {
+                onUpdate(nil)
+                return
+            }
+            
+            let document = documents[0]
+            let data = document.data()
+            
+            // Procesar miembros
+            var members: [String] = []
+            if let membersData = data["members"] as? [Any] {
+                for member in membersData {
+                    if let reference = member as? DocumentReference {
+                        members.append(reference.documentID)
+                    } else if let path = member as? String {
+                        if path.contains("/") {
+                            let components = path.split(separator: "/")
+                            if let lastComponent = components.last {
+                                members.append(String(lastComponent))
+                            }
+                        } else {
+                            members.append(path)
+                        }
+                    }
+                }
+            }
+            
+            let isPublic = data["isPublic"] as? Bool ?? false
+            let isOfficial = data["isOfficial"] as? Bool ?? false
+            let code = data["code"] as? String
+            let description = data["description"] as? String ?? ""
+            let types = data["types"] as? [String] ?? []
+            
+            // Manejar owner
+            var owner = ""
+            if let ownerRef = data["owner"] as? DocumentReference {
+                owner = "users/\(ownerRef.documentID)"
+            } else if let ownerString = data["owner"] as? String {
+                owner = ownerString
+            }
+            
+            let space = Space(
+                id: document.documentID,
+                spaceId: data["spaceId"] as? String ?? "",
+                name: data["name"] as? String ?? "",
+                description: description,
+                bannerUrl: data["bannerUrl"] as? String ?? "",
+                members: members,
+                isPublic: isPublic,
+                isOfficial: isOfficial,
+                code: code,
+                owner: owner,
+                types: types
+            )
+            
+            onUpdate(space)
+        }
+    }
+    
+    /// Detiene el listener del espacio
+    func stopListeningToSpace() {
+        spaceListener?.remove()
+        spaceListener = nil
+    }
+    
+    /// Escucha cambios en tiempo real de todos los espacios (públicos y del usuario)
+    func listenToAllSpaces(userId: String, onPublicSpacesUpdate: @escaping ([Space]) -> Void, onUserSpacesUpdate: @escaping ([Space]) -> Void) {
+        // Detener listener anterior si existe
+        stopListeningToAllSpaces()
+        
+        // Listener para espacios públicos
+        let publicSpacesQuery = db.collection(spacesCollection)
+            .whereField("isPublic", isEqualTo: true)
+        
+        publicSpacesListener = publicSpacesQuery.addSnapshotListener { querySnapshot, error in
+            guard let documents = querySnapshot?.documents else {
+                onPublicSpacesUpdate([])
+                return
+            }
+            
+            var spaces: [Space] = []
+            
+            for document in documents {
+                let data = document.data()
+                
+                // Procesar miembros
+                var members: [String] = []
+                if let membersData = data["members"] as? [Any] {
+                    for member in membersData {
+                        if let reference = member as? DocumentReference {
+                            members.append(reference.documentID)
+                        } else if let path = member as? String {
+                            if path.contains("/") {
+                                let components = path.split(separator: "/")
+                                if let lastComponent = components.last {
+                                    members.append(String(lastComponent))
+                                }
+                            } else {
+                                members.append(path)
+                            }
+                        }
+                    }
+                }
+                
+                // Verificar si el usuario ya es miembro - si lo es, no incluirlo en espacios públicos
+                let isMember = members.contains { memberId in
+                    memberId == userId ||
+                    memberId == "users/\(userId)" ||
+                    memberId == "/users/\(userId)"
+                }
+                
+                guard !isMember else { continue }
+                
+                let isPublic = data["isPublic"] as? Bool ?? false
+                let isOfficial = data["isOfficial"] as? Bool ?? false
+                let code = data["code"] as? String
+                let description = data["description"] as? String ?? ""
+                let types = data["types"] as? [String] ?? []
+                
+                // Manejar owner
+                var owner = ""
+                if let ownerRef = data["owner"] as? DocumentReference {
+                    owner = "users/\(ownerRef.documentID)"
+                } else if let ownerString = data["owner"] as? String {
+                    owner = ownerString
+                }
+                
+                let space = Space(
+                    id: document.documentID,
+                    spaceId: data["spaceId"] as? String ?? "",
+                    name: data["name"] as? String ?? "",
+                    description: description,
+                    bannerUrl: data["bannerUrl"] as? String ?? "",
+                    members: members,
+                    isPublic: isPublic,
+                    isOfficial: isOfficial,
+                    code: code,
+                    owner: owner,
+                    types: types
+                )
+                
+                spaces.append(space)
+            }
+            
+            onPublicSpacesUpdate(spaces)
+        }
+        
+        // Listener para espacios del usuario (todos los espacios donde el usuario es miembro)
+        let allSpacesQuery = db.collection(spacesCollection)
+        
+        userSpacesListener = allSpacesQuery.addSnapshotListener { querySnapshot, error in
+            guard let documents = querySnapshot?.documents else {
+                onUserSpacesUpdate([])
+                return
+            }
+            
+            var userSpaces: [Space] = []
+            
+            for document in documents {
+                let data = document.data()
+                
+                // Procesar miembros
+                var members: [String] = []
+                if let membersData = data["members"] as? [Any] {
+                    for member in membersData {
+                        if let reference = member as? DocumentReference {
+                            members.append(reference.documentID)
+                        } else if let path = member as? String {
+                            if path.contains("/") {
+                                let components = path.split(separator: "/")
+                                if let lastComponent = components.last {
+                                    members.append(String(lastComponent))
+                                }
+                            } else {
+                                members.append(path)
+                            }
+                        }
+                    }
+                }
+                
+                let isMember = members.contains { memberId in
+                    memberId == userId ||
+                    memberId == "users/\(userId)" ||
+                    memberId == "/users/\(userId)"
+                }
+                
+                guard isMember else { continue }
+                
+                let isPublic = data["isPublic"] as? Bool ?? false
+                let isOfficial = data["isOfficial"] as? Bool ?? false
+                let code = data["code"] as? String
+                let description = data["description"] as? String ?? ""
+                let types = data["types"] as? [String] ?? []
+                
+                // Manejar owner
+                var owner = ""
+                if let ownerRef = data["owner"] as? DocumentReference {
+                    owner = "users/\(ownerRef.documentID)"
+                } else if let ownerString = data["owner"] as? String {
+                    owner = ownerString
+                }
+                
+                let space = Space(
+                    id: document.documentID,
+                    spaceId: data["spaceId"] as? String ?? "",
+                    name: data["name"] as? String ?? "",
+                    description: description,
+                    bannerUrl: data["bannerUrl"] as? String ?? "",
+                    members: members,
+                    isPublic: isPublic,
+                    isOfficial: isOfficial,
+                    code: code,
+                    owner: owner,
+                    types: types
+                )
+                
+                userSpaces.append(space)
+            }
+            
+            onUserSpacesUpdate(userSpaces)
+        }
+    }
+    
+    /// Detiene el listener de todos los espacios
+    func stopListeningToAllSpaces() {
+        publicSpacesListener?.remove()
+        publicSpacesListener = nil
+        userSpacesListener?.remove()
+        userSpacesListener = nil
     }
 }
 

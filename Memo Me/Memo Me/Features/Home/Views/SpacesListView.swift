@@ -18,6 +18,7 @@ struct SpacesListView: View {
     @State private var cameraPermissionDenied = false
     @State private var showPermissionAlert = false
     @State private var showCreateSpace = false
+    @State private var showProfile = false
     
     var body: some View {
         NavigationView {
@@ -186,7 +187,15 @@ struct SpacesListView: View {
                     }
                 }
                 
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        showProfile = true
+                    }) {
+                        Image(systemName: "person.circle.fill")
+                            .foregroundColor(.white)
+                            .font(.system(size: 20))
+                    }
+                    
                     Button(action: {
                         if let userId = authManager.currentUser?.id {
                             Task {
@@ -211,6 +220,10 @@ struct SpacesListView: View {
                             }
                         }
                     }
+            }
+            .sheet(isPresented: $showProfile) {
+                ProfileView()
+                    .environmentObject(authManager)
             }
             .sheet(isPresented: $showQRScanner) {
                 QRCodeScannerView(
@@ -246,6 +259,10 @@ struct SpacesListView: View {
             if let userId = authManager.currentUser?.id {
                 await viewModel.loadSpaces(userId: userId)
             }
+        }
+        .onDisappear {
+            // Detener listeners cuando la vista desaparece
+            viewModel.stopListeningToSpaces()
         }
     }
 }

@@ -18,8 +18,12 @@ class SpacesViewModel: ObservableObject {
     @Published var isJoiningPrivateSpace = false
     
     private let spaceService = SpaceService()
+    private var currentUserId: String?
     
     func loadSpaces(userId: String) async {
+        // Guardar el userId actual
+        currentUserId = userId
+        
         isLoading = true
         errorMessage = nil
         
@@ -30,11 +34,37 @@ class SpacesViewModel: ObservableObject {
             
             publicSpaces = try await publicSpacesTask
             userSpaces = try await userSpacesTask
+            
+            // Iniciar listeners en tiempo real
+            startListeningToSpaces(userId: userId)
         } catch {
             errorMessage = "Error al cargar los espacios: \(error.localizedDescription)"
         }
         
         isLoading = false
+    }
+    
+    private func startListeningToSpaces(userId: String) {
+        // Detener listeners anteriores si existen
+        stopListeningToSpaces()
+        
+        spaceService.listenToAllSpaces(
+            userId: userId,
+            onPublicSpacesUpdate: { [weak self] spaces in
+                Task { @MainActor in
+                    self?.publicSpaces = spaces
+                }
+            },
+            onUserSpacesUpdate: { [weak self] spaces in
+                Task { @MainActor in
+                    self?.userSpaces = spaces
+                }
+            }
+        )
+    }
+    
+    func stopListeningToSpaces() {
+        spaceService.stopListeningToAllSpaces()
     }
     
     func refreshSpaces(userId: String) async {
