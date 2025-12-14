@@ -31,7 +31,9 @@ class UserService: ObservableObject {
     }
     
     func createUser(_ user: User) async throws -> String {
-        let docRef = try await db.collection(usersCollection).addDocument(from: user)
+        let encoder = Firestore.Encoder()
+        let data = try encoder.encode(user)
+        let docRef = try await db.collection(usersCollection).addDocument(data: data)
         return docRef.documentID
     }
     
@@ -40,7 +42,9 @@ class UserService: ObservableObject {
             throw NSError(domain: "UserService", code: 1, userInfo: [NSLocalizedDescriptionKey: "El usuario no tiene ID"])
         }
         
-        try await db.collection(usersCollection).document(userId).setData(from: user, merge: true)
+        let encoder = Firestore.Encoder()
+        let data = try encoder.encode(user)
+        try await db.collection(usersCollection).document(userId).setData(data, merge: true)
     }
     
     func getUser(userId: String) async throws -> User? {

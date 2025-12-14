@@ -14,12 +14,10 @@ struct OnboardingView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Fondo blanco
                 Color.white
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Botón Skip en la esquina superior derecha
                     HStack {
                         Spacer()
                         Button(action: {
@@ -42,7 +40,6 @@ struct OnboardingView: View {
                     
                     Spacer()
                     
-                    // Contenido de la página actual
                     TabView(selection: $viewModel.currentPage) {
                         ForEach(0..<viewModel.pages.count, id: \.self) { index in
                             OnboardingPageView(page: viewModel.pages[index])
@@ -54,7 +51,6 @@ struct OnboardingView: View {
                     
                     Spacer()
                     
-                    // Indicador de páginas custom
                     CustomPageIndicator(
                         totalPages: viewModel.totalPages,
                         currentPage: viewModel.currentPage,

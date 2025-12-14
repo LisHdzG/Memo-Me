@@ -45,7 +45,6 @@ class SpaceService: ObservableObject {
                 }
             }
             
-            // Verificar si el usuario ya es miembro - si lo es, no incluirlo en espacios públicos
             let isMember = members.contains { memberId in
                 memberId == userId || 
                 memberId == "users/\(userId)" ||
@@ -60,7 +59,6 @@ class SpaceService: ObservableObject {
             let description = data["description"] as? String ?? ""
             let types = data["types"] as? [String] ?? []
             
-            // Manejar owner como DocumentReference o String
             var owner = ""
             if let ownerRef = data["owner"] as? DocumentReference {
                 owner = "users/\(ownerRef.documentID)"
@@ -214,7 +212,9 @@ class SpaceService: ObservableObject {
             throw NSError(domain: "SpaceService", code: 1, userInfo: [NSLocalizedDescriptionKey: "El espacio no tiene ID"])
         }
         
-        try await db.collection(spacesCollection).document(spaceId).setData(from: space, merge: true)
+        let encoder = Firestore.Encoder()
+        let data = try encoder.encode(space)
+        try await db.collection(spacesCollection).document(spaceId).setData(data, merge: true)
     }
     
     func getUserSpaces(userId: String) async throws -> [Space] {
@@ -510,7 +510,6 @@ class SpaceService: ObservableObject {
                     }
                 }
                 
-                // Verificar si el usuario ya es miembro - si lo es, no incluirlo en espacios públicos
                 let isMember = members.contains { memberId in
                     memberId == userId ||
                     memberId == "users/\(userId)" ||

@@ -22,7 +22,6 @@ struct SplashView: View {
                 .transition(.opacity)
         } else {
             ZStack {
-                // Fondo con gradiente morado degradado
                 LinearGradient(
                     gradient: Gradient(colors: [
                         Color("PurpleGradientTop"),
@@ -34,13 +33,10 @@ struct SplashView: View {
                 )
                 .ignoresSafeArea()
                 
-                // Contenedor principal centrado verticalmente, alineado a la izquierda
                 VStack(spacing: 0) {
                     Spacer()
                     
-                    // Texto "Memo" con reflejo alineado a la izquierda
                     VStack(alignment: .leading, spacing: -15) {
-                        // "Me" - primera línea
                         Text("Me")
                             .font(.system(size: 110, weight: .bold, design: .rounded))
                             .foregroundColor(Color("SplashTextColor"))
@@ -48,7 +44,6 @@ struct SplashView: View {
                             .offset(y: showMemo ? 0 : memoOffset)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         
-                        // "mo" - segunda línea, alineado a la izquierda
                         Text("mo")
                             .font(.system(size: 110, weight: .bold, design: .rounded))
                             .foregroundColor(Color("SplashTextColor"))
@@ -56,7 +51,6 @@ struct SplashView: View {
                             .offset(y: showMemo ? 0 : memoOffset)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         
-                        // "Me" reflejado/fadeado con degradado y la imagen al lado
                         HStack(alignment: .top, spacing: 16) {
                             Text("Me")
                                 .font(.system(size: 110, weight: .bold, design: .rounded))
@@ -73,7 +67,6 @@ struct SplashView: View {
                                 .opacity(showMeReflection ? 1 : 0)
                                 .offset(y: showMeReflection ? 0 : meReflectionOffset)
                             
-                            // Imagen MemoMe al lado del último "Me"
                             Image("MemoMe")
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
@@ -91,14 +84,11 @@ struct SplashView: View {
                 }
             }
             .onAppear {
-                // Secuencia de animaciones
-                // 1. Mostrar "Me" y "mo" juntos al mismo tiempo
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
                     showMemo = true
                     memoOffset = 0
                 }
                 
-                // 2. Mostrar "Me" reflejado después de 0.4 segundos
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                     withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
                         showMeReflection = true
@@ -106,7 +96,6 @@ struct SplashView: View {
                     }
                 }
                 
-                // 3. Mostrar la imagen después de 0.7 segundos
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
                     withAnimation(.spring(response: 0.8, dampingFraction: 0.6)) {
                         imageOpacity = 1.0
@@ -114,7 +103,6 @@ struct SplashView: View {
                     }
                 }
                 
-                // 4. Transición a la vista principal después de 2.5 segundos
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                     withAnimation(.easeInOut(duration: 0.6)) {
                         self.isActive = true

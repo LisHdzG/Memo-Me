@@ -23,7 +23,6 @@ struct LoginView: View {
                     .transition(.opacity)
             } else {
                 ZStack {
-                    // Fondo con gradiente morado degradado (mismo que SplashView)
                     LinearGradient(
                         gradient: Gradient(colors: [
                             Color("PurpleGradientTop"),
@@ -38,7 +37,6 @@ struct LoginView: View {
                     VStack(spacing: 30) {
                         Spacer()
                         
-                        // Logo o título
                         VStack(spacing: 20) {
                             Image("MemoMe")
                                 .resizable()
@@ -52,7 +50,6 @@ struct LoginView: View {
                         
                         Spacer()
                         
-                        // Mensaje de error si existe
                         if let errorMessage = viewModel.errorMessage {
                             VStack(spacing: 12) {
                                 Text(errorMessage)
@@ -76,7 +73,6 @@ struct LoginView: View {
                             .padding(.bottom, 10)
                         }
                         
-                        // Botón Sign in with Apple
                         SignInWithAppleButton(
                             onRequest: { request in
                                 request.requestedScopes = [.fullName, .email]
@@ -92,7 +88,6 @@ struct LoginView: View {
                         .disabled(viewModel.authenticationState == .loading)
                         .opacity(viewModel.authenticationState == .loading ? 0.6 : 1.0)
                         
-                        // Indicador de carga
                         if viewModel.authenticationState == .loading {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
@@ -114,13 +109,11 @@ struct LoginView: View {
             viewModel.handleAuthorization(authorization)
             
         case .failure(let error):
-            // Solo mostrar error si no fue cancelado por el usuario
             if let asError = error as? ASAuthorizationError,
                asError.code != .canceled {
                 viewModel.handleError(error)
             } else if let asError = error as? ASAuthorizationError,
                       asError.code == .canceled {
-                // Usuario canceló - no mostrar error, solo resetear estado
                 viewModel.clearError()
             } else {
                 viewModel.handleError(error)

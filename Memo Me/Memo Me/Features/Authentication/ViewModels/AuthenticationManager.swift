@@ -193,7 +193,7 @@ class AuthenticationManager: ObservableObject {
             return .notHandled
         case .unknown:
             return .unknown
-        @unknown default:
+        default:
             return .unknown
         }
     }

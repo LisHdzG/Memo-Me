@@ -222,7 +222,6 @@ struct RegistrationView: View {
                         Task {
                             let success = await viewModel.submitRegistration()
                             if success {
-                                // Navigation handled automatically by AuthenticationManager
                             }
                         }
                     }) {

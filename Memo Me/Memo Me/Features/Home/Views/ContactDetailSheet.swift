@@ -77,7 +77,6 @@ struct ContactDetailSheet: View {
                     
                     if let user = user {
                         VStack(spacing: 20) {
-                            // País
                             if let country = user.country, !country.isEmpty {
                                 InfoRow(
                                     title: "País",
@@ -86,7 +85,6 @@ struct ContactDetailSheet: View {
                                 )
                             }
                             
-                            // Áreas de expertise
                             if let areas = user.areas, !areas.isEmpty {
                                 InfoRow(
                                     title: "Áreas de Expertise",
@@ -95,7 +93,6 @@ struct ContactDetailSheet: View {
                                 )
                             }
                             
-                            // Intereses
                             if let interests = user.interests, !interests.isEmpty {
                                 InfoRow(
                                     title: "Intereses",
@@ -104,7 +101,6 @@ struct ContactDetailSheet: View {
                                 )
                             }
                             
-                            // Instagram
                             if let instagramUrl = user.instagramUrl, !instagramUrl.isEmpty {
                                 LinkRow(
                                     title: "Instagram",
@@ -114,7 +110,6 @@ struct ContactDetailSheet: View {
                                 )
                             }
                             
-                            // LinkedIn
                             if let linkedinUrl = user.linkedinUrl, !linkedinUrl.isEmpty {
                                 LinkRow(
                                     title: "LinkedIn",
@@ -124,7 +119,6 @@ struct ContactDetailSheet: View {
                                 )
                             }
                             
-                            // Si no hay información adicional, mostrar mensaje
                             if (user.country == nil || user.country?.isEmpty == true) &&
                                (user.areas == nil || user.areas?.isEmpty == true) &&
                                (user.interests == nil || user.interests?.isEmpty == true) &&
@@ -210,13 +204,11 @@ struct LinkRow: View {
             }
             
             Button(action: {
-                // Abrir Instagram o LinkedIn según el título
                 if title.lowercased().contains("instagram") {
                     socialMediaService.openInstagram(urlString: url)
                 } else if title.lowercased().contains("linkedin") {
                     socialMediaService.openLinkedIn(urlString: url)
                 } else {
-                    // Fallback para otros tipos de enlaces
                     if let urlObj = URL(string: url) {
                         UIApplication.shared.open(urlObj)
                     }

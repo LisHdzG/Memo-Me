@@ -20,7 +20,6 @@ struct CustomPageIndicator: View {
         HStack(spacing: 8) {
             ForEach(0..<totalPages, id: \.self) { index in
                 if index == currentPage {
-                    // Dash activo (más largo)
                     RoundedRectangle(cornerRadius: 2)
                         .fill(activeColor)
                         .frame(width: dashWidth, height: 4)
@@ -29,7 +28,6 @@ struct CustomPageIndicator: View {
                             removal: .scale.combined(with: .opacity)
                         ))
                 } else {
-                    // Punto inactivo
                     Circle()
                         .fill(inactiveColor)
                         .frame(width: dotSize, height: dotSize)

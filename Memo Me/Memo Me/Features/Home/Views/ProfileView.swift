@@ -303,7 +303,6 @@ struct ProfileView: View {
                         }
                     }
                     
-                    // LinkedIn Section
                     if isEditing {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -340,7 +339,6 @@ struct ProfileView: View {
                         }
                     }
                     
-                    // Areas Section
                     if isEditing {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Áreas de expertise (opcional)")
