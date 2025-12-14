@@ -17,6 +17,7 @@ struct SpacesListView: View {
     @State private var scannedCode: String?
     @State private var cameraPermissionDenied = false
     @State private var showPermissionAlert = false
+    @State private var showCreateSpace = false
     
     var body: some View {
         NavigationView {
@@ -175,6 +176,16 @@ struct SpacesListView: View {
             .navigationTitle("Espacios")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        showCreateSpace = true
+                    }) {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundColor(.white)
+                            .font(.system(size: 24))
+                    }
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         if let userId = authManager.currentUser?.id {
@@ -188,6 +199,18 @@ struct SpacesListView: View {
                     }
                     .disabled(viewModel.isLoading)
                 }
+            }
+            .sheet(isPresented: $showCreateSpace) {
+                CreateSpaceView()
+                    .environmentObject(authManager)
+                    .onDisappear {
+                        // Recargar espacios cuando se cierra la vista de creación
+                        if let userId = authManager.currentUser?.id {
+                            Task {
+                                await viewModel.refreshSpaces(userId: userId)
+                            }
+                        }
+                    }
             }
             .sheet(isPresented: $showQRScanner) {
                 QRCodeScannerView(
@@ -368,9 +391,18 @@ struct SpaceCardView: View {
             }
             
             VStack(alignment: .leading, spacing: 8) {
-                Text(space.name)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
+                HStack(spacing: 8) {
+                    Text(space.name)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                    
+                    if space.isOfficial {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.yellow)
+                            .symbolRenderingMode(.hierarchical)
+                    }
+                }
                 
                 Text(space.spaceId)
                     .font(.system(size: 14, weight: .regular))

@@ -59,11 +59,23 @@ class UserService: ObservableObject {
             return []
         }
         
+        // Limpiar los IDs: extraer solo el ID del documento si viene en formato "users/userId" o "/users/userId"
+        let cleanedUserIds = userIds.map { userId -> String in
+            if userId.contains("/") {
+                // Si contiene "/", extraer solo el ID del documento
+                let components = userId.split(separator: "/")
+                if let lastComponent = components.last {
+                    return String(lastComponent)
+                }
+            }
+            return userId
+        }
+        
         var users: [User] = []
         let batchSize = 10
-        for i in stride(from: 0, to: userIds.count, by: batchSize) {
-            let endIndex = min(i + batchSize, userIds.count)
-            let batch = Array(userIds[i..<endIndex])
+        for i in stride(from: 0, to: cleanedUserIds.count, by: batchSize) {
+            let endIndex = min(i + batchSize, cleanedUserIds.count)
+            let batch = Array(cleanedUserIds[i..<endIndex])
             
             let querySnapshot = try await db.collection(usersCollection)
                 .whereField(FieldPath.documentID(), in: batch)

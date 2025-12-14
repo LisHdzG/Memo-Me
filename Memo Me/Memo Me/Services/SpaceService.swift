@@ -55,16 +55,31 @@ class SpaceService: ObservableObject {
                 guard !isMember else { continue }
                 
                 let isPublic = data["isPublic"] as? Bool ?? false
+                let isOfficial = data["isOfficial"] as? Bool ?? false
                 let code = data["code"] as? String
+                let description = data["description"] as? String ?? ""
+                let types = data["types"] as? [String] ?? []
+                
+                // Manejar owner como DocumentReference o String
+                var owner = ""
+                if let ownerRef = data["owner"] as? DocumentReference {
+                    owner = "users/\(ownerRef.documentID)"
+                } else if let ownerString = data["owner"] as? String {
+                    owner = ownerString
+                }
                 
                 let space = Space(
                     id: document.documentID,
                     spaceId: data["spaceId"] as? String ?? "",
                     name: data["name"] as? String ?? "",
+                    description: description,
                     bannerUrl: data["bannerUrl"] as? String ?? "",
                     members: members,
                     isPublic: isPublic,
-                    code: code
+                    isOfficial: isOfficial,
+                    code: code,
+                    owner: owner,
+                    types: types
                 )
                 
                 spaces.append(space)
@@ -162,7 +177,48 @@ class SpaceService: ObservableObject {
     }
     
     func createSpace(_ space: Space) async throws -> String {
-        let docRef = try await db.collection(spacesCollection).addDocument(from: space)
+        // Convertir miembros de strings a referencias de Firestore
+        var membersReferences: [Any] = []
+        for member in space.members {
+            // Si ya es una referencia en formato "users/userId", crear DocumentReference
+            if member.hasPrefix("users/") {
+                let userId = String(member.dropFirst(6)) // Remover "users/"
+                let userRef = db.collection("users").document(userId)
+                membersReferences.append(userRef)
+            } else {
+                // Si es solo el ID, crear la referencia completa
+                let userRef = db.collection("users").document(member)
+                membersReferences.append(userRef)
+            }
+        }
+        
+        // Crear referencia del owner
+        var ownerReference: Any
+        if space.owner.hasPrefix("users/") {
+            let userId = String(space.owner.dropFirst(6))
+            ownerReference = db.collection("users").document(userId)
+        } else {
+            ownerReference = db.collection("users").document(space.owner)
+        }
+        
+        // Crear el documento con los datos correctos
+        var data: [String: Any] = [
+            "spaceId": space.spaceId,
+            "name": space.name,
+            "description": space.description,
+            "bannerUrl": space.bannerUrl,
+            "members": membersReferences,
+            "isPublic": space.isPublic,
+            "isOfficial": space.isOfficial,
+            "owner": ownerReference,
+            "types": space.types
+        ]
+        
+        if let code = space.code {
+            data["code"] = code
+        }
+        
+        let docRef = try await db.collection(spacesCollection).addDocument(data: data)
         return docRef.documentID
     }
     
@@ -212,16 +268,31 @@ class SpaceService: ObservableObject {
                 guard isMember else { continue }
                 
                 let isPublic = data["isPublic"] as? Bool ?? false
+                let isOfficial = data["isOfficial"] as? Bool ?? false
                 let code = data["code"] as? String
+                let description = data["description"] as? String ?? ""
+                let types = data["types"] as? [String] ?? []
+                
+                // Manejar owner como DocumentReference o String
+                var owner = ""
+                if let ownerRef = data["owner"] as? DocumentReference {
+                    owner = "users/\(ownerRef.documentID)"
+                } else if let ownerString = data["owner"] as? String {
+                    owner = ownerString
+                }
                 
                 let space = Space(
                     id: document.documentID,
                     spaceId: data["spaceId"] as? String ?? "",
                     name: data["name"] as? String ?? "",
+                    description: description,
                     bannerUrl: data["bannerUrl"] as? String ?? "",
                     members: members,
                     isPublic: isPublic,
-                    code: code
+                    isOfficial: isOfficial,
+                    code: code,
+                    owner: owner,
+                    types: types
                 )
                 
                 spaces.append(space)
@@ -264,16 +335,31 @@ class SpaceService: ObservableObject {
         }
         
         let isPublic = data["isPublic"] as? Bool ?? false
+        let isOfficial = data["isOfficial"] as? Bool ?? false
         let spaceCode = data["code"] as? String
+        let description = data["description"] as? String ?? ""
+        let types = data["types"] as? [String] ?? []
+        
+        // Manejar owner como DocumentReference o String
+        var owner = ""
+        if let ownerRef = data["owner"] as? DocumentReference {
+            owner = "users/\(ownerRef.documentID)"
+        } else if let ownerString = data["owner"] as? String {
+            owner = ownerString
+        }
         
         let space = Space(
             id: document.documentID,
             spaceId: data["spaceId"] as? String ?? "",
             name: data["name"] as? String ?? "",
+            description: description,
             bannerUrl: data["bannerUrl"] as? String ?? "",
             members: members,
             isPublic: isPublic,
-            code: spaceCode
+            isOfficial: isOfficial,
+            code: spaceCode,
+            owner: owner,
+            types: types
         )
         
         return space
@@ -306,6 +392,54 @@ class SpaceService: ObservableObject {
     // Mantener compatibilidad con código existente
     func joinPrivateSpace(code: String, userId: String) async throws {
         _ = try await joinSpaceByCode(code: code, userId: userId)
+    }
+    
+    // MARK: - Space Creation Helpers
+    
+    /// Genera un código único basado en el nombre del espacio
+    func generateCode(from name: String) -> String {
+        // Convertir el nombre a mayúsculas y reemplazar espacios con guiones bajos
+        let uppercased = name.uppercased()
+        let withoutSpaces = uppercased.replacingOccurrences(of: " ", with: "_")
+        // Remover caracteres especiales, mantener solo letras, números y guiones bajos
+        let cleaned = withoutSpaces.filter { $0.isLetter || $0.isNumber || $0 == "_" }
+        return cleaned.isEmpty ? "SPACE_\(UUID().uuidString.prefix(8).uppercased())" : cleaned
+    }
+    
+    /// Genera un spaceId único en formato HUB-XX
+    func generateSpaceId() -> String {
+        // Generar un número aleatorio entre 1 y 9999
+        let randomNumber = Int.random(in: 1...9999)
+        return "HUB-\(randomNumber)"
+    }
+    
+    /// Verifica si un spaceId ya existe
+    func spaceIdExists(_ spaceId: String) async throws -> Bool {
+        let querySnapshot = try await db.collection(spacesCollection)
+            .whereField("spaceId", isEqualTo: spaceId)
+            .limit(to: 1)
+            .getDocuments()
+        
+        return !querySnapshot.documents.isEmpty
+    }
+    
+    /// Genera un spaceId único que no existe en la base de datos
+    func generateUniqueSpaceId() async throws -> String {
+        var spaceId = generateSpaceId()
+        var attempts = 0
+        let maxAttempts = 100
+        
+        while try await spaceIdExists(spaceId) && attempts < maxAttempts {
+            spaceId = generateSpaceId()
+            attempts += 1
+        }
+        
+        if attempts >= maxAttempts {
+            // Si no se puede generar uno único después de muchos intentos, usar UUID
+            return "HUB-\(UUID().uuidString.prefix(8).uppercased())"
+        }
+        
+        return spaceId
     }
 }
 
