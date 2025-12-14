@@ -108,11 +108,11 @@ struct ContactDetailSheet: View {
                     // Información del usuario (solo si tenemos el usuario completo)
                     if let user = user {
                         VStack(spacing: 20) {
-                            // Nacionalidad
-                            if let nationality = user.nationality, !nationality.isEmpty {
+                            // País
+                            if let country = user.country, !country.isEmpty {
                                 InfoRow(
-                                    title: "Nacionalidad",
-                                    value: nationality,
+                                    title: "País",
+                                    value: country,
                                     icon: "flag.fill"
                                 )
                             }
@@ -135,10 +135,32 @@ struct ContactDetailSheet: View {
                                 )
                             }
                             
+                            // Instagram
+                            if let instagramUrl = user.instagramUrl, !instagramUrl.isEmpty {
+                                LinkRow(
+                                    title: "Instagram",
+                                    value: instagramUrl,
+                                    url: instagramUrl,
+                                    icon: "camera.fill"
+                                )
+                            }
+                            
+                            // LinkedIn
+                            if let linkedinUrl = user.linkedinUrl, !linkedinUrl.isEmpty {
+                                LinkRow(
+                                    title: "LinkedIn",
+                                    value: linkedinUrl,
+                                    url: linkedinUrl,
+                                    icon: "briefcase.fill"
+                                )
+                            }
+                            
                             // Si no hay información adicional, mostrar mensaje
-                            if (user.nationality == nil || user.nationality?.isEmpty == true) &&
+                            if (user.country == nil || user.country?.isEmpty == true) &&
                                (user.areas == nil || user.areas?.isEmpty == true) &&
-                               (user.interests == nil || user.interests?.isEmpty == true) {
+                               (user.interests == nil || user.interests?.isEmpty == true) &&
+                               (user.instagramUrl == nil || user.instagramUrl?.isEmpty == true) &&
+                               (user.linkedinUrl == nil || user.linkedinUrl?.isEmpty == true) {
                                 InfoMessage(
                                     message: "Este contacto aún no ha completado su perfil",
                                     icon: "info.circle.fill"
@@ -199,6 +221,65 @@ struct InfoRow: View {
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(Color.white.opacity(0.3), lineWidth: 1)
                 )
+        }
+    }
+}
+
+struct LinkRow: View {
+    let title: String
+    let value: String
+    let url: String
+    let icon: String
+    
+    private let socialMediaService = SocialMediaService.shared
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.8))
+                
+                Text(title)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.7))
+            }
+            
+            Button(action: {
+                // Abrir Instagram o LinkedIn según el título
+                if title.lowercased().contains("instagram") {
+                    socialMediaService.openInstagram(urlString: url)
+                } else if title.lowercased().contains("linkedin") {
+                    socialMediaService.openLinkedIn(urlString: url)
+                } else {
+                    // Fallback para otros tipos de enlaces
+                    if let urlObj = URL(string: url) {
+                        UIApplication.shared.open(urlObj)
+                    }
+                }
+            }) {
+                HStack {
+                    Text(value)
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.blue.opacity(0.9))
+                        .lineLimit(1)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.system(size: 14))
+                        .foregroundColor(.blue.opacity(0.9))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                )
+            }
         }
     }
 }

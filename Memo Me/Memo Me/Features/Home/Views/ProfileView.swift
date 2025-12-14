@@ -17,6 +17,8 @@ struct ProfileView: View {
     
     enum Field {
         case name
+        case instagram
+        case linkedin
     }
     
     var body: some View {
@@ -233,24 +235,24 @@ struct ProfileView: View {
                         .padding(.horizontal, 20)
                     }
                     
-                    // Nationality Section
+                    // Country Section
                     if isEditing {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Nacionalidad (opcional)")
+                            Text("País (opcional)")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.white)
                             
                             Button {
-                                viewModel.nationalityConfig.show.toggle()
+                                viewModel.countryConfig.show.toggle()
                             } label: {
                                 HStack {
-                                    Text(viewModel.nationalityConfig.text)
+                                    Text(viewModel.countryConfig.text)
                                         .font(.system(size: 16))
-                                        .foregroundColor(viewModel.nationality == nil ? Color.white.opacity(0.6) : Color.white)
+                                        .foregroundColor(viewModel.country == nil ? Color.white.opacity(0.6) : Color.white)
                                     
                                     Spacer()
                                     
-                                    SourcePickerView(config: $viewModel.nationalityConfig)
+                                    SourcePickerView(config: $viewModel.countryConfig)
                                     
                                     Image(systemName: "chevron.down")
                                         .font(.system(size: 12, weight: .semibold))
@@ -262,9 +264,9 @@ struct ProfileView: View {
                                 .cornerRadius(12)
                             }
                             
-                            if viewModel.nationality != nil {
+                            if viewModel.country != nil {
                                 Button(action: {
-                                    viewModel.clearNationality()
+                                    viewModel.clearCountry()
                                 }) {
                                     HStack {
                                         Image(systemName: "xmark.circle.fill")
@@ -280,10 +282,89 @@ struct ProfileView: View {
                         .padding(.horizontal, 20)
                     } else {
                         ProfileInfoSection(
-                            title: "Nacionalidad",
-                            displayValue: authManager.currentUser?.nationality ?? "No especificada"
+                            title: "País",
+                            displayValue: authManager.currentUser?.country ?? "No especificado"
                         )
                         .padding(.horizontal, 20)
+                    }
+                    
+                    // Instagram Section
+                    if isEditing {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "camera.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.white.opacity(0.7))
+                                Text("Instagram (opcional)")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                            }
+                            
+                            HStack(spacing: 8) {
+                                Text("@")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.white.opacity(0.6))
+                                    .padding(.leading, 4)
+                                
+                                TextField("tu_usuario", text: $viewModel.instagramUrl)
+                                    .textFieldStyle(CustomTextFieldStyle())
+                                    .focused($focusedField, equals: .instagram)
+                                    .keyboardType(.default)
+                                    .autocapitalization(.none)
+                                    .autocorrectionDisabled()
+                                    .submitLabel(.next)
+                            }
+                            
+                            Text("Solo ingresa tu nombre de usuario (sin @ ni URL)")
+                                .font(.system(size: 12))
+                                .foregroundColor(.white.opacity(0.5))
+                                .padding(.leading, 4)
+                        }
+                        .padding(.horizontal, 20)
+                    } else {
+                        if let instagramUrl = authManager.currentUser?.instagramUrl, !instagramUrl.isEmpty {
+                            ProfileInfoSection(
+                                title: "Instagram",
+                                displayValue: instagramUrl
+                            )
+                            .padding(.horizontal, 20)
+                        }
+                    }
+                    
+                    // LinkedIn Section
+                    if isEditing {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "briefcase.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.white.opacity(0.7))
+                                Text("LinkedIn (opcional)")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                            }
+                            
+                            TextField("tu_perfil", text: $viewModel.linkedinUrl)
+                                .textFieldStyle(CustomTextFieldStyle())
+                                .focused($focusedField, equals: .linkedin)
+                                .keyboardType(.default)
+                                .autocapitalization(.none)
+                                .autocorrectionDisabled()
+                                .submitLabel(.done)
+                            
+                            Text("Solo ingresa tu nombre de perfil (sin URL)")
+                                .font(.system(size: 12))
+                                .foregroundColor(.white.opacity(0.5))
+                                .padding(.leading, 4)
+                        }
+                        .padding(.horizontal, 20)
+                    } else {
+                        if let linkedinUrl = authManager.currentUser?.linkedinUrl, !linkedinUrl.isEmpty {
+                            ProfileInfoSection(
+                                title: "LinkedIn",
+                                displayValue: linkedinUrl
+                            )
+                            .padding(.horizontal, 20)
+                        }
                     }
                     
                     // Areas Section
@@ -516,14 +597,14 @@ struct ProfileView: View {
                 viewModel.loadUserData()
             }
         }
-        .customPicker($viewModel.nationalityConfig, items: viewModel.nationalities)
+        .customPicker($viewModel.countryConfig, items: viewModel.countries)
         .customPicker($viewModel.areasConfig, items: viewModel.expertiseAreas)
         .customPicker($viewModel.interestsConfig, items: viewModel.interestsOptions)
-        .onChange(of: viewModel.nationalityConfig.text) { oldValue, newValue in
-            if newValue != "Seleccionar nacionalidad" &&
+        .onChange(of: viewModel.countryConfig.text) { oldValue, newValue in
+            if newValue != "Seleccionar país" &&
                newValue != oldValue &&
-               viewModel.nationality != newValue {
-                viewModel.selectNationality(newValue)
+               viewModel.country != newValue {
+                viewModel.selectCountry(newValue)
             }
         }
         .onChange(of: viewModel.areasConfig.text) { oldValue, newValue in

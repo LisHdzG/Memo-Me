@@ -15,12 +15,14 @@ class ProfileViewModel: ObservableObject {
     @Published var profileImage: UIImage?
     @Published var selectedPhotoItem: PhotosPickerItem?
     @Published var name: String = ""
-    @Published var nationality: String?
+    @Published var country: String?
     @Published var selectedAreas: [String] = []
     @Published var selectedInterests: [String] = []
+    @Published var instagramUrl: String = ""
+    @Published var linkedinUrl: String = ""
     
     // MARK: - Picker Configs
-    @Published var nationalityConfig: PickerConfig = .init(text: "Seleccionar nacionalidad")
+    @Published var countryConfig: PickerConfig = .init(text: "Seleccionar país")
     @Published var areasConfig: PickerConfig = .init(text: "Seleccionar área")
     @Published var interestsConfig: PickerConfig = .init(text: "Seleccionar interés")
     
@@ -31,10 +33,12 @@ class ProfileViewModel: ObservableObject {
     
     // MARK: - Original Values (for change detection)
     private var originalName: String = ""
-    private var originalNationality: String?
+    private var originalCountry: String?
     private var originalAreas: [String] = []
     private var originalInterests: [String] = []
     private var originalPhotoUrl: String?
+    private var originalInstagramUsername: String = ""
+    private var originalLinkedinUsername: String = ""
     
     // MARK: - Services
     private let userService = UserService()
@@ -49,16 +53,18 @@ class ProfileViewModel: ObservableObject {
     // MARK: - Computed Properties
     var hasChanges: Bool {
         let nameChanged = name.trimmingCharacters(in: .whitespacesAndNewlines) != originalName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let nationalityChanged = nationality != originalNationality
+        let countryChanged = country != originalCountry
         let areasChanged = Set(selectedAreas) != Set(originalAreas)
         let interestsChanged = Set(selectedInterests) != Set(originalInterests)
         let photoChanged = selectedPhotoItem != nil || (profileImage == nil && originalPhotoUrl != nil)
+        let instagramChanged = instagramUrl.trimmingCharacters(in: .whitespacesAndNewlines) != originalInstagramUsername
+        let linkedinChanged = linkedinUrl.trimmingCharacters(in: .whitespacesAndNewlines) != originalLinkedinUsername
         
-        return nameChanged || nationalityChanged || areasChanged || interestsChanged || photoChanged
+        return nameChanged || countryChanged || areasChanged || interestsChanged || photoChanged || instagramChanged || linkedinChanged
     }
     
     // MARK: - Data Sources
-    let nationalities: [String] = [
+    let countries: [String] = [
         "México", "Estados Unidos", "España", "Argentina", "Colombia",
         "Chile", "Perú", "Venezuela", "Ecuador", "Guatemala",
         "Cuba", "Haití", "Bolivia", "República Dominicana", "Honduras",
@@ -101,22 +107,48 @@ class ProfileViewModel: ObservableObject {
         guard let user = authenticationManager?.currentUser else { return }
         
         originalName = user.name
-        originalNationality = user.nationality
+        originalCountry = user.country
         originalAreas = user.areas ?? []
         originalInterests = user.interests ?? []
         originalPhotoUrl = user.photoUrl
         
-        name = user.name
-        nationality = user.nationality
-        
-        if let nationality = nationality {
-            nationalityConfig.text = nationality
+        // Guardar los usernames originales (sin URL) para comparación
+        if let savedInstagramUrl = user.instagramUrl, !savedInstagramUrl.isEmpty {
+            originalInstagramUsername = SocialMediaService.shared.extractInstagramUsername(from: savedInstagramUrl) ?? ""
         } else {
-            nationalityConfig.text = "Seleccionar nacionalidad"
+            originalInstagramUsername = ""
+        }
+        
+        if let savedLinkedinUrl = user.linkedinUrl, !savedLinkedinUrl.isEmpty {
+            originalLinkedinUsername = SocialMediaService.shared.extractLinkedInUsername(from: savedLinkedinUrl) ?? ""
+        } else {
+            originalLinkedinUsername = ""
+        }
+        
+        name = user.name
+        country = user.country
+        
+        if let country = country {
+            countryConfig.text = country
+        } else {
+            countryConfig.text = "Seleccionar país"
         }
         
         selectedAreas = user.areas ?? []
         selectedInterests = user.interests ?? []
+        
+        // Extraer solo el username de las URLs guardadas para mostrar en el campo
+        if let savedInstagramUrl = user.instagramUrl, !savedInstagramUrl.isEmpty {
+            self.instagramUrl = SocialMediaService.shared.extractInstagramUsername(from: savedInstagramUrl) ?? ""
+        } else {
+            self.instagramUrl = ""
+        }
+        
+        if let savedLinkedinUrl = user.linkedinUrl, !savedLinkedinUrl.isEmpty {
+            self.linkedinUrl = SocialMediaService.shared.extractLinkedInUsername(from: savedLinkedinUrl) ?? ""
+        } else {
+            self.linkedinUrl = ""
+        }
         
         if let photoUrl = user.photoUrl, let url = URL(string: photoUrl) {
             Task {
@@ -187,14 +219,14 @@ class ProfileViewModel: ObservableObject {
     }
     
     // MARK: - Picker Handling
-    func selectNationality(_ nationality: String) {
-        self.nationality = nationality
-        nationalityConfig.text = nationality
+    func selectCountry(_ country: String) {
+        self.country = country
+        countryConfig.text = country
     }
     
-    func clearNationality() {
-        nationality = nil
-        nationalityConfig.text = "Seleccionar nacionalidad"
+    func clearCountry() {
+        country = nil
+        countryConfig.text = "Seleccionar país"
     }
     
     func addArea(_ area: String) {
@@ -257,14 +289,23 @@ class ProfileViewModel: ObservableObject {
                 photoUrl = nil
             }
             
+            let trimmedInstagramUrl = instagramUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedLinkedinUrl = linkedinUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // Formatear URLs de Instagram y LinkedIn
+            let formattedInstagramUrl: String? = trimmedInstagramUrl.isEmpty ? nil : SocialMediaService.shared.formatInstagramURL(trimmedInstagramUrl)
+            let formattedLinkedinUrl: String? = trimmedLinkedinUrl.isEmpty ? nil : SocialMediaService.shared.formatLinkedInURL(trimmedLinkedinUrl)
+            
             var updatedUser = User(
                 id: userId,
                 appleId: appleId,
                 name: trimmedName,
-                nationality: nationality,
+                country: country,
                 areas: selectedAreas.isEmpty ? nil : selectedAreas,
                 interests: selectedInterests.isEmpty ? nil : selectedInterests,
-                photoUrl: photoUrl
+                photoUrl: photoUrl,
+                instagramUrl: formattedInstagramUrl,
+                linkedinUrl: formattedLinkedinUrl
             )
             
             try await userService.updateUser(updatedUser)
@@ -272,10 +313,12 @@ class ProfileViewModel: ObservableObject {
             authenticationManager?.updateCachedUser(updatedUser)
             
             originalName = trimmedName
-            originalNationality = nationality
+            originalCountry = country
             originalAreas = selectedAreas
             originalInterests = selectedInterests
             originalPhotoUrl = photoUrl
+            originalInstagramUsername = trimmedInstagramUrl.isEmpty ? "" : (SocialMediaService.shared.extractInstagramUsername(from: trimmedInstagramUrl) ?? "")
+            originalLinkedinUsername = trimmedLinkedinUrl.isEmpty ? "" : (SocialMediaService.shared.extractLinkedInUsername(from: trimmedLinkedinUrl) ?? "")
             selectedPhotoItem = nil
             
             isLoading = false

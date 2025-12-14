@@ -15,11 +15,11 @@ class RegistrationViewModel: ObservableObject {
     @Published var profileImage: UIImage?
     @Published var selectedPhotoItem: PhotosPickerItem?
     @Published var name: String = ""
-    @Published var nationality: String?
+    @Published var country: String?
     @Published var expertiseArea: String?
     
     // MARK: - Picker Configs
-    @Published var nationalityConfig: PickerConfig = .init(text: "Seleccionar nacionalidad")
+    @Published var countryConfig: PickerConfig = .init(text: "Seleccionar país")
     @Published var expertiseConfig: PickerConfig = .init(text: "Seleccionar área")
     
     // MARK: - Validation & Errors
@@ -38,7 +38,7 @@ class RegistrationViewModel: ObservableObject {
     var authenticationManager: AuthenticationManager?
     
     // MARK: - Data Sources
-    let nationalities: [String] = [
+    let countries: [String] = [
         "México", "Estados Unidos", "España", "Argentina", "Colombia",
         "Chile", "Perú", "Venezuela", "Ecuador", "Guatemala",
         "Cuba", "Haití", "Bolivia", "República Dominicana", "Honduras",
@@ -135,9 +135,9 @@ class RegistrationViewModel: ObservableObject {
     }
     
     // MARK: - Picker Handling
-    func selectNationality(_ nationality: String) {
-        self.nationality = nationality
-        nationalityConfig.text = nationality
+    func selectCountry(_ country: String) {
+        self.country = country
+        countryConfig.text = country
     }
     
     func selectExpertise(_ expertise: String) {
@@ -145,9 +145,9 @@ class RegistrationViewModel: ObservableObject {
         expertiseConfig.text = expertise
     }
     
-    func clearNationality() {
-        nationality = nil
-        nationalityConfig.text = "Seleccionar nacionalidad"
+    func clearCountry() {
+        country = nil
+        countryConfig.text = "Seleccionar país"
     }
     
     func clearExpertise() {
@@ -190,10 +190,12 @@ class RegistrationViewModel: ObservableObject {
                 id: nil,
                 appleId: appleId,
                 name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-                nationality: nationality,
+                country: country,
                 areas: areas,
                 interests: nil,
-                photoUrl: photoUrl
+                photoUrl: photoUrl,
+                instagramUrl: nil,
+                linkedinUrl: nil
             )
             
             let userId = try await userService.createUser(user)

@@ -12,18 +12,22 @@ struct User: Codable, Identifiable {
     var id: String?
     let appleId: String
     var name: String
-    var nationality: String?
+    var country: String?
     var areas: [String]?
     var interests: [String]?
     var photoUrl: String?
+    var instagramUrl: String?
+    var linkedinUrl: String?
     
     enum CodingKeys: String, CodingKey {
         case id
         case appleId
         case name
-        case nationality
+        case country
         case areas
         case interests
         case photoUrl
+        case instagramUrl
+        case linkedinUrl
     }
 }

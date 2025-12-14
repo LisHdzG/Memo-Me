@@ -136,21 +136,21 @@ struct RegistrationView: View {
                     .padding(.horizontal, 20)
                     
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Nacionalidad (opcional)")
+                        Text("País (opcional)")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(Color("SplashTextColor"))
                         
                         Button {
-                            viewModel.nationalityConfig.show.toggle()
+                            viewModel.countryConfig.show.toggle()
                         } label: {
                             HStack {
-                                Text(viewModel.nationalityConfig.text)
+                                Text(viewModel.countryConfig.text)
                                     .font(.system(size: 16))
-                                    .foregroundColor(viewModel.nationality == nil ? Color("SplashTextColor").opacity(0.6) : Color("SplashTextColor"))
+                                    .foregroundColor(viewModel.country == nil ? Color("SplashTextColor").opacity(0.6) : Color("SplashTextColor"))
                                 
                                 Spacer()
                                 
-                                SourcePickerView(config: $viewModel.nationalityConfig)
+                                SourcePickerView(config: $viewModel.countryConfig)
                                 
                                 Image(systemName: "chevron.down")
                                     .font(.system(size: 12, weight: .semibold))
@@ -162,9 +162,9 @@ struct RegistrationView: View {
                             .cornerRadius(12)
                         }
                         
-                        if viewModel.nationality != nil {
+                        if viewModel.country != nil {
                             Button(action: {
-                                viewModel.clearNationality()
+                                viewModel.clearCountry()
                             }) {
                                 HStack {
                                     Image(systemName: "xmark.circle.fill")
@@ -289,13 +289,13 @@ struct RegistrationView: View {
                 viewModel.name = appleName
             }
         }
-        .customPicker($viewModel.nationalityConfig, items: viewModel.nationalities)
+        .customPicker($viewModel.countryConfig, items: viewModel.countries)
         .customPicker($viewModel.expertiseConfig, items: viewModel.expertiseAreas)
-        .onChange(of: viewModel.nationalityConfig.text) { oldValue, newValue in
-            if newValue != "Seleccionar nacionalidad" && 
+        .onChange(of: viewModel.countryConfig.text) { oldValue, newValue in
+            if newValue != "Seleccionar país" && 
                newValue != oldValue && 
-               viewModel.nationality != newValue {
-                viewModel.selectNationality(newValue)
+               viewModel.country != newValue {
+                viewModel.selectCountry(newValue)
             }
         }
         .onChange(of: viewModel.expertiseConfig.text) { oldValue, newValue in
