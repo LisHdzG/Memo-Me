@@ -22,14 +22,14 @@ class OnboardingViewModel: ObservableObject {
                 description: ""
             ),
             OnboardingPage(
-                title: "Organiza",
-                subtitle: "tus contactos",
-                description: "de forma inteligente"
+                title: "Organiza personas por espacios",
+                subtitle: "No más \"¿de dónde lo conozco?\"",
+                description: "Todo tiene un lugar."
             ),
             OnboardingPage(
-                title: "Nunca olvides",
-                subtitle: "nada importante",
-                description: "sobre las personas"
+                title: "Recuerda lo que importa",
+                subtitle: "Contexto. Personas. Memoria.",
+                description: "Eso es MemoME."
             )
         ]
     }
@@ -60,4 +60,3 @@ struct OnboardingPage {
     let subtitle: String
     let description: String
 }
-

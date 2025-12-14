@@ -32,9 +32,9 @@ struct SplashView: View {
             ZStack {
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color("PurpleGradientTop"),
-                        Color("PurpleGradientMiddle"),
-                        Color("PurpleGradientBottom")
+                        .purpleGradientTop,
+                        .purpleGradientMiddle,
+                        .purpleGradientBottom
                     ]),
                     startPoint: .top,
                     endPoint: .bottom
@@ -47,14 +47,14 @@ struct SplashView: View {
                     VStack(alignment: .leading, spacing: -15) {
                         Text("Me")
                             .font(.system(size: 110, weight: .bold, design: .rounded))
-                            .foregroundColor(Color("SplashTextColor"))
+                            .foregroundColor(.splashText)
                             .opacity(showMemo ? 1 : 0)
                             .offset(y: showMemo ? 0 : memoOffset)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         
                         Text("mo")
                             .font(.system(size: 110, weight: .bold, design: .rounded))
-                            .foregroundColor(Color("SplashTextColor"))
+                            .foregroundColor(.splashText)
                             .opacity(showMemo ? 1 : 0)
                             .offset(y: showMemo ? 0 : memoOffset)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -65,8 +65,8 @@ struct SplashView: View {
                                 .foregroundStyle(
                                     LinearGradient(
                                         gradient: Gradient(colors: [
-                                            Color("SplashTextColor").opacity(0.4),
-                                            Color("SplashTextColor").opacity(0.1)
+                                            .splashText.opacity(0.4),
+                                            .splashText.opacity(0.1)
                                         ]),
                                         startPoint: .top,
                                         endPoint: .bottom

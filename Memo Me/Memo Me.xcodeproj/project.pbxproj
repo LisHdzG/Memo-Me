@@ -22,22 +22,9 @@
 		C3E904802EE08FCE00278D2E /* Memo Me.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Memo Me.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		C3CD5D252EEE2B2E0096334D /* Exceptions for "Memo Me" folder in "Memo Me" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				"Memo-Me-Info.plist",
-			);
-			target = C3E9047F2EE08FCE00278D2E /* Memo Me */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C3E904822EE08FCE00278D2E /* Memo Me */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				C3CD5D252EEE2B2E0096334D /* Exceptions for "Memo Me" folder in "Memo Me" target */,
-			);
 			path = "Memo Me";
 			sourceTree = "<group>";
 		};

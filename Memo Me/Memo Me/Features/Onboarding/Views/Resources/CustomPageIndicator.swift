@@ -10,8 +10,6 @@ import SwiftUI
 struct CustomPageIndicator: View {
     let totalPages: Int
     let currentPage: Int
-    let activeColor: Color
-    let inactiveColor: Color
     
     private let dashWidth: CGFloat = 24
     private let dotSize: CGFloat = 6
@@ -21,7 +19,7 @@ struct CustomPageIndicator: View {
             ForEach(0..<totalPages, id: \.self) { index in
                 if index == currentPage {
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(activeColor)
+                        .fill(.royalPurple)
                         .frame(width: dashWidth, height: 4)
                         .transition(.asymmetric(
                             insertion: .scale.combined(with: .opacity),
@@ -29,7 +27,7 @@ struct CustomPageIndicator: View {
                         ))
                 } else {
                     Circle()
-                        .fill(inactiveColor)
+                        .fill(.royalPurple.opacity(0.7))
                         .frame(width: dotSize, height: dotSize)
                         .transition(.asymmetric(
                             insertion: .scale.combined(with: .opacity),
@@ -41,4 +39,3 @@ struct CustomPageIndicator: View {
         .animation(.spring(response: 0.4, dampingFraction: 0.7), value: currentPage)
     }
 }
-
