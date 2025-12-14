@@ -87,19 +87,37 @@ class AuthenticationManager: ObservableObject {
     private let cachedUserKey = "cachedUser"
     
     private let userService = UserService()
+    private let networkMonitor = NetworkMonitor.shared
+    private var isSignInFlow = false
     
     init() {
         checkAuthenticationStatus()
     }
     
     func handleAuthorization(_ authorization: ASAuthorization) {
+        guard networkMonitor.isConnectedSync() else {
+            authenticationState = .idle
+            errorMessage = nil
+            let error = AuthenticationError.networkError
+            handleError(error, retryAction: { [weak self] in
+                ErrorPresenter.shared.dismiss()
+                Task { @MainActor in
+                    self?.isSignInFlow = false
+                    self?.authenticationState = .idle
+                    self?.errorMessage = nil
+                }
+            }, isSignInError: true)
+            return
+        }
+        
+        isSignInFlow = true
         authenticationState = .loading
         errorMessage = nil
         LoaderPresenter.shared.show()
         
         guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else {
             let error = AuthenticationError.invalidResponse
-            handleError(error)
+            handleError(error, retryAction: nil, isSignInError: true)
             return
         }
         
@@ -113,7 +131,7 @@ class AuthenticationManager: ObservableObject {
             self.userEmail = userDefaults.string(forKey: savedUserEmailKey)
         }
         
-        var appleName: String? = nil
+        var appleName: String?
         if let fullName = appleIDCredential.fullName {
             let name = PersonNameComponentsFormatter().string(from: fullName)
             self.userName = name
@@ -126,11 +144,31 @@ class AuthenticationManager: ObservableObject {
         userDefaults.set(userID, forKey: appleUserIDKey)
         
         Task {
-            await checkUserInFirestore(appleId: userID, appleName: appleName)
+            await checkUserInFirestore(appleId: userID, appleName: appleName, isSignInFlow: true)
         }
     }
     
-    private func checkUserInFirestore(appleId: String, appleName: String?) async {
+    private func checkUserInFirestore(appleId: String, appleName: String?, isSignInFlow: Bool = false) async {
+        guard networkMonitor.isConnectedSync() else {
+            LoaderPresenter.shared.hide()
+            let error = AuthenticationError.networkError
+            let retryAction: (() -> Void)? = isSignInFlow ? { [weak self] in
+                ErrorPresenter.shared.dismiss()
+                Task { @MainActor in
+                    self?.isSignInFlow = false
+                    self?.authenticationState = .idle
+                    self?.errorMessage = nil
+                }
+            } : { [weak self] in
+                Task { @MainActor in
+                    LoaderPresenter.shared.show()
+                    await self?.checkUserInFirestore(appleId: appleId, appleName: appleName, isSignInFlow: false)
+                }
+            }
+            handleError(error, retryAction: retryAction, isSignInError: isSignInFlow)
+            return
+        }
+        
         do {
             if let existingUser = try await userService.checkUserExists(appleId: appleId) {
                 ErrorPresenter.shared.dismiss()
@@ -157,16 +195,24 @@ class AuthenticationManager: ObservableObject {
             }
         } catch {
             LoaderPresenter.shared.hide()
-            self.handleError(error, retryAction: { [weak self] in
+            let retryAction: (() -> Void)? = isSignInFlow ? { [weak self] in
+                ErrorPresenter.shared.dismiss()
+                Task { @MainActor in
+                    self?.isSignInFlow = false
+                    self?.authenticationState = .idle
+                    self?.errorMessage = nil
+                }
+            } : { [weak self] in
                 Task { @MainActor in
                     LoaderPresenter.shared.show()
-                    await self?.checkUserInFirestore(appleId: appleId, appleName: appleName)
+                    await self?.checkUserInFirestore(appleId: appleId, appleName: appleName, isSignInFlow: false)
                 }
-            })
+            }
+            
+            self.handleError(error, retryAction: retryAction, isSignInError: isSignInFlow)
         }
     }
     
-    /// Marca al usuario como autenticado después de completar el registro
     func completeRegistration(user: User) {
         self.currentUser = user
         self.userName = user.name
@@ -178,7 +224,7 @@ class AuthenticationManager: ObservableObject {
         saveUserToCache(user)
     }
     
-    func handleError(_ error: Error, retryAction: (() -> Void)? = nil) {
+    func handleError(_ error: Error, retryAction: (() -> Void)? = nil, isSignInError: Bool = false) {
         let authError: AuthenticationError
         
         if let asError = error as? ASAuthorizationError {
@@ -194,16 +240,26 @@ class AuthenticationManager: ObservableObject {
         self.isAuthenticated = false
         LoaderPresenter.shared.hide()
         
+        let finalRetryAction = retryAction ?? (isSignInError ? { [weak self] in
+            ErrorPresenter.shared.dismiss()
+            Task { @MainActor in
+                self?.isSignInFlow = false
+                self?.authenticationState = .idle
+                self?.errorMessage = nil
+            }
+        } : nil)
+        
         if isNetworkError(error) {
-            ErrorPresenter.shared.showNetworkError(retry: retryAction)
+            ErrorPresenter.shared.showNetworkError(retry: finalRetryAction)
         } else {
-            ErrorPresenter.shared.showServiceError(retry: retryAction)
+            ErrorPresenter.shared.showServiceError(retry: finalRetryAction)
         }
     }
     
-    /// Detecta si un error es de red
     private func isNetworkError(_ error: Error) -> Bool {
-        // Verificar errores de URLSession (URLError)
+        if !networkMonitor.isConnectedSync() {
+            return true
+        }
         if let urlError = error as? URLError {
             switch urlError.code {
             case .notConnectedToInternet,
@@ -221,24 +277,32 @@ class AuthenticationManager: ObservableObject {
             }
         }
         
-        // Verificar errores de Firebase Firestore relacionados con red
         if let nsError = error as NSError? {
-            // Códigos de error de Firestore relacionados con red
-            // Firestore error domain: FIRFirestoreErrorDomain
             let firestoreErrorDomain = "FIRFirestoreErrorDomain"
             if nsError.domain == firestoreErrorDomain {
-                // Código 14 = UNAVAILABLE (servicio no disponible, generalmente por red)
-                // Código 4 = DEADLINE_EXCEEDED (timeout, puede ser por red)
-                if nsError.code == 14 || nsError.code == 4 {
+                if nsError.code == 14 || nsError.code == 4 || nsError.code == 8 || nsError.code == 13 {
                     return true
                 }
             }
             
-            // Verificar si el mensaje de error contiene palabras clave de red
+            if nsError.domain == "NSURLErrorDomain" {
+                let networkErrorCodes = [-1009, -1005, -1004, -1001, -1003, -1006, -1018, -1019, -1020]
+                if networkErrorCodes.contains(nsError.code) {
+                    return true
+                }
+            }
+            
             let errorMessage = nsError.localizedDescription.lowercased()
-            let networkKeywords = ["network", "connection", "internet", "conexión", "red", "conectividad", "timeout", "unreachable"]
+            let networkKeywords = ["network", "connection", "internet", "conexión", "red", "conectividad", "timeout", "unreachable", "unavailable", "offline", "sin conexión"]
             if networkKeywords.contains(where: errorMessage.contains) {
                 return true
+            }
+            
+            if let failureReason = nsError.userInfo[NSLocalizedFailureReasonErrorKey] as? String {
+                let failureReasonLower = failureReason.lowercased()
+                if networkKeywords.contains(where: failureReasonLower.contains) {
+                    return true
+                }
             }
         }
         
@@ -347,7 +411,7 @@ class AuthenticationManager: ObservableObject {
                                     self.authenticationState = .needsRegistration
                                 }
                             }
-                        })
+                        }, isSignInError: false)
                     }
                     
                 case .revoked:

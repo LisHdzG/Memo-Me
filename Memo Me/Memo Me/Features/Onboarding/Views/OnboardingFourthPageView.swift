@@ -31,8 +31,7 @@ struct OnboardingFourthPageView: View {
             } else {
                 ZStack {
                     if showBackground {
-                        Color(.amethystLight)
-                            .opacity(0.7)
+                        Color(.ghostWhite)
                             .ignoresSafeArea()
                     }
 
@@ -116,7 +115,7 @@ struct OnboardingFourthPageView: View {
                         }
 
                         Spacer()
-                            .frame(height: showBackground ? 20 : 50)
+                            .frame(height: 20)
                     }
                 }
                 .onAppear {

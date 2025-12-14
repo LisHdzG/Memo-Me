@@ -159,7 +159,7 @@ class RegistrationViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            var photoUrl: String? = nil
+            var photoUrl: String?
             if let image = profileImage {
                 photoUrl = try await profileImageService.uploadProfileImage(
                     image,
@@ -168,7 +168,7 @@ class RegistrationViewModel: ObservableObject {
                 )
             }
             
-            var areas: [String]? = nil
+            var areas: [String]?
             if let expertise = expertiseArea {
                 areas = [expertise]
             }

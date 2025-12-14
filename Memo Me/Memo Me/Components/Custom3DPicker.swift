@@ -109,7 +109,7 @@ fileprivate struct Custom3DPickerView: View {
                 .frame(height: 20)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: showContents ? .trailing : .topLeading)
                 .offset(offset)
-                .opacity(0) // Oculto en fullScreen
+                .opacity(0)
                 .ignoresSafeArea(.all, edges: showContents ? [] : .all)
             
         }

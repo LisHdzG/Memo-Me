@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import Foundation
 import Combine
 
 class LoaderPresenter: ObservableObject {

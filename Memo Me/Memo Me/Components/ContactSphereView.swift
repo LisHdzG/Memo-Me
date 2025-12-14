@@ -429,11 +429,8 @@ struct ContactSphereView: UIViewRepresentable {
             let hitResults = sceneView.hitTest(location, options: nil)
             
             guard let hitResult = hitResults.first else {
-                print("⚠️ No se encontró ningún nodo en la ubicación del tap")
                 return
             }
-            
-            print("🔍 Nodo tocado: \(hitResult.node.name ?? "sin nombre"), tipo: \(type(of: hitResult.node.geometry))")
             
             var currentNode: SCNNode? = hitResult.node
             var contact: Contact?
@@ -444,7 +441,6 @@ struct ContactSphereView: UIViewRepresentable {
                     if let contactId = UUID(uuidString: contactIdString) {
                         contact = self.contacts.first(where: { $0.id == contactId })
                         if contact != nil {
-                            print("✅ Contacto encontrado por nombre: \(contact?.name ?? "unknown")")
                             break
                         }
                     }
@@ -452,7 +448,6 @@ struct ContactSphereView: UIViewRepresentable {
                 
                 if let foundContact = contactNodes[node] {
                     contact = foundContact
-                    print("✅ Contacto encontrado en diccionario: \(foundContact.name)")
                     break
                 }
                 
@@ -465,19 +460,12 @@ struct ContactSphereView: UIViewRepresentable {
             
             if contact == nil {
                 contact = findContactForNode(hitResult.node)
-                if contact != nil {
-                    print("✅ Contacto encontrado por búsqueda recursiva: \(contact?.name ?? "unknown")")
-                }
             }
             
             guard let foundContact = contact else {
-                print("⚠️ No se encontró contacto para el nodo tocado")
-                print("   Nodos en diccionario: \(contactNodes.count)")
-                print("   Contactos disponibles: \(self.contacts.count)")
                 return
             }
             
-            print("✅ Contacto final encontrado: \(foundContact.name) (ID: \(foundContact.id))")
             onContactTapped?(foundContact)
         }
         

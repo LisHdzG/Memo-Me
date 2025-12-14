@@ -155,15 +155,9 @@ struct ContactDetailView: View {
                 rotationSpeed: $rotationSpeed,
                 isAutoRotating: $isAutoRotating,
                 onContactTapped: { contact in
-                    print("📱 Contacto tocado: \(contact.name), userId: \(contact.userId ?? "nil")")
-                    
-                    // Establecemos el contacto primero
                     selectedContact = contact
-                    
-                    // Intentamos obtener el usuario del ViewModel primero
                     selectedUser = viewModel.getUser(for: contact)
                     
-                    // Si no está en el ViewModel y tenemos userId, lo cargamos
                     if selectedUser == nil, let userId = contact.userId {
                         isLoadingUser = true
                         Task {
@@ -173,20 +167,16 @@ struct ContactDetailView: View {
                                 await MainActor.run {
                                     selectedUser = loadedUser
                                     isLoadingUser = false
-                                    // Solo mostramos el sheet después de cargar el usuario
                                     showContactDetail = true
                                 }
                             } catch {
-                                print("⚠️ Error al obtener usuario: \(error)")
                                 await MainActor.run {
                                     isLoadingUser = false
-                                    // Mostramos el sheet incluso si falla la carga
                                     showContactDetail = true
                                 }
                             }
                         }
                     } else {
-                        // Si ya tenemos el usuario o no hay userId, mostramos el sheet inmediatamente
                         showContactDetail = true
                     }
                 }

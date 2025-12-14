@@ -186,7 +186,6 @@ struct AnimatedPeopleCirclesView: View {
                 size: randomSize,
                 opacity: 1.0,
                 imageName: imageName,
-                isVisible: true,
                 scale: 1.0
             )
         }
@@ -258,7 +257,6 @@ struct AnimatedPeopleCirclesView: View {
                 size: randomSize,
                 opacity: 1.0,
                 imageName: imageName,
-                isVisible: true,
                 scale: 1.0,
                 targetPosition: CGPoint(x: targetX, y: targetY)
             )
@@ -453,7 +451,6 @@ struct AnimatedCircle: Identifiable {
     var size: CGFloat
     var opacity: Double
     var imageName: String
-    var isVisible: Bool
     var scale: CGFloat
     var targetPosition: CGPoint?
 }

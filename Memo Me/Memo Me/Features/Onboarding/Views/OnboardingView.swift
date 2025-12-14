@@ -16,8 +16,7 @@ struct OnboardingView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(.amethystLight)
-                    .opacity(0.7)
+                Color(.ghostWhite)
                     .ignoresSafeArea()
 
                 if viewModel.currentPage < 3 {

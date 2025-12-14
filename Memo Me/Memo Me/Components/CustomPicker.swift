@@ -135,10 +135,6 @@ fileprivate struct CustomPickerView: View {
                 
                 try? await Task.sleep(for: .seconds(0.2))
                 
-                if let currentActive = activeText, 
-                   !texts.contains(currentActive) {
-                }
-                
                 config.show = false
                 activeText = nil
             }
