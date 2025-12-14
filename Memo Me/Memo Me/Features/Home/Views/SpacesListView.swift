@@ -11,6 +11,10 @@ struct SpacesListView: View {
     @StateObject private var viewModel = SpacesViewModel()
     @ObservedObject private var spaceSelectionService = SpaceSelectionService.shared
     @EnvironmentObject var authManager: AuthenticationManager
+    @Environment(\.dismiss) private var dismiss
+    
+    let isPresentedAsSheet: Bool
+    let shouldDismissOnSelection: Bool
     
     @State private var privateSpaceCode: String = ""
     @State private var showQRScanner = false
@@ -18,10 +22,14 @@ struct SpacesListView: View {
     @State private var cameraPermissionDenied = false
     @State private var showPermissionAlert = false
     @State private var showCreateSpace = false
-    @State private var showProfile = false
+    
+    init(isPresentedAsSheet: Bool = false, shouldDismissOnSelection: Bool = false) {
+        self.isPresentedAsSheet = isPresentedAsSheet
+        self.shouldDismissOnSelection = shouldDismissOnSelection
+    }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 LinearGradient(
                     gradient: Gradient(colors: [
@@ -55,6 +63,9 @@ struct SpacesListView: View {
                                             if let joinedSpace = await viewModel.joinSpaceByCode(code: privateSpaceCode, userId: userId) {
                                                 spaceSelectionService.saveSelectedSpace(joinedSpace)
                                                 privateSpaceCode = ""
+                                                if shouldDismissOnSelection {
+                                                    dismiss()
+                                                }
                                             }
                                         }
                                     }
@@ -82,6 +93,9 @@ struct SpacesListView: View {
                                                 onJoin: {},
                                                 onView: {
                                                     spaceSelectionService.saveSelectedSpace(space)
+                                                    if shouldDismissOnSelection {
+                                                        dismiss()
+                                                    }
                                                 },
                                                 isJoining: false
                                             )
@@ -112,11 +126,17 @@ struct SpacesListView: View {
                                                             await viewModel.refreshSpaces(userId: currentUserId)
                                                             if let updatedSpace = viewModel.publicSpaces.first(where: { $0.spaceId == space.spaceId }) ?? viewModel.userSpaces.first(where: { $0.spaceId == space.spaceId }) {
                                                                 spaceSelectionService.saveSelectedSpace(updatedSpace)
+                                                                if shouldDismissOnSelection {
+                                                                    dismiss()
+                                                                }
                                                             }
                                                         }
                                                     },
                                                     onView: {
                                                         spaceSelectionService.saveSelectedSpace(space)
+                                                        if shouldDismissOnSelection {
+                                                            dismiss()
+                                                        }
                                                     },
                                                     isJoining: viewModel.isJoiningSpace
                                                 )
@@ -143,6 +163,27 @@ struct SpacesListView: View {
                                         .multilineTextAlignment(.center)
                                 }
                                 .padding(.top, 40)
+                            }
+                            
+                            if !isPresentedAsSheet {
+                                Button(action: {
+                                    spaceSelectionService.markAsContinuedWithoutSpace()
+                                }) {
+                                    Text("Continuar sin espacio seleccionado")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 16)
+                                        .background(Color.white.opacity(0.2))
+                                        .cornerRadius(12)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                        )
+                                }
+                                .padding(.horizontal, 20)
+                                .padding(.top, 20)
+                                .padding(.bottom, 40)
                             }
                         }
                         .padding(.bottom, 20)
@@ -181,15 +222,7 @@ struct SpacesListView: View {
                     }
                 }
                 
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        showProfile = true
-                    }) {
-                        Image(systemName: "person.circle.fill")
-                            .foregroundColor(.white)
-                            .font(.system(size: 20))
-                    }
-                    
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         if let userId = authManager.currentUser?.id {
                             Task {
@@ -213,10 +246,6 @@ struct SpacesListView: View {
                             }
                         }
                     }
-            }
-            .sheet(isPresented: $showProfile) {
-                ProfileView()
-                    .environmentObject(authManager)
             }
             .sheet(isPresented: $showQRScanner) {
                 QRCodeScannerView(

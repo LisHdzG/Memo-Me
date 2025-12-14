@@ -13,7 +13,6 @@ struct ContactDetailView: View {
     @StateObject private var viewModel = ContactDetailViewModel()
     @State private var rotationSpeed: Double = 0.5
     @State private var isAutoRotating: Bool = true
-    @State private var selectedContact: Contact?
     @ObservedObject private var spaceSelectionService = SpaceSelectionService.shared
     @EnvironmentObject var authManager: AuthenticationManager
     
@@ -40,16 +39,6 @@ struct ContactDetailView: View {
         }
         .onDisappear {
             viewModel.stopListening()
-        }
-        .sheet(item: $selectedContact) { contact in
-            let user = viewModel.getUser(for: contact)
-            ContactDetailSheet(
-                user: user,
-                contact: contact,
-                spaceId: space?.spaceId
-            )
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
         }
     }
     
@@ -78,21 +67,29 @@ struct ContactDetailView: View {
     private var headerSection: some View {
         VStack(spacing: 12) {
             HStack {
-                Text(space?.name ?? "Mis Contactos")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                if spaceSelectionService.selectedSpace != nil {
+                    Text(space?.name ?? spaceSelectionService.selectedSpace?.name ?? "Mis Contactos")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                } else {
+                    Text("Contactos")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                }
                 
                 Spacer()
                 
-                changeSpaceButton
+                if spaceSelectionService.selectedSpace != nil {
+                    changeSpaceButton
+                }
             }
             .padding(.horizontal, 20)
             
-            if viewModel.isLoading {
+            if viewModel.isLoading && spaceSelectionService.selectedSpace != nil {
                 ProgressView()
                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                     .scaleEffect(0.8)
-            } else {
+            } else if spaceSelectionService.selectedSpace != nil {
                 Text("\(viewModel.contacts.count) contactos")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.white.opacity(0.7))
@@ -103,9 +100,7 @@ struct ContactDetailView: View {
     }
     
     private var changeSpaceButton: some View {
-        Button(action: {
-            spaceSelectionService.clearSelectedSpace()
-        }) {
+        NavigationLink(destination: SpacesListView(shouldDismissOnSelection: true)) {
             HStack(spacing: 6) {
                 Image(systemName: "rectangle.3.group")
                     .font(.system(size: 14, weight: .semibold))
@@ -148,21 +143,62 @@ struct ContactDetailView: View {
     
     @ViewBuilder
     private var contactsContent: some View {
-        if !viewModel.contacts.isEmpty {
+        if spaceSelectionService.selectedSpace == nil {
+            noSpaceSelectedView
+        } else if !viewModel.contacts.isEmpty {
             ContactSphereView(
                 contacts: viewModel.contacts,
                 rotationSpeed: $rotationSpeed,
                 isAutoRotating: $isAutoRotating
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .onTapGesture {
-                if let firstContact = viewModel.contacts.first {
-                    selectedContact = firstContact
-                }
-            }
         } else if !viewModel.isLoading {
             emptyContactsView
         }
+    }
+    
+    private var noSpaceSelectedView: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "rectangle.3.group")
+                .font(.system(size: 60))
+                .foregroundColor(.white.opacity(0.6))
+            
+            Text("Sin espacio seleccionado")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.white)
+            
+            Text("Selecciona un espacio para ver los contactos")
+                .font(.system(size: 14, weight: .regular))
+                .foregroundColor(.white.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+            
+            NavigationLink(destination: SpacesListView(shouldDismissOnSelection: true)) {
+                Text("Unirme a un espacio")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.white.opacity(0.3),
+                                Color.white.opacity(0.2)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .cornerRadius(16)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                    )
+            }
+            .padding(.horizontal, 40)
+            .padding(.top, 8)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
     private var emptyContactsView: some View {

@@ -13,7 +13,7 @@ struct ContentView: View {
     
     var body: some View {
         Group {
-            if spaceSelectionService.selectedSpace != nil {
+            if spaceSelectionService.hasContinuedWithoutSpace || spaceSelectionService.selectedSpace != nil {
                 MainTabView()
                     .environmentObject(authManager)
             } else {

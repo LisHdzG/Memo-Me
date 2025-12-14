@@ -14,11 +14,13 @@ struct MainTabView: View {
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            ContactDetailView(space: spaceSelectionService.selectedSpace)
-                .tabItem {
-                    Label("Contactos", systemImage: "person.3.fill")
-                }
-                .tag(0)
+            NavigationStack {
+                ContactDetailView(space: spaceSelectionService.selectedSpace)
+            }
+            .tabItem {
+                Label("Contactos", systemImage: "person.3.fill")
+            }
+            .tag(0)
             
             FavoritesView()
                 .tabItem {

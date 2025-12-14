@@ -13,12 +13,15 @@ class SpaceSelectionService: ObservableObject {
     static let shared = SpaceSelectionService()
     
     @Published var selectedSpace: Space?
+    @Published var hasContinuedWithoutSpace: Bool = false
     
     private let userDefaults = UserDefaults.standard
     private let selectedSpaceKey = "selectedSpace"
+    private let hasContinuedWithoutSpaceKey = "hasContinuedWithoutSpace"
     
     private init() {
         loadSelectedSpace()
+        loadHasContinuedWithoutSpace()
     }
     
     func saveSelectedSpace(_ space: Space) {
@@ -49,6 +52,20 @@ class SpaceSelectionService: ObservableObject {
     func clearSelectedSpace() {
         selectedSpace = nil
         userDefaults.removeObject(forKey: selectedSpaceKey)
+    }
+    
+    func markAsContinuedWithoutSpace() {
+        hasContinuedWithoutSpace = true
+        userDefaults.set(true, forKey: hasContinuedWithoutSpaceKey)
+    }
+    
+    private func loadHasContinuedWithoutSpace() {
+        hasContinuedWithoutSpace = userDefaults.bool(forKey: hasContinuedWithoutSpaceKey)
+    }
+    
+    func resetContinueWithoutSpace() {
+        hasContinuedWithoutSpace = false
+        userDefaults.removeObject(forKey: hasContinuedWithoutSpaceKey)
     }
 }
 

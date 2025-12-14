@@ -600,12 +600,10 @@ struct ProfileView: View {
         }
     }
     
-    @MainActor
     private var userName: String {
         authManager.currentUser?.name ?? authManager.userName ?? "Usuario"
     }
     
-    @MainActor
     private var areasDisplay: String {
         guard let areas = authManager.currentUser?.areas, !areas.isEmpty else {
             return "No especificadas"
@@ -613,7 +611,6 @@ struct ProfileView: View {
         return areas.joined(separator: ", ")
     }
     
-    @MainActor
     private var interestsDisplay: String {
         guard let interests = authManager.currentUser?.interests, !interests.isEmpty else {
             return "No especificados"

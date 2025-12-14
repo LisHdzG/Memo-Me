@@ -166,6 +166,66 @@ class SpaceService: ObservableObject {
         return space
     }
     
+    func getSpaceBySpaceId(_ spaceId: String) async throws -> Space? {
+        let querySnapshot = try await db.collection(spacesCollection)
+            .whereField("spaceId", isEqualTo: spaceId)
+            .limit(to: 1)
+            .getDocuments()
+        
+        guard let document = querySnapshot.documents.first else {
+            return nil
+        }
+        
+        let data = document.data()
+        
+        var members: [String] = []
+        if let membersData = data["members"] as? [Any] {
+            for member in membersData {
+                if let reference = member as? DocumentReference {
+                    members.append(reference.documentID)
+                } else if let path = member as? String {
+                    if path.contains("/") {
+                        let components = path.split(separator: "/")
+                        if let lastComponent = components.last {
+                            members.append(String(lastComponent))
+                        }
+                    } else {
+                        members.append(path)
+                    }
+                }
+            }
+        }
+        
+        let isPublic = data["isPublic"] as? Bool ?? false
+        let isOfficial = data["isOfficial"] as? Bool ?? false
+        let code = data["code"] as? String
+        let description = data["description"] as? String ?? ""
+        let types = data["types"] as? [String] ?? []
+        
+        var owner = ""
+        if let ownerRef = data["owner"] as? DocumentReference {
+            owner = "users/\(ownerRef.documentID)"
+        } else if let ownerString = data["owner"] as? String {
+            owner = ownerString
+        }
+        
+        let space = Space(
+            id: document.documentID,
+            spaceId: data["spaceId"] as? String ?? "",
+            name: data["name"] as? String ?? "",
+            description: description,
+            bannerUrl: data["bannerUrl"] as? String ?? "",
+            members: members,
+            isPublic: isPublic,
+            isOfficial: isOfficial,
+            code: code,
+            owner: owner,
+            types: types
+        )
+        
+        return space
+    }
+    
     func createSpace(_ space: Space) async throws -> String {
         var membersReferences: [Any] = []
         for member in space.members {

@@ -10,6 +10,7 @@ import SwiftUI
 struct FavoritesView: View {
     @StateObject private var viewModel = FavoritesViewModel()
     @ObservedObject private var spaceSelectionService = SpaceSelectionService.shared
+    @EnvironmentObject var authManager: AuthenticationManager
     
     var body: some View {
         ZStack {
@@ -40,7 +41,7 @@ struct FavoritesView: View {
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             .scaleEffect(0.8)
                     } else {
-                        Text("\(viewModel.favoriteContacts.count) favoritos")
+                        Text("\(viewModel.allFavorites.count) favoritos")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundColor(.white.opacity(0.7))
                     }
@@ -58,15 +59,29 @@ struct FavoritesView: View {
                         .padding(.horizontal, 20)
                 }
                 
-                if !viewModel.favoriteContacts.isEmpty {
+                if !viewModel.favoriteContactsBySpace.isEmpty {
                     ScrollView {
-                        LazyVStack(spacing: 16) {
-                            ForEach(viewModel.favoriteContacts) { contact in
-                                FavoriteContactCard(contact: contact)
+                        LazyVStack(alignment: .leading, spacing: 24) {
+                            ForEach(viewModel.spaceNames, id: \.self) { spaceName in
+                                if let favorites = viewModel.favoriteContactsBySpace[spaceName], !favorites.isEmpty {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text(spaceName)
+                                            .font(.system(size: 20, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 20)
+                                        
+                                        LazyVStack(spacing: 16) {
+                                            ForEach(favorites) { favoriteContact in
+                                                FavoriteContactCard(contact: favoriteContact.contact, spaceName: favoriteContact.spaceName)
+                                            }
+                                        }
+                                        .padding(.horizontal, 20)
+                                    }
+                                }
                             }
                         }
-                        .padding(.horizontal, 20)
                         .padding(.top, 20)
+                        .padding(.bottom, 40)
                     }
                 } else if !viewModel.isLoading {
                     VStack(spacing: 20) {
@@ -89,13 +104,16 @@ struct FavoritesView: View {
             }
         }
         .task {
-            await viewModel.loadFavoriteContacts()
+            if let userId = authManager.currentUser?.id {
+                await viewModel.loadFavoriteContacts(userId: userId)
+            }
         }
     }
 }
 
 struct FavoriteContactCard: View {
     let contact: Contact
+    let spaceName: String
     
     var body: some View {
         HStack(spacing: 16) {
@@ -131,6 +149,10 @@ struct FavoriteContactCard: View {
                 Text(contact.name)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.white)
+                
+                Text(spaceName)
+                    .font(.system(size: 14, weight: .regular))
+                    .foregroundColor(.white.opacity(0.6))
             }
             
             Spacer()

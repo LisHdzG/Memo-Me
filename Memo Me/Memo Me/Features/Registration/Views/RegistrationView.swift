@@ -12,7 +12,6 @@ struct RegistrationView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @StateObject private var viewModel = RegistrationViewModel()
     @FocusState private var focusedField: Field?
-    @State private var showPhotoPermissionAlert = false
     
     enum Field {
         case name

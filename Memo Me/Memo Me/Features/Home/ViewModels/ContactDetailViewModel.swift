@@ -29,13 +29,24 @@ class ContactDetailViewModel: ObservableObject {
             return
         }
         
-        if currentSpaceId == space.spaceId {
-            return
-        }
-        
         stopListening()
         
+        let wasSameSpace = currentSpaceId == space.spaceId
         currentSpaceId = space.spaceId
+        
+        if wasSameSpace {
+            await processSpaceMembers(space.members)
+            await startUserListeners(memberIds: space.members)
+            spaceService.listenToSpace(spaceId: space.spaceId) { [weak self] updatedSpace in
+                Task { @MainActor in
+                    guard let self = self, let updatedSpace = updatedSpace else {
+                        return
+                    }
+                    await self.processSpaceMembers(updatedSpace.members)
+                }
+            }
+            return
+        }
         
         await processSpaceMembers(space.members)
         
@@ -174,11 +185,6 @@ class ContactDetailViewModel: ObservableObject {
         spaceService.stopListeningToSpace()
         stopUserListeners()
         currentSpaceId = nil
-    }
-    
-    func getUser(for contact: Contact) -> User? {
-        guard let userId = contact.userId else { return nil }
-        return usersMap[userId]
     }
 }
 
