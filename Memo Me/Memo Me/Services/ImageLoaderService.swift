@@ -20,7 +20,7 @@ class ImageLoaderService {
     }()
     
     private var loadingTasks: [String: Task<UIImage?, Never>] = [:]
-    private var cachedKeys: Set<String> = [] // Rastrear las claves en el caché
+    private var cachedKeys: Set<String> = []
     
     private init() {}
     
@@ -32,17 +32,14 @@ class ImageLoaderService {
         
         let cacheKey = NSString(string: urlString)
         
-        // Verificar caché primero
         if let cachedImage = imageCache.object(forKey: cacheKey) {
             return cachedImage
         }
         
-        // Si ya hay una tarea de carga en curso, esperar a que termine
         if let existingTask = loadingTasks[urlString] {
             return await existingTask.value
         }
         
-        // Crear nueva tarea de carga
         let task = Task<UIImage?, Never> {
             defer {
                 Task { @MainActor in
@@ -62,11 +59,9 @@ class ImageLoaderService {
                     return nil
                 }
                 
-                // Guardar en caché
                 let cost = data.count
                 self.imageCache.setObject(image, forKey: cacheKey, cost: cost)
                 
-                // Registrar la clave
                 Task { @MainActor in
                     self.cachedKeys.insert(urlString)
                 }
@@ -90,23 +85,17 @@ class ImageLoaderService {
         guard let urlString = urlString else { return }
         let cacheKey = NSString(string: urlString)
         
-        // Remover del caché
         imageCache.removeObject(forKey: cacheKey)
         
-        // Remover de las claves registradas
         cachedKeys.remove(urlString)
         
-        // Cancelar cualquier tarea de carga en curso para esta URL
         if let task = loadingTasks[urlString] {
             task.cancel()
             loadingTasks.removeValue(forKey: urlString)
         }
     }
     
-    /// Invalida todas las imágenes que contengan un patrón específico en su URL
-    /// Útil para invalidar imágenes de perfil cuando se actualiza la foto de un usuario
     func invalidateImages(containing pattern: String) {
-        // Buscar y remover todas las URLs que contengan el patrón
         let keysToRemove = cachedKeys.filter { $0.contains(pattern) }
         
         for key in keysToRemove {
@@ -115,7 +104,6 @@ class ImageLoaderService {
             cachedKeys.remove(key)
         }
         
-        // Cancelar tareas de carga que contengan el patrón
         let tasksToCancel = loadingTasks.filter { $0.key.contains(pattern) }
         for (url, task) in tasksToCancel {
             task.cancel()

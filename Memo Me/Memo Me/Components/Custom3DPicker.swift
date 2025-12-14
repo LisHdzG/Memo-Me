@@ -7,13 +7,11 @@
 
 import SwiftUI
 
-/// Vista del Picker 3D personalizado
 fileprivate struct Custom3DPickerView: View {
     var items: [String]
     @Binding var config: PickerConfig
     @Binding var isPresented: Bool
     
-    /// Propiedades privadas de la vista
     @State private var activeItem: String?
     @State private var showContents: Bool = false
     @State private var showScrollView: Bool = false
@@ -24,7 +22,6 @@ fileprivate struct Custom3DPickerView: View {
             let size = $0.size
             
             ZStack {
-                // Fondo semitransparente que deja ver lo de abajo
                 LinearGradient(
                     gradient: Gradient(colors: [
                         Color("PurpleGradientTop").opacity(0.95),
@@ -37,7 +34,6 @@ fileprivate struct Custom3DPickerView: View {
                 .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // ScrollView con los items
                     ScrollView(.vertical) {
                         LazyVStack(spacing: 0) {
                             ForEach(items, id: \.self) { item in
@@ -46,21 +42,17 @@ fileprivate struct Custom3DPickerView: View {
                         }
                         .scrollTargetLayout()
                     }
-                    /// Hacer que empiece y termine en el centro
                     .safeAreaPadding(.top, (size.height * 0.5) - 20)
-                    .safeAreaPadding(.bottom, (size.height * 0.5) + 80) // Espacio para el botón
+                    .safeAreaPadding(.bottom, (size.height * 0.5) + 80)
                     .scrollPosition(id: $activeItem, anchor: .center)
                     .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
                     .scrollIndicators(.hidden)
                     .opacity(showScrollView ? 1 : 0)
                     .allowsHitTesting(expandItems && showScrollView)
                     
-                    // Botón de seleccionar en la parte inferior
                     VStack {
                         Button(action: {
-                            // Confirmar selección y cerrar
                             Task {
-                                // Cerrar con animación
                                 withAnimation(.easeInOut(duration: 0.2)) {
                                     expandItems = false
                                 }
@@ -106,13 +98,11 @@ fileprivate struct Custom3DPickerView: View {
                 }
             }
             
-            // Offset para la animación (simplificado para fullScreen)
             let offset: CGSize = .init(
                 width: showContents ? size.width * -0.3 : 0,
                 height: showContents ? 0 : 0
             )
             
-            // Texto seleccionado con animación (oculto en fullScreen)
             Text(config.text)
                 .fontWeight(showContents ? .semibold : .regular)
                 .foregroundStyle(.white)
@@ -124,12 +114,10 @@ fileprivate struct Custom3DPickerView: View {
             
         }
         .onAppear {
-            // Inicializar cuando aparece
             if activeItem == nil {
                 activeItem = config.text
             }
             
-            // Iniciar animaciones
             Task {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     showContents = true
@@ -150,7 +138,6 @@ fileprivate struct Custom3DPickerView: View {
         }
     }
     
-    /// Vista de tarjeta para cada item
     @ViewBuilder
     private func CardView(_ text: String, size: CGSize) -> some View {
         GeometryReader { proxy in
@@ -172,7 +159,6 @@ fileprivate struct Custom3DPickerView: View {
         .zIndex(config.text == text ? 1000 : 0)
     }
     
-    /// Helpers para transiciones de vista
     private func offset(_ proxy: GeometryProxy) -> CGFloat {
         let minY = proxy.frame(in: .scrollView(axis: .vertical)).minY
         return expandItems ? 0 : -minY
@@ -181,7 +167,6 @@ fileprivate struct Custom3DPickerView: View {
     private func rotation(_ proxy: GeometryProxy, _ size: CGSize) -> CGFloat {
         let height = size.height * 0.5
         let minY = proxy.frame(in: .scrollView(axis: .vertical)).minY
-        /// Puedes ajustar este valor para más o menos rotación
         let maxRotation: CGFloat = 220
         let progress = minY / height
         
@@ -192,14 +177,12 @@ fileprivate struct Custom3DPickerView: View {
         let minY = proxy.frame(in: .scrollView(axis: .vertical)).minY
         let height = size.height * 0.5
         let progress = (minY / height) * 2.8
-        /// Eliminando opacidad negativa
         let opacity = progress < 0 ? 1 + progress : 1 - progress
         
         return opacity
     }
 }
 
-/// Extensión para usar el picker como modificador - overlay semitransparente
 extension View {
     @ViewBuilder
     func custom3DPicker(_ config: Binding<PickerConfig>, items: [String], isPresented: Binding<Bool>) -> some View {

@@ -11,7 +11,6 @@ import Combine
 
 @MainActor
 class ProfileViewModel: ObservableObject {
-    // MARK: - Published Properties
     @Published var profileImage: UIImage?
     @Published var selectedPhotoItem: PhotosPickerItem?
     @Published var name: String = ""
@@ -21,17 +20,14 @@ class ProfileViewModel: ObservableObject {
     @Published var instagramUrl: String = ""
     @Published var linkedinUrl: String = ""
     
-    // MARK: - Picker Configs
     @Published var countryConfig: PickerConfig = .init(text: "Seleccionar país")
     @Published var areasConfig: PickerConfig = .init(text: "Seleccionar área")
     @Published var interestsConfig: PickerConfig = .init(text: "Seleccionar interés")
     
-    // MARK: - State
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var successMessage: String?
     
-    // MARK: - Original Values (for change detection)
     private var originalName: String = ""
     private var originalCountry: String?
     private var originalAreas: [String] = []
@@ -40,17 +36,13 @@ class ProfileViewModel: ObservableObject {
     private var originalInstagramUsername: String = ""
     private var originalLinkedinUsername: String = ""
     
-    // MARK: - Services
     private let userService = UserService()
     private let profileImageService = ProfileImageService.shared
     
-    // MARK: - Combine
     private var cancellables = Set<AnyCancellable>()
     
-    // MARK: - Authentication Manager
     var authenticationManager: AuthenticationManager?
     
-    // MARK: - Computed Properties
     var hasChanges: Bool {
         let nameChanged = name.trimmingCharacters(in: .whitespacesAndNewlines) != originalName.trimmingCharacters(in: .whitespacesAndNewlines)
         let countryChanged = country != originalCountry
@@ -63,7 +55,6 @@ class ProfileViewModel: ObservableObject {
         return nameChanged || countryChanged || areasChanged || interestsChanged || photoChanged || instagramChanged || linkedinChanged
     }
     
-    // MARK: - Data Sources
     let countries: [String] = [
         "México", "Estados Unidos", "España", "Argentina", "Colombia",
         "Chile", "Perú", "Venezuela", "Ecuador", "Guatemala",
@@ -97,12 +88,10 @@ class ProfileViewModel: ObservableObject {
         "Teatro", "Idiomas", "Historia", "Ciencia", "Astronomía", "Naturaleza"
     ]
     
-    // MARK: - Initialization
     init() {
         setupPhotoObserver()
     }
     
-    // MARK: - Load User Data
     func loadUserData() {
         guard let user = authenticationManager?.currentUser else { return }
         
@@ -112,7 +101,6 @@ class ProfileViewModel: ObservableObject {
         originalInterests = user.interests ?? []
         originalPhotoUrl = user.photoUrl
         
-        // Guardar los usernames originales (sin URL) para comparación
         if let savedInstagramUrl = user.instagramUrl, !savedInstagramUrl.isEmpty {
             originalInstagramUsername = SocialMediaService.shared.extractInstagramUsername(from: savedInstagramUrl) ?? ""
         } else {
@@ -137,7 +125,6 @@ class ProfileViewModel: ObservableObject {
         selectedAreas = user.areas ?? []
         selectedInterests = user.interests ?? []
         
-        // Extraer solo el username de las URLs guardadas para mostrar en el campo
         if let savedInstagramUrl = user.instagramUrl, !savedInstagramUrl.isEmpty {
             self.instagramUrl = SocialMediaService.shared.extractInstagramUsername(from: savedInstagramUrl) ?? ""
         } else {
@@ -166,11 +153,9 @@ class ProfileViewModel: ObservableObject {
                 profileImage = image
             }
         } catch {
-            // Failed to load image
         }
     }
     
-    // MARK: - Photo Handling
     private func setupPhotoObserver() {
         $selectedPhotoItem
             .compactMap { $0 }
@@ -218,7 +203,6 @@ class ProfileViewModel: ObservableObject {
         selectedPhotoItem = nil
     }
     
-    // MARK: - Picker Handling
     func selectCountry(_ country: String) {
         self.country = country
         countryConfig.text = country
@@ -251,7 +235,6 @@ class ProfileViewModel: ObservableObject {
         selectedInterests.removeAll { $0 == interest }
     }
     
-    // MARK: - Save Profile
     func saveProfile() async -> Bool {
         guard let currentUser = authenticationManager?.currentUser,
               let userId = currentUser.id,
@@ -274,7 +257,6 @@ class ProfileViewModel: ObservableObject {
             var photoUrl: String? = currentUser.photoUrl
             if let image = profileImage {
                 if selectedPhotoItem != nil {
-                    // Si hay una foto anterior, se eliminará automáticamente al subir la nueva
                     photoUrl = try await profileImageService.uploadProfileImage(
                         image,
                         appleId: appleId,
@@ -282,7 +264,6 @@ class ProfileViewModel: ObservableObject {
                     )
                 }
             } else if selectedPhotoItem == nil && profileImage == nil {
-                // Si se eliminó la foto, borrar la imagen del almacenamiento
                 if let oldPhotoUrl = currentUser.photoUrl {
                     try? await profileImageService.deleteProfileImage(for: appleId, photoUrl: oldPhotoUrl)
                 }
@@ -292,7 +273,6 @@ class ProfileViewModel: ObservableObject {
             let trimmedInstagramUrl = instagramUrl.trimmingCharacters(in: .whitespacesAndNewlines)
             let trimmedLinkedinUrl = linkedinUrl.trimmingCharacters(in: .whitespacesAndNewlines)
             
-            // Formatear URLs de Instagram y LinkedIn
             let formattedInstagramUrl: String? = trimmedInstagramUrl.isEmpty ? nil : SocialMediaService.shared.formatInstagramURL(trimmedInstagramUrl)
             let formattedLinkedinUrl: String? = trimmedLinkedinUrl.isEmpty ? nil : SocialMediaService.shared.formatLinkedInURL(trimmedLinkedinUrl)
             
@@ -339,8 +319,6 @@ class ProfileViewModel: ObservableObject {
         }
     }
     
-    
-    // MARK: - Delete Account
     func deleteAccount() async -> Bool {
         guard let currentUser = authenticationManager?.currentUser,
               let userId = currentUser.id else {
@@ -365,7 +343,6 @@ class ProfileViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Error Handling
     func clearError() {
         errorMessage = nil
     }

@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-/// Custom View Modifier Extension
 extension View {
     @ViewBuilder
     func customPicker(_ config: Binding<PickerConfig>, items: [String]) -> some View {
@@ -21,7 +20,6 @@ extension View {
     }
 }
 
-/// Source View
 struct SourcePickerView: View {
     @Binding var config: PickerConfig
     var body: some View {
@@ -37,7 +35,6 @@ struct SourcePickerView: View {
     }
 }
 
-/// Picker Config
 struct PickerConfig {
     var text: String
     init(text: String) {
@@ -45,15 +42,12 @@ struct PickerConfig {
     }
     
     var show: Bool = false
-    /// Used for Custom Matched Geometry Effect
     var sourceFrame: CGRect = .zero
 }
 
-/// Custom Picker View
 fileprivate struct CustomPickerView: View {
     var texts: [String]
     @Binding var config: PickerConfig
-    /// View Private Properties
     @State private var activeText: String?
     @State private var showContents: Bool = false
     @State private var showScrollView: Bool = false
@@ -76,7 +70,6 @@ fileprivate struct CustomPickerView: View {
                 }
                 .scrollTargetLayout()
             }
-            /// Making it to start and stop at the center
             .safeAreaPadding(.top, (size.height * 0.5) - 20)
             .safeAreaPadding(.bottom, (size.height * 0.5))
             .scrollPosition(id: $activeText, anchor: .center)
@@ -102,9 +95,7 @@ fileprivate struct CustomPickerView: View {
             CloseButton()
         }
         .task {
-            /// Doing actions only for the first time
             guard activeText == nil else { return }
-            // Inicializar con el texto actual si está en la lista, sino usar el primero
             if texts.contains(config.text) {
                 activeText = config.text
             } else {
@@ -128,19 +119,15 @@ fileprivate struct CustomPickerView: View {
         }
     }
     
-    /// Close Button
     @ViewBuilder
     func CloseButton() -> some View {
         Button {
             Task {
-                /// Order
-                /// 1. Minimising all the elements
                 withAnimation(.easeInOut(duration: 0.2)) {
                     expandItems = false
                 }
                 
                 try? await Task.sleep(for: .seconds(0.2))
-                /// 2. Hiding ScrollView and Placing the Active item back to it's source position
                 showScrollView = false
                 withAnimation(.easeInOut(duration: 0.2)) {
                     showContents = false
@@ -148,14 +135,10 @@ fileprivate struct CustomPickerView: View {
                 
                 try? await Task.sleep(for: .seconds(0.2))
                 
-                /// 3. Restaurar el texto original si no se seleccionó nada válido
                 if let currentActive = activeText, 
                    !texts.contains(currentActive) {
-                    // Si el texto activo no está en la lista, mantener el original
-                    // (esto no debería pasar, pero por seguridad)
                 }
                 
-                /// 4. Finally Closing the Overlay View
                 config.show = false
                 activeText = nil
             }
@@ -166,14 +149,12 @@ fileprivate struct CustomPickerView: View {
                 .frame(width: 45, height: 45)
                 .contentShape(.rect)
         }
-        /// Making it right next to the active picker element
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
         .offset(x: showContents ? -50 : -20, y: -10)
         .opacity(showContents ? 1 : 0)
         .blur(radius: showContents ? 0 : 5)
     }
     
-    /// Card View
     @ViewBuilder
     private func CardView(_ text: String, size: CGSize) -> some View {
         GeometryReader { proxy in
@@ -195,7 +176,6 @@ fileprivate struct CustomPickerView: View {
         .zIndex(config.text == text ? 1000 : 0)
     }
     
-    /// View Transition Helpers
     private func offset(_ proxy: GeometryProxy) -> CGFloat {
         let minY = proxy.frame(in: .scrollView(axis: .vertical)).minY
         return expandItems ? 0 : -minY
@@ -204,7 +184,6 @@ fileprivate struct CustomPickerView: View {
     private func rotation(_ proxy: GeometryProxy, _ size: CGSize) -> CGFloat {
         let height = size.height * 0.5
         let minY = proxy.frame(in: .scrollView(axis: .vertical)).minY
-        /// You can use your own custom value here.
         let maxRotation: CGFloat = 220
         let progress = minY / height
         
@@ -215,7 +194,6 @@ fileprivate struct CustomPickerView: View {
         let minY = proxy.frame(in: .scrollView(axis: .vertical)).minY
         let height = size.height * 0.5
         let progress = (minY / height) * 2.8
-        /// Eliminating Negative Opacity
         let opacity = progress < 0 ? 1 + progress : 1 - progress
         
         return opacity

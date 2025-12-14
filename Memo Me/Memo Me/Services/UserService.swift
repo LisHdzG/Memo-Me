@@ -60,10 +60,8 @@ class UserService: ObservableObject {
             return []
         }
         
-        // Limpiar los IDs: extraer solo el ID del documento si viene en formato "users/userId" o "/users/userId"
         let cleanedUserIds = userIds.map { userId -> String in
             if userId.contains("/") {
-                // Si contiene "/", extraer solo el ID del documento
                 let components = userId.split(separator: "/")
                 if let lastComponent = components.last {
                     return String(lastComponent)
@@ -100,11 +98,7 @@ class UserService: ObservableObject {
         try await db.collection(usersCollection).document(userId).delete()
     }
     
-    // MARK: - Real-time Listeners
-    
-    /// Escucha cambios en tiempo real de un usuario específico
     func listenToUser(userId: String, onUpdate: @escaping (User?) -> Void) {
-        // Limpiar listener anterior si existe
         stopListeningToUser(userId: userId)
         
         let userRef = db.collection(usersCollection).document(userId)
@@ -126,12 +120,9 @@ class UserService: ObservableObject {
         userListeners[userId] = listener
     }
     
-    /// Escucha cambios en tiempo real de múltiples usuarios
     func listenToUsers(userIds: [String], onUpdate: @escaping ([User]) -> Void) {
-        // Limpiar listeners anteriores
         stopListeningToUsers(userIds: userIds)
         
-        // Limpiar los IDs
         let cleanedUserIds = userIds.map { userId -> String in
             if userId.contains("/") {
                 let components = userId.split(separator: "/")
@@ -161,7 +152,6 @@ class UserService: ObservableObject {
                     var user = try document.data(as: User.self)
                     user.id = document.documentID
                     
-                    // Actualizar o agregar el usuario
                     if let index = users.firstIndex(where: { $0.id == user.id }) {
                         users[index] = user
                     } else {
@@ -172,7 +162,6 @@ class UserService: ObservableObject {
                     if completedListeners == totalUsers {
                         onUpdate(users)
                     } else {
-                        // Notificar actualización parcial
                         onUpdate(users)
                     }
                 } catch {
@@ -187,23 +176,19 @@ class UserService: ObservableObject {
         }
     }
     
-    /// Detiene el listener de un usuario específico
     func stopListeningToUser(userId: String) {
-        // Limpiar el ID si viene en formato "users/userId"
         let cleanedUserId = userId.contains("/") ? String(userId.split(separator: "/").last ?? "") : userId
         
         userListeners[cleanedUserId]?.remove()
         userListeners.removeValue(forKey: cleanedUserId)
     }
     
-    /// Detiene los listeners de múltiples usuarios
     func stopListeningToUsers(userIds: [String]) {
         for userId in userIds {
             stopListeningToUser(userId: userId)
         }
     }
     
-    /// Detiene todos los listeners de usuarios
     func stopAllUserListeners() {
         for (_, listener) in userListeners {
             listener.remove()

@@ -21,21 +21,18 @@ class SpacesViewModel: ObservableObject {
     private var currentUserId: String?
     
     func loadSpaces(userId: String) async {
-        // Guardar el userId actual
         currentUserId = userId
         
         isLoading = true
         errorMessage = nil
         
         do {
-            // Cargar espacios públicos y espacios del usuario en paralelo
             async let publicSpacesTask = spaceService.getActiveSpaces(userId: userId)
             async let userSpacesTask = spaceService.getUserSpaces(userId: userId)
             
             publicSpaces = try await publicSpacesTask
             userSpaces = try await userSpacesTask
             
-            // Iniciar listeners en tiempo real
             startListeningToSpaces(userId: userId)
         } catch {
             errorMessage = "Error al cargar los espacios: \(error.localizedDescription)"
@@ -45,7 +42,6 @@ class SpacesViewModel: ObservableObject {
     }
     
     private func startListeningToSpaces(userId: String) {
-        // Detener listeners anteriores si existen
         stopListeningToSpaces()
         
         spaceService.listenToAllSpaces(
@@ -81,7 +77,6 @@ class SpacesViewModel: ObservableObject {
         
         do {
             try await spaceService.joinSpace(spaceId: space.spaceId, userId: userId)
-            // Recargar los espacios después de unirse
             await loadSpaces(userId: userId)
         } catch {
             errorMessage = "Error al unirse al espacio: \(error.localizedDescription)"
@@ -95,10 +90,8 @@ class SpacesViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            // Unirse al espacio por código (funciona para públicos y privados)
             let joinedSpace = try await spaceService.joinSpaceByCode(code: code, userId: userId)
             
-            // Recargar los espacios después de unirse
             await loadSpaces(userId: userId)
             
             isJoiningPrivateSpace = false
@@ -110,7 +103,6 @@ class SpacesViewModel: ObservableObject {
         }
     }
     
-    // Mantener compatibilidad con código existente
     func joinPrivateSpace(code: String, userId: String) async -> Space? {
         return await joinSpaceByCode(code: code, userId: userId)
     }

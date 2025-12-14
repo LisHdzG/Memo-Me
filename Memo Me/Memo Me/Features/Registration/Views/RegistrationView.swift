@@ -71,7 +71,7 @@ struct RegistrationView: View {
                                 } else {
                                     AsyncImageView(
                                         imageUrl: nil,
-                                        placeholderText: viewModel.name.isEmpty ? nil : viewModel.name,
+                                        placeholderText: viewModel.name.isEmpty ? "Usuario" : viewModel.name,
                                         contentMode: .fill,
                                         size: 120
                                     )
@@ -308,7 +308,6 @@ struct RegistrationView: View {
     }
 }
 
-// MARK: - Custom TextField Style
 struct CustomTextFieldStyle: TextFieldStyle {
     func _body(configuration: TextField<Self._Label>) -> some View {
         configuration

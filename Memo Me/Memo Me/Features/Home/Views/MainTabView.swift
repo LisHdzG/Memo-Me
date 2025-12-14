@@ -15,21 +15,17 @@ struct MainTabView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             ContactDetailView(space: spaceSelectionService.selectedSpace)
-                .environmentObject(authManager)
                 .tabItem {
                     Label("Contactos", systemImage: "person.3.fill")
                 }
                 .tag(0)
             
-            // Tab 2: Favoritos
             FavoritesView()
-                .environmentObject(authManager)
                 .tabItem {
                     Label("Favoritos", systemImage: "heart.fill")
                 }
                 .tag(1)
             
-            // Tab 3: Perfil
             ProfileView()
                 .environmentObject(authManager)
                 .tabItem {

@@ -12,21 +12,11 @@ struct ContactDetailSheet: View {
     let contact: Contact
     let spaceId: String?
     @Environment(\.dismiss) private var dismiss
-    @State private var isFavorite: Bool
-    @ObservedObject private var spaceSelectionService = SpaceSelectionService.shared
-    
-    private let favoriteService = FavoriteService.shared
     
     init(user: User? = nil, contact: Contact, spaceId: String? = nil) {
         self.user = user
         self.contact = contact
         self.spaceId = spaceId
-        // Inicializar isFavorite basado en el estado actual
-        let currentSpaceId = spaceId ?? SpaceSelectionService.shared.selectedSpace?.spaceId
-        _isFavorite = State(initialValue: FavoriteService.shared.isFavorite(
-            contactId: contact.userId ?? contact.id.uuidString,
-            for: currentSpaceId
-        ))
     }
     
     var displayName: String {
@@ -39,7 +29,6 @@ struct ContactDetailSheet: View {
     
     var body: some View {
         ZStack {
-            // Fondo con gradiente
             LinearGradient(
                 gradient: Gradient(colors: [
                     Color("PurpleGradientTop"),
@@ -53,27 +42,9 @@ struct ContactDetailSheet: View {
             
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
-                    // Header con botones de cerrar y favorito
                     HStack {
                         Spacer()
                         
-                        // Botón de favorito
-                        Button(action: {
-                            let currentSpaceId = spaceId ?? spaceSelectionService.selectedSpace?.spaceId
-                            let contactId = contact.userId ?? contact.id.uuidString
-                            isFavorite = favoriteService.toggleFavorite(
-                                contactId: contactId,
-                                for: currentSpaceId
-                            )
-                            // Notificar cambio en favoritos
-                            NotificationCenter.default.post(name: NSNotification.Name("FavoritesChanged"), object: nil)
-                        }) {
-                            Image(systemName: isFavorite ? "heart.fill" : "heart")
-                                .font(.system(size: 30))
-                                .foregroundColor(isFavorite ? .pink : .white.opacity(0.8))
-                        }
-                        
-                        // Botón de cerrar
                         Button(action: {
                             dismiss()
                         }) {
@@ -85,7 +56,6 @@ struct ContactDetailSheet: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
                     
-                    // Foto de perfil
                     VStack(spacing: 16) {
                         AsyncImageView(
                             imageUrl: photoUrl,
@@ -105,7 +75,6 @@ struct ContactDetailSheet: View {
                     }
                     .padding(.top, 20)
                     
-                    // Información del usuario (solo si tenemos el usuario completo)
                     if let user = user {
                         VStack(spacing: 20) {
                             // País
@@ -170,7 +139,6 @@ struct ContactDetailSheet: View {
                         .padding(.horizontal, 20)
                         .padding(.bottom, 40)
                     } else {
-                        // Si no tenemos el usuario completo, mostrar mensaje
                         InfoMessage(
                             message: "Información completa no disponible",
                             icon: "exclamationmark.circle.fill"
@@ -179,15 +147,11 @@ struct ContactDetailSheet: View {
                         .padding(.top, 20)
                     }
                     
-                    // Spacer para asegurar que el contenido llegue hasta abajo
                     Spacer()
                         .frame(height: 40)
                 }
                 .frame(maxWidth: .infinity)
             }
-        }
-        .onAppear {
-            print("DEBUG ContactDetailSheet body onAppear - displayName: \(displayName), photoUrl: \(photoUrl ?? "nil")")
         }
     }
 }

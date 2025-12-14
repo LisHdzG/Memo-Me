@@ -102,20 +102,16 @@ class AuthenticationManager: ObservableObject {
             return
         }
         
-        // Procesar credenciales
         let userID = appleIDCredential.user
         self.userIdentifier = userID
         
-        // Obtener email y nombre (solo disponibles en el primer inicio de sesión)
         if let email = appleIDCredential.email {
             self.userEmail = email
             userDefaults.set(email, forKey: savedUserEmailKey)
         } else {
-            // Intentar recuperar email guardado
             self.userEmail = userDefaults.string(forKey: savedUserEmailKey)
         }
         
-        // Obtener nombre si está disponible
         var appleName: String? = nil
         if let fullName = appleIDCredential.fullName {
             let name = PersonNameComponentsFormatter().string(from: fullName)
@@ -123,14 +119,11 @@ class AuthenticationManager: ObservableObject {
             appleName = name
             userDefaults.set(name, forKey: savedUserNameKey)
         } else {
-            // Intentar recuperar nombre guardado
             self.userName = userDefaults.string(forKey: savedUserNameKey)
         }
         
-        // Guardar el appleId temporalmente
         userDefaults.set(userID, forKey: appleUserIDKey)
         
-        // Verificar si el usuario existe en Firestore
         Task {
             await checkUserInFirestore(appleId: userID, appleName: appleName)
         }
@@ -139,7 +132,6 @@ class AuthenticationManager: ObservableObject {
     private func checkUserInFirestore(appleId: String, appleName: String?) async {
         do {
             if let existingUser = try await userService.checkUserExists(appleId: appleId) {
-                // Usuario existe - autenticado
                 self.currentUser = existingUser
                 self.userName = existingUser.name
                 self.userDefaults.set(true, forKey: isAuthenticatedKey)
@@ -292,15 +284,12 @@ class AuthenticationManager: ObservableObject {
         userDefaults.removeObject(forKey: cachedUserKey)
     }
     
-    // MARK: - Cache Management
-    
     private func saveUserToCache(_ user: User) {
         do {
             let encoder = JSONEncoder()
             let userData = try encoder.encode(user)
             userDefaults.set(userData, forKey: cachedUserKey)
         } catch {
-            // Failed to save user to cache
         }
     }
     

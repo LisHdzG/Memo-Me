@@ -10,10 +10,8 @@ import SceneKit
 
 struct ContactSphereView: UIViewRepresentable {
     let contacts: [Contact]
-    let spaceId: String?
     @Binding var rotationSpeed: Double
     @Binding var isAutoRotating: Bool
-    var onContactTapped: ((Contact) -> Void)?
     
     func makeUIView(context: Context) -> SCNView {
         let sceneView = SCNView()
@@ -27,18 +25,10 @@ struct ContactSphereView: UIViewRepresentable {
         panGesture.maximumNumberOfTouches = 1
         sceneView.addGestureRecognizer(panGesture)
         
-        let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
-        sceneView.addGestureRecognizer(tapGesture)
-        panGesture.require(toFail: tapGesture)
-        
         context.coordinator.sceneView = sceneView
         context.coordinator.contacts = contacts
-        context.coordinator.spaceId = spaceId
         context.coordinator.rotationSpeed = rotationSpeed
         context.coordinator.isAutoRotating = isAutoRotating
-        context.coordinator.onContactTapped = onContactTapped
-        
-        print("DEBUG makeUIView: Callback configurado: \(onContactTapped != nil)")
         
         context.coordinator.createScene()
         context.coordinator.startAutoRotation()
@@ -50,26 +40,13 @@ struct ContactSphereView: UIViewRepresentable {
         let contactsChanged = context.coordinator.contacts.count != contacts.count
         let sceneNeedsUpdate = uiView.scene == nil || contactsChanged
         
-        // Si cambió el spaceId, recrear la escena para actualizar los corazones
-        let spaceIdChanged = context.coordinator.spaceId != spaceId
-        if sceneNeedsUpdate || spaceIdChanged {
+        if sceneNeedsUpdate {
             context.coordinator.contacts = contacts
             context.coordinator.createScene()
         }
         
         context.coordinator.rotationSpeed = rotationSpeed
         context.coordinator.isAutoRotating = isAutoRotating
-        context.coordinator.spaceId = spaceId
-        // Siempre actualizar el callback
-        context.coordinator.onContactTapped = onContactTapped
-        
-        print("DEBUG updateUIView: Callback actualizado: \(onContactTapped != nil), sceneExists: \(uiView.scene != nil)")
-        
-        // Actualizar el mapeo solo si la escena ya existe (no durante la creación)
-        if uiView.scene != nil && !sceneNeedsUpdate {
-            context.coordinator.updateNodeMapping()
-            print("DEBUG updateUIView: Mapeo actualizado, tiene \(context.coordinator.nodeToContactMap.count) entradas")
-        }
         
         if isAutoRotating {
             context.coordinator.startAutoRotation()
@@ -79,13 +56,12 @@ struct ContactSphereView: UIViewRepresentable {
     }
     
     func makeCoordinator() -> Coordinator {
-        Coordinator(contacts: contacts, spaceId: spaceId, rotationSpeed: rotationSpeed, isAutoRotating: isAutoRotating, onContactTapped: onContactTapped)
+        Coordinator(contacts: contacts, rotationSpeed: rotationSpeed, isAutoRotating: isAutoRotating)
     }
     
     class Coordinator: NSObject {
         var sceneView: SCNView?
         var contacts: [Contact]
-        var spaceId: String?
         var rotationSpeed: Double
         var isAutoRotating: Bool
         var rotationAction: SCNAction?
@@ -93,76 +69,11 @@ struct ContactSphereView: UIViewRepresentable {
         var isUserInteracting: Bool = false
         var contactsContainer: SCNNode?
         var loadedImages: [String: UIImage] = [:]
-        var nodeToContactMap: [SCNNode: Contact] = [:]
-        var onContactTapped: ((Contact) -> Void)?
-        private let favoriteService = FavoriteService.shared
         
-        init(contacts: [Contact], spaceId: String?, rotationSpeed: Double, isAutoRotating: Bool, onContactTapped: ((Contact) -> Void)? = nil) {
+        init(contacts: [Contact], rotationSpeed: Double, isAutoRotating: Bool) {
             self.contacts = contacts
-            self.spaceId = spaceId
             self.rotationSpeed = rotationSpeed
             self.isAutoRotating = isAutoRotating
-            self.onContactTapped = onContactTapped
-        }
-        
-        func updateNodeMapping() {
-            guard let container = contactsContainer else { return }
-            nodeToContactMap.removeAll()
-            
-            // Reconstruir el mapa basándose en los nombres de los nodos
-            for contact in contacts {
-                let contactId = contact.id.uuidString
-                // Buscar el nodo por su nombre
-                if let node = container.childNode(withName: "contact_\(contactId)", recursively: false) {
-                    nodeToContactMap[node] = contact
-                }
-            }
-        }
-        
-        func findContactNode(byId contactId: UUID, in container: SCNNode) -> SCNNode? {
-            return container.childNode(withName: "contact_\(contactId.uuidString)", recursively: false)
-        }
-        
-        func getContact(for node: SCNNode) -> Contact? {
-            print("DEBUG getContact: buscando para nodo name=\(node.name ?? "nil"), mapa tiene \(nodeToContactMap.count) entradas")
-            
-            // Primero buscar directamente en el mapa
-            if let contact = nodeToContactMap[node] {
-                print("DEBUG getContact: encontrado directamente en mapa")
-                return contact
-            }
-            
-            // Si no está directamente, buscar en el parent y por nombre
-            var currentNode: SCNNode? = node
-            var depth = 0
-            while let current = currentNode, depth < 5 {
-                // Buscar en el mapa
-                if let contact = nodeToContactMap[current] {
-                    print("DEBUG getContact: encontrado en parent (depth=\(depth))")
-                    return contact
-                }
-                
-                // Buscar por nombre si tiene
-                if let name = current.name, name.hasPrefix("contact_") {
-                    let contactIdString = String(name.dropFirst("contact_".count))
-                    print("DEBUG getContact: buscando por nombre, contactId=\(contactIdString)")
-                    if let contactId = UUID(uuidString: contactIdString) {
-                        // Buscar en el array de contactos
-                        if let contact = contacts.first(where: { $0.id == contactId }) {
-                            print("DEBUG getContact: encontrado por nombre en contacts array")
-                            // Actualizar el mapa para futuras búsquedas
-                            nodeToContactMap[current] = contact
-                            return contact
-                        }
-                    }
-                }
-                
-                currentNode = current.parent
-                depth += 1
-            }
-            
-            print("DEBUG getContact: NO encontrado después de buscar en depth=\(depth)")
-            return nil
         }
         
         func createScene() {
@@ -178,9 +89,6 @@ struct ContactSphereView: UIViewRepresentable {
         
         private func createSceneWithLoadedImages() {
             guard let sceneView = sceneView else { return }
-            
-            // Limpiar el mapa de nodos antes de crear nueva escena
-            nodeToContactMap.removeAll()
             
             let scene = SCNScene()
             
@@ -244,20 +152,8 @@ struct ContactSphereView: UIViewRepresentable {
                 
                 usedPositions.append((x: x, y: y, z: z))
                 
-                // Calcular el tamaño del nodo (necesario para el corazón)
-                let sizeVariation = [1.3, 1.0]
-                let baseSize: CGFloat = 0.6
-                let sizeMultiplier = sizeVariation[index % sizeVariation.count]
-                let finalSize = baseSize * sizeMultiplier
-                
                 let imageNode = createImageNode(for: contact, index: index)
                 imageNode.position = SCNVector3(x, y, z)
-                
-                // Asignar un nombre único al nodo basado en el ID del contacto
-                imageNode.name = "contact_\(contact.id.uuidString)"
-                
-                // Mapear el nodo al contacto para detección de toques
-                nodeToContactMap[imageNode] = contact
                 
                 let outwardDirection = SCNVector3(x, 0, z)
                 let targetPosition = SCNVector3(
@@ -276,13 +172,6 @@ struct ContactSphereView: UIViewRepresentable {
                 ])
                 let repeatPulse = SCNAction.repeatForever(pulseAction)
                 imageNode.runAction(repeatPulse)
-                
-                // Agregar corazón si es favorito
-                if isFavorite(contact: contact) {
-                    let heartNode = createHeartNode(size: finalSize)
-                    heartNode.position = SCNVector3(0, finalSize * 0.7, 0) // Encima del contacto
-                    imageNode.addChildNode(heartNode)
-                }
                 
                 contactsContainer.addChildNode(imageNode)
             }
@@ -308,14 +197,6 @@ struct ContactSphereView: UIViewRepresentable {
             scene.rootNode.addChildNode(ambientLightNode)
             
             sceneView.scene = scene
-            // El mapeo ya se hizo cuando se agregaron los nodos, pero lo actualizamos por si acaso
-            updateNodeMapping()
-            
-            print("DEBUG: Escena creada con \(contacts.count) contactos, mapa tiene \(nodeToContactMap.count) entradas")
-            // Verificar que todos los contactos estén mapeados
-            if nodeToContactMap.count != contacts.count {
-                print("DEBUG WARNING: El mapa tiene \(nodeToContactMap.count) entradas pero hay \(contacts.count) contactos")
-            }
         }
         
         private func createImageNode(for contact: Contact, index: Int) -> SCNNode {
@@ -327,7 +208,6 @@ struct ContactSphereView: UIViewRepresentable {
             let circularImage = createCircularImage(
                 imageName: contact.imageName,
                 imageUrl: contact.imageUrl,
-                contactName: contact.name,
                 size: CGSize(width: 200, height: 200)
             )
             
@@ -350,7 +230,6 @@ struct ContactSphereView: UIViewRepresentable {
         
         private func preloadImages() async {
             loadedImages.removeAll()
-            let imageLoader = ImageLoaderService.shared
             
             for contact in contacts {
                 let key = contact.imageUrl ?? contact.imageName ?? ""
@@ -361,12 +240,15 @@ struct ContactSphereView: UIViewRepresentable {
                 
                 var image: UIImage?
                 
-                // Intentar cargar desde URL usando el servicio
-                if let imageUrl = contact.imageUrl {
-                    image = await imageLoader.loadImage(from: imageUrl)
+                if let imageUrl = contact.imageUrl, let url = URL(string: imageUrl) {
+                    do {
+                        let (data, _) = try await URLSession.shared.data(from: url)
+                        image = UIImage(data: data)
+                    } catch {
+                        continue
+                    }
                 }
                 
-                // Si no hay imagen desde URL, intentar desde assets locales
                 if image == nil, let imageName = contact.imageName {
                     image = UIImage(named: imageName)
                 }
@@ -377,7 +259,7 @@ struct ContactSphereView: UIViewRepresentable {
             }
         }
         
-        private func createCircularImage(imageName: String?, imageUrl: String?, contactName: String, size: CGSize) -> UIImage? {
+        private func createCircularImage(imageName: String?, imageUrl: String?, size: CGSize) -> UIImage? {
             var image: UIImage?
             
             let key = imageUrl ?? imageName ?? ""
@@ -388,7 +270,7 @@ struct ContactSphereView: UIViewRepresentable {
             }
             
             guard let finalImage = image else {
-                return createFallbackCircularImage(contactName: contactName, size: size)
+                return createFallbackCircularImage(size: size)
             }
             
             let renderer = UIGraphicsImageRenderer(size: size)
@@ -429,37 +311,15 @@ struct ContactSphereView: UIViewRepresentable {
             }
         }
         
-        private func createFallbackCircularImage(contactName: String, size: CGSize) -> UIImage {
+        private func createFallbackCircularImage(size: CGSize) -> UIImage {
             let renderer = UIGraphicsImageRenderer(size: size)
             return renderer.image { context in
                 let rect = CGRect(origin: .zero, size: size)
                 let path = UIBezierPath(ovalIn: rect)
                 
-                // Fondo con gradiente púrpura
                 UIColor.systemPurple.setFill()
                 path.fill()
                 
-                // Dibujar la inicial del nombre
-                let initial = contactName.prefix(1).uppercased()
-                let fontSize = size.width * 0.4
-                let font = UIFont.systemFont(ofSize: fontSize, weight: .bold)
-                let attributes: [NSAttributedString.Key: Any] = [
-                    .font: font,
-                    .foregroundColor: UIColor.white
-                ]
-                
-                let attributedString = NSAttributedString(string: initial, attributes: attributes)
-                let stringSize = attributedString.size()
-                let stringRect = CGRect(
-                    x: (rect.width - stringSize.width) / 2,
-                    y: (rect.height - stringSize.height) / 2,
-                    width: stringSize.width,
-                    height: stringSize.height
-                )
-                
-                attributedString.draw(in: stringRect)
-                
-                // Borde
                 UIColor.white.withAlphaComponent(0.3).setStroke()
                 path.lineWidth = 2
                 path.stroke()
@@ -528,89 +388,6 @@ struct ContactSphereView: UIViewRepresentable {
                 
             default:
                 break
-            }
-        }
-        
-        @objc func handleTap(_ gesture: UITapGestureRecognizer) {
-            guard let sceneView = sceneView else {
-                print("DEBUG: handleTap - sceneView es nil")
-                return
-            }
-            
-            let location = gesture.location(in: sceneView)
-            
-            // Usar hitTest sin opciones problemáticas, SceneKit manejará esto correctamente
-            let hitResults = sceneView.hitTest(location, options: nil)
-            
-            print("DEBUG: handleTap - \(hitResults.count) hit results")
-            
-            // Buscar el nodo que fue tocado
-            for result in hitResults {
-                let node = result.node
-                print("DEBUG: hit node name: \(node.name ?? "nil"), geometry: \(type(of: node.geometry))")
-                
-                // Intentar obtener el contacto usando nuestra función mejorada
-                if let contact = getContact(for: node) {
-                    print("DEBUG: Contacto encontrado: \(contact.name), llamando callback...")
-                    if let callback = onContactTapped {
-                        callback(contact)
-                        print("DEBUG: Callback ejecutado")
-                    } else {
-                        print("DEBUG: ERROR - onContactTapped es nil")
-                    }
-                    return
-                }
-            }
-            
-            print("DEBUG: No se encontró contacto en el tap")
-        }
-        
-        func isFavorite(contact: Contact) -> Bool {
-            let contactId = contact.userId ?? contact.id.uuidString
-            return favoriteService.isFavorite(contactId: contactId, for: spaceId)
-        }
-        
-        func createHeartNode(size: CGFloat) -> SCNNode {
-            // Crear un texto con emoji de corazón
-            let heartSize: CGFloat = size * 0.3
-            let heartText = "❤️"
-            
-            // Crear una imagen desde el texto del corazón
-            let heartImage = createHeartImage(size: heartSize)
-            let plane = SCNPlane(width: heartSize, height: heartSize)
-            plane.firstMaterial?.diffuse.contents = heartImage
-            plane.firstMaterial?.isDoubleSided = true
-            plane.firstMaterial?.lightingModel = .constant
-            
-            let heartNode = SCNNode(geometry: plane)
-            
-            // Agregar una pequeña animación de pulso al corazón
-            let pulseAction = SCNAction.sequence([
-                SCNAction.scale(to: 1.2, duration: 0.5),
-                SCNAction.scale(to: 1.0, duration: 0.5)
-            ])
-            let repeatPulse = SCNAction.repeatForever(pulseAction)
-            heartNode.runAction(repeatPulse)
-            
-            return heartNode
-        }
-        
-        func createHeartImage(size: CGFloat) -> UIImage {
-            let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
-            return renderer.image { context in
-                let font = UIFont.systemFont(ofSize: size * 0.8)
-                let attributes: [NSAttributedString.Key: Any] = [
-                    .font: font
-                ]
-                let attributedString = NSAttributedString(string: "❤️", attributes: attributes)
-                let stringSize = attributedString.size()
-                let stringRect = CGRect(
-                    x: (size - stringSize.width) / 2,
-                    y: (size - stringSize.height) / 2,
-                    width: stringSize.width,
-                    height: stringSize.height
-                )
-                attributedString.draw(in: stringRect)
             }
         }
     }

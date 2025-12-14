@@ -66,10 +66,6 @@ class QRCodeScannerViewController: UIViewController {
     var previewLayer: AVCaptureVideoPreviewLayer?
     var permissionDeniedCallback: (() -> Void)?
     
-    override func viewDidLoad() {
-        super.viewDidLoad()
-    }
-    
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         checkPermissionAndStart()
@@ -114,7 +110,6 @@ class QRCodeScannerViewController: UIViewController {
     }
     
     func setupCamera() {
-        // Verificar permiso antes de configurar
         guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized else {
             return
         }

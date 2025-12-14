@@ -12,7 +12,6 @@ import FirebaseStorage
 
 @MainActor
 class CreateSpaceViewModel: ObservableObject {
-    // MARK: - Published Properties
     @Published var name: String = ""
     @Published var description: String = ""
     @Published var bannerImage: UIImage?
@@ -23,7 +22,6 @@ class CreateSpaceViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var nameError: String?
     
-    // MARK: - Space Types
     let availableTypes: [String] = [
         "Trabajo",
         "Personal",
@@ -41,18 +39,15 @@ class CreateSpaceViewModel: ObservableObject {
         "Entretenimiento"
     ]
     
-    // MARK: - Services
     private let spaceService = SpaceService()
     private let storage = Storage.storage()
     
-    // MARK: - Combine
     private var cancellables = Set<AnyCancellable>()
     
     init() {
         setupPhotoObserver()
     }
     
-    // MARK: - Photo Observer
     private func setupPhotoObserver() {
         $selectedPhotoItem
             .compactMap { $0 }
@@ -92,7 +87,6 @@ class CreateSpaceViewModel: ObservableObject {
         selectedPhotoItem = nil
     }
     
-    // MARK: - Validation
     func validateName() {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmedName.isEmpty {
@@ -106,7 +100,6 @@ class CreateSpaceViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Space Creation
     func createSpace(userId: String) async -> Space? {
         validateName()
         
@@ -123,21 +116,17 @@ class CreateSpaceViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            // Generar código y spaceId
             let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
             let code = spaceService.generateCode(from: trimmedName)
             let spaceId = try await spaceService.generateUniqueSpaceId()
             
-            // Subir banner si existe
             var bannerUrl: String = ""
             if let image = bannerImage {
                 bannerUrl = try await uploadBannerImage(image, spaceId: spaceId)
             }
             
-            // Crear referencia del usuario como owner
             let userReference = "users/\(userId)"
             
-            // Crear el espacio
             let trimmedDescription = description.trimmingCharacters(in: .whitespacesAndNewlines)
             let typesArray = Array(selectedTypes)
             
@@ -155,7 +144,6 @@ class CreateSpaceViewModel: ObservableObject {
                 types: typesArray
             )
             
-            // Guardar en Firestore
             let spaceDocumentId = try await spaceService.createSpace(space)
             var createdSpace = space
             createdSpace.id = spaceDocumentId
@@ -169,7 +157,6 @@ class CreateSpaceViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Photo Upload
     private func uploadBannerImage(_ image: UIImage, spaceId: String) async throws -> String {
         guard let imageData = image.jpegData(compressionQuality: 0.8) else {
             throw NSError(domain: "CreateSpaceViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "Error al convertir la imagen"])
@@ -205,7 +192,6 @@ class CreateSpaceViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Error Handling
     func clearError() {
         errorMessage = nil
     }

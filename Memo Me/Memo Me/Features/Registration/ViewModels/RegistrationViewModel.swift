@@ -11,33 +11,26 @@ import Combine
 
 @MainActor
 class RegistrationViewModel: ObservableObject {
-    // MARK: - Published Properties
     @Published var profileImage: UIImage?
     @Published var selectedPhotoItem: PhotosPickerItem?
     @Published var name: String = ""
     @Published var country: String?
     @Published var expertiseArea: String?
     
-    // MARK: - Picker Configs
     @Published var countryConfig: PickerConfig = .init(text: "Seleccionar país")
     @Published var expertiseConfig: PickerConfig = .init(text: "Seleccionar área")
     
-    // MARK: - Validation & Errors
     @Published var nameError: String?
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     
-    // MARK: - Services
     private let userService = UserService()
     private let profileImageService = ProfileImageService.shared
     
-    // MARK: - Combine
     private var cancellables = Set<AnyCancellable>()
     
-    // MARK: - Authentication Manager
     var authenticationManager: AuthenticationManager?
     
-    // MARK: - Data Sources
     let countries: [String] = [
         "México", "Estados Unidos", "España", "Argentina", "Colombia",
         "Chile", "Perú", "Venezuela", "Ecuador", "Guatemala",
@@ -62,17 +55,14 @@ class RegistrationViewModel: ObservableObject {
         "QA/Testing", "Project Management", "Business Analysis"
     ]
     
-    // MARK: - Computed Properties
     var isFormValid: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
     
-    // MARK: - Initialization
     init() {
         setupPhotoObserver()
     }
     
-    // MARK: - Photo Handling
     private func setupPhotoObserver() {
         $selectedPhotoItem
             .compactMap { $0 }
@@ -120,7 +110,6 @@ class RegistrationViewModel: ObservableObject {
         selectedPhotoItem = nil
     }
     
-    // MARK: - Validation
     func validateName() {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmedName.isEmpty {
@@ -134,7 +123,6 @@ class RegistrationViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Picker Handling
     func selectCountry(_ country: String) {
         self.country = country
         countryConfig.text = country
@@ -155,7 +143,6 @@ class RegistrationViewModel: ObservableObject {
         expertiseConfig.text = "Seleccionar área"
     }
     
-    // MARK: - Form Submission
     func submitRegistration() async -> Bool {
         validateName()
         
@@ -213,8 +200,6 @@ class RegistrationViewModel: ObservableObject {
         }
     }
     
-    
-    // MARK: - Error Handling
     func clearError() {
         errorMessage = nil
     }

@@ -29,7 +29,6 @@ class SpaceSelectionService: ObservableObject {
             let spaceData = try encoder.encode(space)
             userDefaults.set(spaceData, forKey: selectedSpaceKey)
         } catch {
-            // Failed to save space
         }
     }
     

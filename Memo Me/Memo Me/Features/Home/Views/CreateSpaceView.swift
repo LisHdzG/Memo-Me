@@ -31,7 +31,6 @@ struct CreateSpaceView: View {
                 
                 ScrollView {
                     VStack(spacing: 24) {
-                        // Banner Image Section
                         VStack(spacing: 16) {
                             Text("Foto del espacio (opcional)")
                                 .font(.system(size: 16, weight: .semibold))
@@ -84,7 +83,6 @@ struct CreateSpaceView: View {
                         }
                         .padding(.top, 20)
                         
-                        // Name Field
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Nombre del espacio *")
                                 .font(.system(size: 16, weight: .semibold))
@@ -110,7 +108,6 @@ struct CreateSpaceView: View {
                         }
                         .padding(.horizontal, 20)
                         
-                        // Description Field
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Descripción")
                                 .font(.system(size: 16, weight: .semibold))
@@ -143,7 +140,6 @@ struct CreateSpaceView: View {
                         }
                         .padding(.horizontal, 20)
                         
-                        // Space Types Selection
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Tipos de espacio")
                                 .font(.system(size: 16, weight: .semibold))
@@ -189,7 +185,6 @@ struct CreateSpaceView: View {
                         }
                         .padding(.horizontal, 20)
                         
-                        // Public/Private Toggle
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Visibilidad")
                                 .font(.system(size: 16, weight: .semibold))
@@ -217,12 +212,10 @@ struct CreateSpaceView: View {
                         }
                         .padding(.horizontal, 20)
                         
-                        // Create Button
                         Button(action: {
                             Task {
-                                if let userId = authManager.currentUser?.id {
+                                    if let userId = authManager.currentUser?.id {
                                     if let createdSpace = await viewModel.createSpace(userId: userId) {
-                                        // Seleccionar el espacio creado
                                         spaceSelectionService.saveSelectedSpace(createdSpace)
                                         dismiss()
                                     }

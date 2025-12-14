@@ -23,7 +23,6 @@ struct ProfileView: View {
     
     var body: some View {
         ZStack {
-            // Fondo con gradiente
             LinearGradient(
                 gradient: Gradient(colors: [
                     Color("PurpleGradientTop"),
@@ -37,7 +36,6 @@ struct ProfileView: View {
             
             ScrollView {
                 VStack(spacing: 24) {
-                    // Header
                     VStack(spacing: 12) {
                         HStack {
                             Text("Mi Perfil")
@@ -46,7 +44,6 @@ struct ProfileView: View {
                             
                             Spacer()
                             
-                            // Botón de editar
                             if !isEditing {
                                 Button(action: {
                                     startEditing()
@@ -74,10 +71,8 @@ struct ProfileView: View {
                                 }
                             }
                             
-                            // Botones cuando está en edición
                             if isEditing {
                                 HStack(spacing: 12) {
-                                    // Botón Cancelar
                                     Button(action: {
                                         cancelEditing()
                                     }) {
@@ -103,7 +98,6 @@ struct ProfileView: View {
                                             )
                                     }
                                     
-                                    // Botón de guardar (solo si hay cambios)
                                     if viewModel.hasChanges {
                                         Button(action: {
                                             Task {
@@ -143,7 +137,6 @@ struct ProfileView: View {
                         .padding(.top, 20)
                     }
                     
-                    // Photo Section
                     if isEditing {
                         VStack(spacing: 12) {
                             Text("Foto de perfil (opcional)")
@@ -193,7 +186,6 @@ struct ProfileView: View {
                         }
                         .padding(.horizontal, 20)
                     } else {
-                        // Vista de solo lectura de foto
                         VStack(spacing: 16) {
                             AsyncImageView(
                                 imageUrl: authManager.currentUser?.photoUrl,
@@ -214,7 +206,6 @@ struct ProfileView: View {
                         .padding(.top, 10)
                     }
                     
-                    // Name Section
                     if isEditing {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -235,7 +226,6 @@ struct ProfileView: View {
                         .padding(.horizontal, 20)
                     }
                     
-                    // Country Section
                     if isEditing {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("País (opcional)")
@@ -288,7 +278,6 @@ struct ProfileView: View {
                         .padding(.horizontal, 20)
                     }
                     
-                    // Instagram Section
                     if isEditing {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
@@ -396,7 +385,6 @@ struct ProfileView: View {
                                 .cornerRadius(12)
                             }
                             
-                            // Mostrar áreas seleccionadas
                             if !viewModel.selectedAreas.isEmpty {
                                 VStack(alignment: .leading, spacing: 8) {
                                     ForEach(viewModel.selectedAreas, id: \.self) { area in
@@ -432,7 +420,6 @@ struct ProfileView: View {
                         .padding(.horizontal, 20)
                     }
                     
-                    // Interests Section
                     if isEditing {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Intereses (opcional)")
@@ -461,7 +448,6 @@ struct ProfileView: View {
                                 .cornerRadius(12)
                             }
                             
-                            // Mostrar intereses seleccionados
                             if !viewModel.selectedInterests.isEmpty {
                                 VStack(alignment: .leading, spacing: 8) {
                                     ForEach(viewModel.selectedInterests, id: \.self) { interest in
@@ -497,7 +483,6 @@ struct ProfileView: View {
                         .padding(.horizontal, 20)
                     }
                     
-                    // Error/Success Messages
                     if let errorMessage = viewModel.errorMessage {
                         Text(errorMessage)
                             .font(.system(size: 14, weight: .medium))
@@ -516,10 +501,8 @@ struct ProfileView: View {
                             .padding(.top, 8)
                     }
                     
-                    // Botones de acción (solo cuando no está en edición)
                     if !isEditing {
                         VStack(spacing: 16) {
-                            // Botón de cerrar sesión
                             Button(action: {
                                 authManager.signOut()
                             }) {
@@ -549,7 +532,6 @@ struct ProfileView: View {
                                 )
                             }
                             
-                            // Botón de eliminar cuenta
                             Button(action: {
                                 showDeleteAccountAlert = true
                             }) {
@@ -583,7 +565,6 @@ struct ProfileView: View {
                         .padding(.top, 8)
                         .padding(.bottom, 50)
                     } else {
-                        // Espaciado cuando está en edición
                         Spacer()
                             .frame(height: 50)
                     }
@@ -655,13 +636,11 @@ struct ProfileView: View {
     }
     
     private func cancelEditing() {
-        // Recargar los datos originales
         viewModel.loadUserData()
         isEditing = false
     }
 }
 
-// Componente para mostrar secciones de información
 struct ProfileInfoSection: View {
     let title: String
     let displayValue: String

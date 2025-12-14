@@ -18,7 +18,6 @@ class SpaceService: ObservableObject {
     private var userSpacesListener: ListenerRegistration?
     
     func getActiveSpaces(userId: String) async throws -> [Space] {
-        // Obtener todos los espacios públicos
         let querySnapshot = try await db.collection(spacesCollection)
             .whereField("isPublic", isEqualTo: true)
             .getDocuments()
@@ -54,7 +53,6 @@ class SpaceService: ObservableObject {
                     memberId == "/users/\(userId)"
                 }
                 
-                // Solo agregar espacios públicos donde el usuario NO es miembro
                 guard !isMember else { continue }
                 
                 let isPublic = data["isPublic"] as? Bool ?? false
@@ -103,7 +101,6 @@ class SpaceService: ObservableObject {
     }
     
     func joinSpace(spaceId: String, userId: String) async throws {
-        // Buscar el espacio por spaceId
         let querySnapshot = try await db.collection(spacesCollection)
             .whereField("spaceId", isEqualTo: spaceId)
             .limit(to: 1)
@@ -115,7 +112,6 @@ class SpaceService: ObservableObject {
         
         let spaceRef = db.collection(spacesCollection).document(document.documentID)
         
-        // Obtener el documento actual
         let spaceDocument = try await spaceRef.getDocument()
         guard spaceDocument.exists else {
             throw NSError(domain: "SpaceService", code: 2, userInfo: [NSLocalizedDescriptionKey: "El espacio no existe"])
@@ -124,7 +120,6 @@ class SpaceService: ObservableObject {
         let data = spaceDocument.data() ?? [:]
         var members: [Any] = data["members"] as? [Any] ?? []
         
-        // Verificar si el usuario ya es miembro
         let userReference = db.collection("users").document(userId)
         let isAlreadyMember = members.contains { member in
             if let ref = member as? DocumentReference {
@@ -136,13 +131,11 @@ class SpaceService: ObservableObject {
         }
         
         guard !isAlreadyMember else {
-            return // Ya es miembro, no hacer nada
+            return
         }
         
-        // Agregar el usuario al array de miembros
         members.append(userReference)
         
-        // Actualizar el documento
         try await spaceRef.updateData([
             "members": members
         ])
@@ -180,22 +173,18 @@ class SpaceService: ObservableObject {
     }
     
     func createSpace(_ space: Space) async throws -> String {
-        // Convertir miembros de strings a referencias de Firestore
         var membersReferences: [Any] = []
         for member in space.members {
-            // Si ya es una referencia en formato "users/userId", crear DocumentReference
             if member.hasPrefix("users/") {
-                let userId = String(member.dropFirst(6)) // Remover "users/"
+                let userId = String(member.dropFirst(6))
                 let userRef = db.collection("users").document(userId)
                 membersReferences.append(userRef)
             } else {
-                // Si es solo el ID, crear la referencia completa
                 let userRef = db.collection("users").document(member)
                 membersReferences.append(userRef)
             }
         }
         
-        // Crear referencia del owner
         var ownerReference: Any
         if space.owner.hasPrefix("users/") {
             let userId = String(space.owner.dropFirst(6))
@@ -204,7 +193,6 @@ class SpaceService: ObservableObject {
             ownerReference = db.collection("users").document(space.owner)
         }
         
-        // Crear el documento con los datos correctos
         var data: [String: Any] = [
             "spaceId": space.spaceId,
             "name": space.name,
@@ -234,7 +222,6 @@ class SpaceService: ObservableObject {
     }
     
     func getUserSpaces(userId: String) async throws -> [Space] {
-        // Obtener todos los espacios donde el usuario es miembro
         let querySnapshot = try await db.collection(spacesCollection)
             .getDocuments()
         
@@ -276,7 +263,6 @@ class SpaceService: ObservableObject {
                 let description = data["description"] as? String ?? ""
                 let types = data["types"] as? [String] ?? []
                 
-                // Manejar owner como DocumentReference o String
                 var owner = ""
                 if let ownerRef = data["owner"] as? DocumentReference {
                     owner = "users/\(ownerRef.documentID)"
@@ -343,7 +329,6 @@ class SpaceService: ObservableObject {
         let description = data["description"] as? String ?? ""
         let types = data["types"] as? [String] ?? []
         
-        // Manejar owner como DocumentReference o String
         var owner = ""
         if let ownerRef = data["owner"] as? DocumentReference {
             owner = "users/\(ownerRef.documentID)"
@@ -373,18 +358,14 @@ class SpaceService: ObservableObject {
             throw NSError(domain: "SpaceService", code: 3, userInfo: [NSLocalizedDescriptionKey: "El código no es válido o el espacio no existe"])
         }
         
-        // Verificar si el usuario ya es miembro
         let isAlreadyMember = isUserMember(space: space, userId: userId)
         
         if isAlreadyMember {
-            // Si ya es miembro, retornar el espacio sin error
             return space
         }
         
-        // Unirse al espacio (funciona para públicos y privados)
         try await joinSpace(spaceId: space.spaceId, userId: userId)
         
-        // Retornar el espacio actualizado
         if let updatedSpace = try await findSpaceByCode(code) {
             return updatedSpace
         }
@@ -392,31 +373,22 @@ class SpaceService: ObservableObject {
         return space
     }
     
-    // Mantener compatibilidad con código existente
     func joinPrivateSpace(code: String, userId: String) async throws {
         _ = try await joinSpaceByCode(code: code, userId: userId)
     }
     
-    // MARK: - Space Creation Helpers
-    
-    /// Genera un código único basado en el nombre del espacio
     func generateCode(from name: String) -> String {
-        // Convertir el nombre a mayúsculas y reemplazar espacios con guiones bajos
         let uppercased = name.uppercased()
         let withoutSpaces = uppercased.replacingOccurrences(of: " ", with: "_")
-        // Remover caracteres especiales, mantener solo letras, números y guiones bajos
         let cleaned = withoutSpaces.filter { $0.isLetter || $0.isNumber || $0 == "_" }
         return cleaned.isEmpty ? "SPACE_\(UUID().uuidString.prefix(8).uppercased())" : cleaned
     }
     
-    /// Genera un spaceId único en formato HUB-XX
     func generateSpaceId() -> String {
-        // Generar un número aleatorio entre 1 y 9999
         let randomNumber = Int.random(in: 1...9999)
         return "HUB-\(randomNumber)"
     }
     
-    /// Verifica si un spaceId ya existe
     func spaceIdExists(_ spaceId: String) async throws -> Bool {
         let querySnapshot = try await db.collection(spacesCollection)
             .whereField("spaceId", isEqualTo: spaceId)
@@ -426,7 +398,6 @@ class SpaceService: ObservableObject {
         return !querySnapshot.documents.isEmpty
     }
     
-    /// Genera un spaceId único que no existe en la base de datos
     func generateUniqueSpaceId() async throws -> String {
         var spaceId = generateSpaceId()
         var attempts = 0
@@ -438,23 +409,17 @@ class SpaceService: ObservableObject {
         }
         
         if attempts >= maxAttempts {
-            // Si no se puede generar uno único después de muchos intentos, usar UUID
             return "HUB-\(UUID().uuidString.prefix(8).uppercased())"
         }
         
         return spaceId
     }
     
-    // MARK: - Real-time Listeners
-    
-    /// Escucha cambios en tiempo real de un espacio específico
     func listenToSpace(spaceId: String, onUpdate: @escaping (Space?) -> Void) {
-        // Primero encontrar el documento por spaceId
         let query = db.collection(spacesCollection)
             .whereField("spaceId", isEqualTo: spaceId)
             .limit(to: 1)
         
-        // Escuchar cambios en la query
         spaceListener = query.addSnapshotListener { querySnapshot, error in
             guard let documents = querySnapshot?.documents, !documents.isEmpty else {
                 onUpdate(nil)
@@ -464,7 +429,6 @@ class SpaceService: ObservableObject {
             let document = documents[0]
             let data = document.data()
             
-            // Procesar miembros
             var members: [String] = []
             if let membersData = data["members"] as? [Any] {
                 for member in membersData {
@@ -489,7 +453,6 @@ class SpaceService: ObservableObject {
             let description = data["description"] as? String ?? ""
             let types = data["types"] as? [String] ?? []
             
-            // Manejar owner
             var owner = ""
             if let ownerRef = data["owner"] as? DocumentReference {
                 owner = "users/\(ownerRef.documentID)"
@@ -515,18 +478,14 @@ class SpaceService: ObservableObject {
         }
     }
     
-    /// Detiene el listener del espacio
     func stopListeningToSpace() {
         spaceListener?.remove()
         spaceListener = nil
     }
     
-    /// Escucha cambios en tiempo real de todos los espacios (públicos y del usuario)
     func listenToAllSpaces(userId: String, onPublicSpacesUpdate: @escaping ([Space]) -> Void, onUserSpacesUpdate: @escaping ([Space]) -> Void) {
-        // Detener listener anterior si existe
         stopListeningToAllSpaces()
         
-        // Listener para espacios públicos
         let publicSpacesQuery = db.collection(spacesCollection)
             .whereField("isPublic", isEqualTo: true)
         
@@ -541,7 +500,6 @@ class SpaceService: ObservableObject {
             for document in documents {
                 let data = document.data()
                 
-                // Procesar miembros
                 var members: [String] = []
                 if let membersData = data["members"] as? [Any] {
                     for member in membersData {
@@ -575,7 +533,6 @@ class SpaceService: ObservableObject {
                 let description = data["description"] as? String ?? ""
                 let types = data["types"] as? [String] ?? []
                 
-                // Manejar owner
                 var owner = ""
                 if let ownerRef = data["owner"] as? DocumentReference {
                     owner = "users/\(ownerRef.documentID)"
@@ -603,7 +560,6 @@ class SpaceService: ObservableObject {
             onPublicSpacesUpdate(spaces)
         }
         
-        // Listener para espacios del usuario (todos los espacios donde el usuario es miembro)
         let allSpacesQuery = db.collection(spacesCollection)
         
         userSpacesListener = allSpacesQuery.addSnapshotListener { querySnapshot, error in
@@ -617,7 +573,6 @@ class SpaceService: ObservableObject {
             for document in documents {
                 let data = document.data()
                 
-                // Procesar miembros
                 var members: [String] = []
                 if let membersData = data["members"] as? [Any] {
                     for member in membersData {
@@ -650,7 +605,6 @@ class SpaceService: ObservableObject {
                 let description = data["description"] as? String ?? ""
                 let types = data["types"] as? [String] ?? []
                 
-                // Manejar owner
                 var owner = ""
                 if let ownerRef = data["owner"] as? DocumentReference {
                     owner = "users/\(ownerRef.documentID)"
@@ -679,7 +633,6 @@ class SpaceService: ObservableObject {
         }
     }
     
-    /// Detiene el listener de todos los espacios
     func stopListeningToAllSpaces() {
         publicSpacesListener?.remove()
         publicSpacesListener = nil

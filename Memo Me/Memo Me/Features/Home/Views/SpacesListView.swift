@@ -47,7 +47,6 @@ struct SpacesListView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: 24) {
-                            // Sección: Unirse a espacio por código
                             JoinPrivateSpaceSection(
                                 code: $privateSpaceCode,
                                 onJoin: {
@@ -68,7 +67,6 @@ struct SpacesListView: View {
                             .padding(.horizontal, 20)
                             .padding(.top, 20)
                             
-                            // Sección: Espacios a los que perteneces
                             if !viewModel.userSpaces.isEmpty {
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text("Espacios a los que perteneces")
@@ -95,7 +93,6 @@ struct SpacesListView: View {
                                 }
                             }
                             
-                            // Sección: Espacios públicos
                             if !viewModel.publicSpaces.isEmpty {
                                 VStack(alignment: .leading, spacing: 12) {
                                     Text("Espacios públicos")
@@ -132,7 +129,6 @@ struct SpacesListView: View {
                                 }
                             }
                             
-                            // Mensaje cuando no hay espacios
                             if viewModel.publicSpaces.isEmpty && viewModel.userSpaces.isEmpty {
                                 VStack(spacing: 20) {
                                     Image(systemName: "rectangle.3.group")
@@ -213,7 +209,6 @@ struct SpacesListView: View {
                 CreateSpaceView()
                     .environmentObject(authManager)
                     .onDisappear {
-                        // Recargar espacios cuando se cierra la vista de creación
                         if let userId = authManager.currentUser?.id {
                             Task {
                                 await viewModel.refreshSpaces(userId: userId)
@@ -261,7 +256,6 @@ struct SpacesListView: View {
             }
         }
         .onDisappear {
-            // Detener listeners cuando la vista desaparece
             viewModel.stopListeningToSpaces()
         }
     }
