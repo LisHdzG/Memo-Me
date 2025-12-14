@@ -189,6 +189,9 @@ class RegistrationViewModel: ObservableObject {
             var savedUser = user
             savedUser.id = userId
             
+            // Si hay un error mostrado, lo ocultamos al tener éxito
+            ErrorPresenter.shared.dismiss()
+            
             authenticationManager?.completeRegistration(user: savedUser)
             
             isLoading = false
@@ -196,8 +199,67 @@ class RegistrationViewModel: ObservableObject {
         } catch {
             isLoading = false
             errorMessage = "Error al guardar el registro: \(error.localizedDescription)"
+            
+            // Determinar si es error de red o del servicio y mostrar la vista apropiada
+            if isNetworkError(error) {
+                ErrorPresenter.shared.showNetworkError(retry: { [weak self] in
+                    Task { @MainActor in
+                        _ = await self?.submitRegistration()
+                    }
+                })
+            } else {
+                ErrorPresenter.shared.showServiceError(retry: { [weak self] in
+                    Task { @MainActor in
+                        _ = await self?.submitRegistration()
+                    }
+                })
+            }
+            
             return false
         }
+    }
+    
+    /// Detecta si un error es de red
+    private func isNetworkError(_ error: Error) -> Bool {
+        // Verificar errores de URLSession (URLError)
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet,
+                 .networkConnectionLost,
+                 .cannotConnectToHost,
+                 .timedOut,
+                 .cannotFindHost,
+                 .dnsLookupFailed,
+                 .internationalRoamingOff,
+                 .callIsActive,
+                 .dataNotAllowed:
+                return true
+            default:
+                return false
+            }
+        }
+        
+        // Verificar errores de Firebase Firestore relacionados con red
+        if let nsError = error as NSError? {
+            // Códigos de error de Firestore relacionados con red
+            let firestoreErrorDomain = "FIRFirestoreErrorDomain"
+            if nsError.domain == firestoreErrorDomain {
+                // Código 14 = UNAVAILABLE (servicio no disponible, generalmente por red)
+                // Código 4 = DEADLINE_EXCEEDED (timeout, puede ser por red)
+                if nsError.code == 14 || nsError.code == 4 {
+                    return true
+                }
+            }
+            
+            // Verificar si el mensaje de error contiene palabras clave de red
+            let errorMessage = nsError.localizedDescription.lowercased()
+            let networkKeywords = ["network", "connection", "internet", "conexión", "red", "conectividad", "timeout", "unreachable"]
+            if networkKeywords.contains(where: errorMessage.contains) {
+                return true
+            }
+        }
+        
+        return false
     }
     
     func clearError() {

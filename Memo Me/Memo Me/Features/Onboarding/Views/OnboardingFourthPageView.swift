@@ -99,20 +99,13 @@ struct OnboardingFourthPageView: View {
                                 value: showContent
                             )
 
-                            if authManager.authenticationState == .loading {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                    .scaleEffect(1.2)
-                                    .padding(.top, 10)
-                            }
-
                             Button {
                                 showTermsAndConditions = true
                             } label: {
                                 termsAndConditionsText
                                     .multilineTextAlignment(.center)
                             }
-                            .padding(.horizontal, 40)
+                            .padding(.horizontal, showBackground ? 20 : 40)
                             .opacity(showContent ? 1.0 : 0.0)
                             .offset(y: showContent ? 0 : 20)
                             .animation(
@@ -123,7 +116,7 @@ struct OnboardingFourthPageView: View {
                         }
 
                         Spacer()
-                            .frame(height: 50)
+                            .frame(height: showBackground ? 20 : 50)
                     }
                 }
                 .onAppear {
@@ -135,6 +128,10 @@ struct OnboardingFourthPageView: View {
                     if let url = URL(string: "https://gemini.google.com/share/c363907dd45a") {
                         TermsAndConditionsView(url: url)
                     }
+                }
+                .errorSheets()
+                .overlay {
+                    LoaderView()
                 }
             }
         }

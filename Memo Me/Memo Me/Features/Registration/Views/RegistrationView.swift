@@ -279,6 +279,10 @@ struct RegistrationView: View {
                 }
             }
         }
+        .errorSheets()
+        .overlay {
+            LoaderView()
+        }
     }
     
     @ViewBuilder

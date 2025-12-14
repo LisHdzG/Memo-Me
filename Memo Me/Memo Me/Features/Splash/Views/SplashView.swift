@@ -20,18 +20,24 @@ struct SplashView: View {
 
     var body: some View {
         if isActive {
-            if authManager.isAuthenticated {
-                ContentView()
-                    .environmentObject(authManager)
-                    .transition(.opacity)
-            } else if onboardingService.hasReachedSignIn {
-                OnboardingFourthPageView()
-                    .environmentObject(authManager)
-                    .transition(.opacity)
-            } else {
-                OnboardingView()
-                    .environmentObject(authManager)
-                    .transition(.opacity)
+            Group {
+                if authManager.isAuthenticated {
+                    ContentView()
+                        .environmentObject(authManager)
+                        .transition(.opacity)
+                } else if onboardingService.hasReachedSignIn {
+                    OnboardingFourthPageView()
+                        .environmentObject(authManager)
+                        .transition(.opacity)
+                } else {
+                    OnboardingView()
+                        .environmentObject(authManager)
+                        .transition(.opacity)
+                }
+            }
+            .errorSheets()
+            .overlay {
+                LoaderView()
             }
         } else {
             ZStack {

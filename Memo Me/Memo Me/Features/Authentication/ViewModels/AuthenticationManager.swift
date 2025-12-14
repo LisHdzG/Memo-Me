@@ -95,6 +95,7 @@ class AuthenticationManager: ObservableObject {
     func handleAuthorization(_ authorization: ASAuthorization) {
         authenticationState = .loading
         errorMessage = nil
+        LoaderPresenter.shared.show()
         
         guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else {
             let error = AuthenticationError.invalidResponse
@@ -132,6 +133,9 @@ class AuthenticationManager: ObservableObject {
     private func checkUserInFirestore(appleId: String, appleName: String?) async {
         do {
             if let existingUser = try await userService.checkUserExists(appleId: appleId) {
+                ErrorPresenter.shared.dismiss()
+                LoaderPresenter.shared.hide()
+                
                 self.currentUser = existingUser
                 self.userName = existingUser.name
                 self.userDefaults.set(true, forKey: isAuthenticatedKey)
@@ -141,6 +145,9 @@ class AuthenticationManager: ObservableObject {
                 
                 saveUserToCache(existingUser)
             } else {
+                ErrorPresenter.shared.dismiss()
+                LoaderPresenter.shared.hide()
+                
                 if let name = appleName {
                     self.userName = name
                     userDefaults.set(name, forKey: savedUserNameKey)
@@ -149,7 +156,13 @@ class AuthenticationManager: ObservableObject {
                 self.isAuthenticated = false
             }
         } catch {
-            self.handleError(error)
+            LoaderPresenter.shared.hide()
+            self.handleError(error, retryAction: { [weak self] in
+                Task { @MainActor in
+                    LoaderPresenter.shared.show()
+                    await self?.checkUserInFirestore(appleId: appleId, appleName: appleName)
+                }
+            })
         }
     }
     
@@ -165,7 +178,7 @@ class AuthenticationManager: ObservableObject {
         saveUserToCache(user)
     }
     
-    func handleError(_ error: Error) {
+    func handleError(_ error: Error, retryAction: (() -> Void)? = nil) {
         let authError: AuthenticationError
         
         if let asError = error as? ASAuthorizationError {
@@ -179,6 +192,57 @@ class AuthenticationManager: ObservableObject {
         self.authenticationState = .error(authError.errorDescription ?? "Error desconocido")
         self.errorMessage = authError.errorDescription
         self.isAuthenticated = false
+        LoaderPresenter.shared.hide()
+        
+        if isNetworkError(error) {
+            ErrorPresenter.shared.showNetworkError(retry: retryAction)
+        } else {
+            ErrorPresenter.shared.showServiceError(retry: retryAction)
+        }
+    }
+    
+    /// Detecta si un error es de red
+    private func isNetworkError(_ error: Error) -> Bool {
+        // Verificar errores de URLSession (URLError)
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet,
+                 .networkConnectionLost,
+                 .cannotConnectToHost,
+                 .timedOut,
+                 .cannotFindHost,
+                 .dnsLookupFailed,
+                 .internationalRoamingOff,
+                 .callIsActive,
+                 .dataNotAllowed:
+                return true
+            default:
+                return false
+            }
+        }
+        
+        // Verificar errores de Firebase Firestore relacionados con red
+        if let nsError = error as NSError? {
+            // Códigos de error de Firestore relacionados con red
+            // Firestore error domain: FIRFirestoreErrorDomain
+            let firestoreErrorDomain = "FIRFirestoreErrorDomain"
+            if nsError.domain == firestoreErrorDomain {
+                // Código 14 = UNAVAILABLE (servicio no disponible, generalmente por red)
+                // Código 4 = DEADLINE_EXCEEDED (timeout, puede ser por red)
+                if nsError.code == 14 || nsError.code == 4 {
+                    return true
+                }
+            }
+            
+            // Verificar si el mensaje de error contiene palabras clave de red
+            let errorMessage = nsError.localizedDescription.lowercased()
+            let networkKeywords = ["network", "connection", "internet", "conexión", "red", "conectividad", "timeout", "unreachable"]
+            if networkKeywords.contains(where: errorMessage.contains) {
+                return true
+            }
+        }
+        
+        return false
     }
     
     private func mapASAuthorizationError(_ error: ASAuthorizationError) -> AuthenticationError {
@@ -217,6 +281,7 @@ class AuthenticationManager: ObservableObject {
         }
         
         authenticationState = .loading
+        LoaderPresenter.shared.show()
         
         let provider = ASAuthorizationAppleIDProvider()
         provider.getCredentialState(forUserID: userID) { [weak self] credentialState, error in
@@ -224,8 +289,12 @@ class AuthenticationManager: ObservableObject {
                 guard let self = self else { return }
                 
                 if let error = error {
-                    let authError = AuthenticationError.checkStatusError(error.localizedDescription)
-                    self.handleError(authError)
+                    LoaderPresenter.shared.hide()
+                    self.handleError(error, retryAction: { [weak self] in
+                        guard let self = self else { return }
+                        LoaderPresenter.shared.show()
+                        self.checkAuthenticationStatus()
+                    })
                     return
                 }
                 
@@ -235,18 +304,50 @@ class AuthenticationManager: ObservableObject {
                     self.userEmail = self.userDefaults.string(forKey: self.savedUserEmailKey)
                     self.userName = self.userDefaults.string(forKey: self.savedUserNameKey)
                     
-                    if let existingUser = try? await self.userService.checkUserExists(appleId: userID) {
-                        self.currentUser = existingUser
-                        self.userName = existingUser.name
-                        self.isAuthenticated = true
-                        self.authenticationState = .authenticated
-                        self.userDefaults.set(true, forKey: self.isAuthenticatedKey)
-                        self.errorMessage = nil
-                        
-                        self.saveUserToCache(existingUser)
-                    } else {
-                        self.isAuthenticated = false
-                        self.authenticationState = .needsRegistration
+                    do {
+                        if let existingUser = try await self.userService.checkUserExists(appleId: userID) {
+                            ErrorPresenter.shared.dismiss()
+                            LoaderPresenter.shared.hide()
+                            
+                            self.currentUser = existingUser
+                            self.userName = existingUser.name
+                            self.isAuthenticated = true
+                            self.authenticationState = .authenticated
+                            self.userDefaults.set(true, forKey: self.isAuthenticatedKey)
+                            self.errorMessage = nil
+                            
+                            self.saveUserToCache(existingUser)
+                        } else {
+                            ErrorPresenter.shared.dismiss()
+                            LoaderPresenter.shared.hide()
+                            
+                            self.isAuthenticated = false
+                            self.authenticationState = .needsRegistration
+                        }
+                    } catch {
+                        LoaderPresenter.shared.hide()
+                        self.handleError(error, retryAction: { [weak self] in
+                            Task { @MainActor in
+                                guard let self = self else { return }
+                                LoaderPresenter.shared.show()
+                                if let existingUser = try? await self.userService.checkUserExists(appleId: userID) {
+                                    ErrorPresenter.shared.dismiss()
+                                    LoaderPresenter.shared.hide()
+                                    self.currentUser = existingUser
+                                    self.userName = existingUser.name
+                                    self.isAuthenticated = true
+                                    self.authenticationState = .authenticated
+                                    self.userDefaults.set(true, forKey: self.isAuthenticatedKey)
+                                    self.errorMessage = nil
+                                    self.saveUserToCache(existingUser)
+                                } else {
+                                    ErrorPresenter.shared.dismiss()
+                                    LoaderPresenter.shared.hide()
+                                    self.isAuthenticated = false
+                                    self.authenticationState = .needsRegistration
+                                }
+                            }
+                        })
                     }
                     
                 case .revoked:
