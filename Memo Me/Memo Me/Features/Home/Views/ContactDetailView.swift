@@ -16,6 +16,7 @@ struct ContactDetailView: View {
     @State private var selectedContact: Contact?
     @State private var selectedUser: User?
     @State private var showContactDetail: Bool = false
+    @State private var isLoadingUser: Bool = false
     @ObservedObject private var spaceSelectionService = SpaceSelectionService.shared
     @EnvironmentObject var authManager: AuthenticationManager
     
@@ -155,33 +156,64 @@ struct ContactDetailView: View {
                 isAutoRotating: $isAutoRotating,
                 onContactTapped: { contact in
                     print("📱 Contacto tocado: \(contact.name), userId: \(contact.userId ?? "nil")")
+                    
+                    // Establecemos el contacto primero
                     selectedContact = contact
+                    
+                    // Intentamos obtener el usuario del ViewModel primero
                     selectedUser = viewModel.getUser(for: contact)
                     
+                    // Si no está en el ViewModel y tenemos userId, lo cargamos
                     if selectedUser == nil, let userId = contact.userId {
+                        isLoadingUser = true
                         Task {
                             do {
                                 let userService = UserService()
-                                selectedUser = try await userService.getUser(userId: userId)
-                                showContactDetail = true
+                                let loadedUser = try await userService.getUser(userId: userId)
+                                await MainActor.run {
+                                    selectedUser = loadedUser
+                                    isLoadingUser = false
+                                    // Solo mostramos el sheet después de cargar el usuario
+                                    showContactDetail = true
+                                }
                             } catch {
                                 print("⚠️ Error al obtener usuario: \(error)")
-                                showContactDetail = true
+                                await MainActor.run {
+                                    isLoadingUser = false
+                                    // Mostramos el sheet incluso si falla la carga
+                                    showContactDetail = true
+                                }
                             }
                         }
                     } else {
+                        // Si ya tenemos el usuario o no hay userId, mostramos el sheet inmediatamente
                         showContactDetail = true
                     }
                 }
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .sheet(isPresented: $showContactDetail) {
+                // Aseguramos que siempre tengamos el contacto antes de mostrar el sheet
                 if let contact = selectedContact {
                     ContactDetailSheet(
                         user: selectedUser,
                         contact: contact,
                         spaceId: space?.spaceId ?? spaceSelectionService.selectedSpace?.spaceId
                     )
+                } else {
+                    // Fallback: si por alguna razón no hay contacto, mostramos un sheet vacío
+                    EmptyView()
+                }
+            }
+            .onChange(of: showContactDetail) { oldValue, newValue in
+                // Limpiamos el estado cuando se cierra el sheet
+                if oldValue == true && newValue == false {
+                    // Pequeño delay para asegurar que el sheet se cierre completamente
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        selectedContact = nil
+                        selectedUser = nil
+                        isLoadingUser = false
+                    }
                 }
             }
         } else if !viewModel.isLoading {
