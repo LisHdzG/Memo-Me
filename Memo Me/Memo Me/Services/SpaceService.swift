@@ -26,26 +26,26 @@ class SpaceService: ObservableObject {
             do {
                 let data = document.data()
                 
-                var memberIds: [String] = []
-                if let memberIdsData = data["memberIds"] as? [Any] {
-                    for memberId in memberIdsData {
-                        if let reference = memberId as? DocumentReference {
-                            memberIds.append(reference.documentID)
-                        } else if let path = memberId as? String {
+                var members: [String] = []
+                if let membersData = data["members"] as? [Any] {
+                    for member in membersData {
+                        if let reference = member as? DocumentReference {
+                            members.append(reference.documentID)
+                        } else if let path = member as? String {
                             if path.contains("/") {
                                 let components = path.split(separator: "/")
                                 if let lastComponent = components.last {
-                                    memberIds.append(String(lastComponent))
+                                    members.append(String(lastComponent))
                                 }
                             } else {
-                                memberIds.append(path)
+                                members.append(path)
                             }
                         }
                     }
                 }
                 
                 // Verificar si el usuario ya es miembro - si lo es, no incluirlo en espacios públicos
-                let isMember = memberIds.contains { memberId in
+                let isMember = members.contains { memberId in
                     memberId == userId || 
                     memberId == "users/\(userId)" ||
                     memberId == "/users/\(userId)"
@@ -62,7 +62,7 @@ class SpaceService: ObservableObject {
                     spaceId: data["spaceId"] as? String ?? "",
                     name: data["name"] as? String ?? "",
                     bannerUrl: data["bannerUrl"] as? String ?? "",
-                    memberIds: memberIds,
+                    members: members,
                     isPublic: isPublic,
                     code: code
                 )
@@ -77,7 +77,7 @@ class SpaceService: ObservableObject {
     }
     
     func isUserMember(space: Space, userId: String) -> Bool {
-        return space.memberIds.contains { memberId in
+        return space.members.contains { memberId in
             memberId == userId || 
             memberId == "users/\(userId)" ||
             memberId == "/users/\(userId)"
@@ -104,14 +104,14 @@ class SpaceService: ObservableObject {
         }
         
         let data = spaceDocument.data() ?? [:]
-        var memberIds: [Any] = data["memberIds"] as? [Any] ?? []
+        var members: [Any] = data["members"] as? [Any] ?? []
         
         // Verificar si el usuario ya es miembro
         let userReference = db.collection("users").document(userId)
-        let isAlreadyMember = memberIds.contains { memberId in
-            if let ref = memberId as? DocumentReference {
+        let isAlreadyMember = members.contains { member in
+            if let ref = member as? DocumentReference {
                 return ref.documentID == userId
-            } else if let path = memberId as? String {
+            } else if let path = member as? String {
                 return path.contains(userId)
             }
             return false
@@ -122,11 +122,11 @@ class SpaceService: ObservableObject {
         }
         
         // Agregar el usuario al array de miembros
-        memberIds.append(userReference)
+        members.append(userReference)
         
         // Actualizar el documento
         try await spaceRef.updateData([
-            "memberIds": memberIds
+            "members": members
         ])
     }
     
@@ -185,25 +185,25 @@ class SpaceService: ObservableObject {
             do {
                 let data = document.data()
                 
-                var memberIds: [String] = []
-                if let memberIdsData = data["memberIds"] as? [Any] {
-                    for memberId in memberIdsData {
-                        if let reference = memberId as? DocumentReference {
-                            memberIds.append(reference.documentID)
-                        } else if let path = memberId as? String {
+                var members: [String] = []
+                if let membersData = data["members"] as? [Any] {
+                    for member in membersData {
+                        if let reference = member as? DocumentReference {
+                            members.append(reference.documentID)
+                        } else if let path = member as? String {
                             if path.contains("/") {
                                 let components = path.split(separator: "/")
                                 if let lastComponent = components.last {
-                                    memberIds.append(String(lastComponent))
+                                    members.append(String(lastComponent))
                                 }
                             } else {
-                                memberIds.append(path)
+                                members.append(path)
                             }
                         }
                     }
                 }
                 
-                let isMember = memberIds.contains { memberId in
+                let isMember = members.contains { memberId in
                     memberId == userId || 
                     memberId == "users/\(userId)" ||
                     memberId == "/users/\(userId)"
@@ -219,7 +219,7 @@ class SpaceService: ObservableObject {
                     spaceId: data["spaceId"] as? String ?? "",
                     name: data["name"] as? String ?? "",
                     bannerUrl: data["bannerUrl"] as? String ?? "",
-                    memberIds: memberIds,
+                    members: members,
                     isPublic: isPublic,
                     code: code
                 )
@@ -245,19 +245,19 @@ class SpaceService: ObservableObject {
         
         let data = document.data()
         
-        var memberIds: [String] = []
-        if let memberIdsData = data["memberIds"] as? [Any] {
-            for memberId in memberIdsData {
-                if let reference = memberId as? DocumentReference {
-                    memberIds.append(reference.documentID)
-                } else if let path = memberId as? String {
+        var members: [String] = []
+        if let membersData = data["members"] as? [Any] {
+            for member in membersData {
+                if let reference = member as? DocumentReference {
+                    members.append(reference.documentID)
+                } else if let path = member as? String {
                     if path.contains("/") {
                         let components = path.split(separator: "/")
                         if let lastComponent = components.last {
-                            memberIds.append(String(lastComponent))
+                            members.append(String(lastComponent))
                         }
                     } else {
-                        memberIds.append(path)
+                        members.append(path)
                     }
                 }
             }
@@ -271,7 +271,7 @@ class SpaceService: ObservableObject {
             spaceId: data["spaceId"] as? String ?? "",
             name: data["name"] as? String ?? "",
             bannerUrl: data["bannerUrl"] as? String ?? "",
-            memberIds: memberIds,
+            members: members,
             isPublic: isPublic,
             code: spaceCode
         )

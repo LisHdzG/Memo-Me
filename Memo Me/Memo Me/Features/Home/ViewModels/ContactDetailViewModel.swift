@@ -19,7 +19,7 @@ class ContactDetailViewModel: ObservableObject {
     var currentUserId: String?
     
     func loadContacts(for space: Space?) async {
-        guard let space = space, !space.memberIds.isEmpty else {
+        guard let space = space, !space.members.isEmpty else {
             contacts = []
             isLoading = false
             return
@@ -29,7 +29,7 @@ class ContactDetailViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            let users = try await userService.getUsers(userIds: space.memberIds)
+            let users = try await userService.getUsers(userIds: space.members)
             
             // Guardar usuarios en un mapa para acceso rápido
             usersMap.removeAll()

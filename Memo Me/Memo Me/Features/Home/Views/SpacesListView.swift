@@ -381,7 +381,7 @@ struct SpaceCardView: View {
                         .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.6))
                     
-                    Text("\(space.memberIds.count) miembros")
+                    Text("\(space.members.count) miembros")
                         .font(.system(size: 12, weight: .regular))
                         .foregroundColor(.white.opacity(0.6))
                 }

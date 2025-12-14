@@ -13,7 +13,7 @@ struct Space: Codable, Identifiable, Equatable {
     let spaceId: String
     let name: String
     var bannerUrl: String
-    var memberIds: [String]
+    var members: [String]
     var isPublic: Bool
     var code: String?
     
@@ -22,17 +22,17 @@ struct Space: Codable, Identifiable, Equatable {
         case spaceId
         case name
         case bannerUrl
-        case memberIds
+        case members
         case isPublic
         case code
     }
     
-    init(id: String? = nil, spaceId: String, name: String, bannerUrl: String = "", memberIds: [String] = [], isPublic: Bool = false, code: String? = nil) {
+    init(id: String? = nil, spaceId: String, name: String, bannerUrl: String = "", members: [String] = [], isPublic: Bool = false, code: String? = nil) {
         self.id = id
         self.spaceId = spaceId
         self.name = name
         self.bannerUrl = bannerUrl
-        self.memberIds = memberIds
+        self.members = members
         self.isPublic = isPublic
         self.code = code
     }
