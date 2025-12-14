@@ -178,7 +178,12 @@ struct ContactDetailView: View {
         }
         .task {
             viewModel.currentUserId = authManager.currentUser?.id
-            await viewModel.loadContacts(for: space)
+            await viewModel.loadContacts(for: space ?? spaceSelectionService.selectedSpace)
+        }
+        .onChange(of: spaceSelectionService.selectedSpace) { oldValue, newValue in
+            Task {
+                await viewModel.loadContacts(for: newValue)
+            }
         }
         .onChange(of: authManager.currentUser?.id) { oldValue, newValue in
             viewModel.currentUserId = newValue

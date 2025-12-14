@@ -19,7 +19,29 @@ class ContactDetailViewModel: ObservableObject {
     var currentUserId: String?
     
     func loadContacts(for space: Space?) async {
-        guard let space = space, !space.members.isEmpty else {
+        guard let space = space else {
+            contacts = []
+            isLoading = false
+            return
+        }
+        
+        // Limpiar los IDs de miembros: extraer solo el ID del documento si viene en formato "users/userId" o "/users/userId"
+        let cleanedMemberIds = space.members.map { memberId -> String in
+            if memberId.contains("/") {
+                // Si contiene "/", extraer solo el ID del documento
+                let components = memberId.split(separator: "/")
+                if let lastComponent = components.last {
+                    return String(lastComponent)
+                }
+            }
+            return memberId
+        }
+        
+        print("DEBUG ContactDetailViewModel: Space members originales: \(space.members)")
+        print("DEBUG ContactDetailViewModel: Space members limpiados: \(cleanedMemberIds)")
+        
+        guard !cleanedMemberIds.isEmpty else {
+            print("DEBUG ContactDetailViewModel: No hay miembros después de limpiar")
             contacts = []
             isLoading = false
             return
@@ -29,7 +51,9 @@ class ContactDetailViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            let users = try await userService.getUsers(userIds: space.members)
+            print("DEBUG ContactDetailViewModel: Buscando usuarios con IDs: \(cleanedMemberIds)")
+            let users = try await userService.getUsers(userIds: cleanedMemberIds)
+            print("DEBUG ContactDetailViewModel: Usuarios encontrados: \(users.count)")
             
             // Guardar usuarios en un mapa para acceso rápido
             usersMap.removeAll()
