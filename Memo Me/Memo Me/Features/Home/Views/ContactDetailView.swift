@@ -13,6 +13,9 @@ struct ContactDetailView: View {
     @StateObject private var viewModel = ContactDetailViewModel()
     @State private var rotationSpeed: Double = 0.5
     @State private var isAutoRotating: Bool = true
+    @State private var selectedContact: Contact?
+    @State private var selectedUser: User?
+    @State private var showContactDetail: Bool = false
     @ObservedObject private var spaceSelectionService = SpaceSelectionService.shared
     @EnvironmentObject var authManager: AuthenticationManager
     
@@ -149,9 +152,38 @@ struct ContactDetailView: View {
             ContactSphereView(
                 contacts: viewModel.contacts,
                 rotationSpeed: $rotationSpeed,
-                isAutoRotating: $isAutoRotating
+                isAutoRotating: $isAutoRotating,
+                onContactTapped: { contact in
+                    print("📱 Contacto tocado: \(contact.name), userId: \(contact.userId ?? "nil")")
+                    selectedContact = contact
+                    selectedUser = viewModel.getUser(for: contact)
+                    
+                    if selectedUser == nil, let userId = contact.userId {
+                        Task {
+                            do {
+                                let userService = UserService()
+                                selectedUser = try await userService.getUser(userId: userId)
+                                showContactDetail = true
+                            } catch {
+                                print("⚠️ Error al obtener usuario: \(error)")
+                                showContactDetail = true
+                            }
+                        }
+                    } else {
+                        showContactDetail = true
+                    }
+                }
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .sheet(isPresented: $showContactDetail) {
+                if let contact = selectedContact {
+                    ContactDetailSheet(
+                        user: selectedUser,
+                        contact: contact,
+                        spaceId: space?.spaceId ?? spaceSelectionService.selectedSpace?.spaceId
+                    )
+                }
+            }
         } else if !viewModel.isLoading {
             emptyContactsView
         }

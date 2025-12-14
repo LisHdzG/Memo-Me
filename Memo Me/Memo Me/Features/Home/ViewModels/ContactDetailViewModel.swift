@@ -186,5 +186,10 @@ class ContactDetailViewModel: ObservableObject {
         stopUserListeners()
         currentSpaceId = nil
     }
+    
+    func getUser(for contact: Contact) -> User? {
+        guard let userId = contact.userId else { return nil }
+        return usersMap[userId]
+    }
 }
 

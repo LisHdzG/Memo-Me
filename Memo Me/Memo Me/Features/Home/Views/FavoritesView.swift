@@ -114,59 +114,106 @@ struct FavoritesView: View {
 struct FavoriteContactCard: View {
     let contact: Contact
     let spaceName: String
+    @State private var showContactDetail: Bool = false
+    @State private var user: User?
+    
+    private let noteService = ContactNoteService.shared
+    private let userService = UserService()
+    
+    var note: String? {
+        guard let userId = contact.userId else { return nil }
+        return noteService.getNote(contactUserId: userId)
+    }
     
     var body: some View {
-        HStack(spacing: 16) {
-            if let imageName = contact.imageName {
-                Image(imageName)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 60, height: 60)
-                    .clipShape(Circle())
-            } else if let imageUrl = contact.imageUrl, let url = URL(string: imageUrl) {
-                AsyncImage(url: url) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Circle()
-                        .fill(Color.white.opacity(0.2))
+        Button(action: {
+            Task {
+                if let userId = contact.userId {
+                    user = try? await userService.getUser(userId: userId)
                 }
-                .frame(width: 60, height: 60)
-                .clipShape(Circle())
-            } else {
-                Circle()
-                    .fill(Color.white.opacity(0.2))
-                    .frame(width: 60, height: 60)
-                    .overlay(
-                        Text(String(contact.name.prefix(1)))
-                            .font(.system(size: 24, weight: .semibold))
+                showContactDetail = true
+            }
+        }) {
+            HStack(spacing: 16) {
+                ZStack(alignment: .topTrailing) {
+                    if let imageName = contact.imageName {
+                        Image(imageName)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 60, height: 60)
+                            .clipShape(Circle())
+                    } else if let imageUrl = contact.imageUrl, let url = URL(string: imageUrl) {
+                        AsyncImage(url: url) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        } placeholder: {
+                            Circle()
+                                .fill(Color.white.opacity(0.2))
+                        }
+                        .frame(width: 60, height: 60)
+                        .clipShape(Circle())
+                    } else {
+                        Circle()
+                            .fill(Color.white.opacity(0.2))
+                            .frame(width: 60, height: 60)
+                            .overlay(
+                                Text(String(contact.name.prefix(1)))
+                                    .font(.system(size: 24, weight: .semibold))
+                                    .foregroundColor(.white)
+                            )
+                    }
+                    
+                    if note != nil {
+                        Image(systemName: "note.text")
+                            .font(.system(size: 12))
                             .foregroundColor(.white)
-                    )
-            }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(contact.name)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
+                            .padding(4)
+                            .background(Color.blue.opacity(0.8))
+                            .clipShape(Circle())
+                            .offset(x: 5, y: -5)
+                    }
+                }
                 
-                Text(spaceName)
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(.white.opacity(0.6))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(contact.name)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                    
+                    Text(spaceName)
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(.white.opacity(0.6))
+                    
+                    if let note = note, !note.isEmpty {
+                        Text(note)
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(.white.opacity(0.7))
+                            .lineLimit(2)
+                            .padding(.top, 4)
+                    }
+                }
+                
+                Spacer()
+                
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(.pink)
             }
-            
-            Spacer()
-            
-            Image(systemName: "heart.fill")
-                .font(.system(size: 20))
-                .foregroundColor(.pink)
+            .padding(16)
+            .background(Color.white.opacity(0.1))
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+            )
         }
-        .padding(16)
-        .background(Color.white.opacity(0.1))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.2), lineWidth: 1)
-        )
+        .buttonStyle(PlainButtonStyle())
+        .sheet(isPresented: $showContactDetail) {
+            ContactDetailSheet(
+                user: user,
+                contact: contact,
+                spaceId: nil
+            )
+        }
     }
 }

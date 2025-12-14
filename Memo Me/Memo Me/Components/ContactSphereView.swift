@@ -12,6 +12,7 @@ struct ContactSphereView: UIViewRepresentable {
     let contacts: [Contact]
     @Binding var rotationSpeed: Double
     @Binding var isAutoRotating: Bool
+    var onContactTapped: ((Contact) -> Void)?
     
     func makeUIView(context: Context) -> SCNView {
         let sceneView = SCNView()
@@ -25,10 +26,14 @@ struct ContactSphereView: UIViewRepresentable {
         panGesture.maximumNumberOfTouches = 1
         sceneView.addGestureRecognizer(panGesture)
         
+        let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
+        sceneView.addGestureRecognizer(tapGesture)
+        
         context.coordinator.sceneView = sceneView
         context.coordinator.contacts = contacts
         context.coordinator.rotationSpeed = rotationSpeed
         context.coordinator.isAutoRotating = isAutoRotating
+        context.coordinator.onContactTapped = onContactTapped
         
         context.coordinator.createScene()
         context.coordinator.startAutoRotation()
@@ -71,7 +76,7 @@ struct ContactSphereView: UIViewRepresentable {
     }
     
     func makeCoordinator() -> Coordinator {
-        Coordinator(contacts: contacts, rotationSpeed: rotationSpeed, isAutoRotating: isAutoRotating)
+        Coordinator(contacts: contacts, rotationSpeed: rotationSpeed, isAutoRotating: isAutoRotating, onContactTapped: onContactTapped)
     }
     
     class Coordinator: NSObject {
@@ -84,11 +89,14 @@ struct ContactSphereView: UIViewRepresentable {
         var isUserInteracting: Bool = false
         var contactsContainer: SCNNode?
         var loadedImages: [String: UIImage] = [:]
+        var contactNodes: [SCNNode: Contact] = [:]
+        var onContactTapped: ((Contact) -> Void)?
         
-        init(contacts: [Contact], rotationSpeed: Double, isAutoRotating: Bool) {
+        init(contacts: [Contact], rotationSpeed: Double, isAutoRotating: Bool, onContactTapped: ((Contact) -> Void)? = nil) {
             self.contacts = contacts
             self.rotationSpeed = rotationSpeed
             self.isAutoRotating = isAutoRotating
+            self.onContactTapped = onContactTapped
         }
         
         func createScene() {
@@ -104,6 +112,8 @@ struct ContactSphereView: UIViewRepresentable {
         
         private func createSceneWithLoadedImages() {
             guard let sceneView = sceneView else { return }
+            
+            contactNodes.removeAll()
             
             let scene = SCNScene()
             
@@ -170,6 +180,8 @@ struct ContactSphereView: UIViewRepresentable {
                 let imageNode = createImageNode(for: contact, index: index)
                 imageNode.position = SCNVector3(x, y, z)
                 
+                imageNode.name = "contact_\(contact.id.uuidString)"
+                
                 let outwardDirection = SCNVector3(x, 0, z)
                 let targetPosition = SCNVector3(
                     imageNode.position.x + outwardDirection.x,
@@ -187,6 +199,8 @@ struct ContactSphereView: UIViewRepresentable {
                 ])
                 let repeatPulse = SCNAction.repeatForever(pulseAction)
                 imageNode.runAction(repeatPulse)
+                
+                contactNodes[imageNode] = contact
                 
                 contactsContainer.addChildNode(imageNode)
             }
@@ -404,6 +418,88 @@ struct ContactSphereView: UIViewRepresentable {
             default:
                 break
             }
+        }
+        
+        @objc func handleTap(_ gesture: UITapGestureRecognizer) {
+            guard let sceneView = sceneView else {
+                return
+            }
+            
+            let location = gesture.location(in: sceneView)
+            let hitResults = sceneView.hitTest(location, options: nil)
+            
+            guard let hitResult = hitResults.first else {
+                print("⚠️ No se encontró ningún nodo en la ubicación del tap")
+                return
+            }
+            
+            print("🔍 Nodo tocado: \(hitResult.node.name ?? "sin nombre"), tipo: \(type(of: hitResult.node.geometry))")
+            
+            var currentNode: SCNNode? = hitResult.node
+            var contact: Contact?
+            
+            while let node = currentNode {
+                if let nodeName = node.name, nodeName.hasPrefix("contact_") {
+                    let contactIdString = String(nodeName.dropFirst(8))
+                    if let contactId = UUID(uuidString: contactIdString) {
+                        contact = self.contacts.first(where: { $0.id == contactId })
+                        if contact != nil {
+                            print("✅ Contacto encontrado por nombre: \(contact?.name ?? "unknown")")
+                            break
+                        }
+                    }
+                }
+                
+                if let foundContact = contactNodes[node] {
+                    contact = foundContact
+                    print("✅ Contacto encontrado en diccionario: \(foundContact.name)")
+                    break
+                }
+                
+                currentNode = node.parent
+                
+                if currentNode == sceneView.scene?.rootNode {
+                    break
+                }
+            }
+            
+            if contact == nil {
+                contact = findContactForNode(hitResult.node)
+                if contact != nil {
+                    print("✅ Contacto encontrado por búsqueda recursiva: \(contact?.name ?? "unknown")")
+                }
+            }
+            
+            guard let foundContact = contact else {
+                print("⚠️ No se encontró contacto para el nodo tocado")
+                print("   Nodos en diccionario: \(contactNodes.count)")
+                print("   Contactos disponibles: \(self.contacts.count)")
+                return
+            }
+            
+            print("✅ Contacto final encontrado: \(foundContact.name) (ID: \(foundContact.id))")
+            onContactTapped?(foundContact)
+        }
+        
+        private func findContactForNode(_ node: SCNNode) -> Contact? {
+            for (contactNode, contact) in contactNodes {
+                if node == contactNode {
+                    return contact
+                }
+                
+                var currentNode: SCNNode? = node
+                while let current = currentNode {
+                    if current == contactNode {
+                        return contact
+                    }
+                    currentNode = current.parent
+                    
+                    if current == contactNode.parent {
+                        break
+                    }
+                }
+            }
+            return nil
         }
     }
 }

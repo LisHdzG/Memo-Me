@@ -13,6 +13,13 @@ struct ContactDetailSheet: View {
     let spaceId: String?
     @Environment(\.dismiss) private var dismiss
     
+    @State private var noteText: String = ""
+    @State private var isEditingNote: Bool = false
+    @State private var isFavorite: Bool = false
+    @State private var hasNote: Bool = false
+    
+    private let noteService = ContactNoteService.shared
+    
     init(user: User? = nil, contact: Contact, spaceId: String? = nil) {
         self.user = user
         self.contact = contact
@@ -25,6 +32,10 @@ struct ContactDetailSheet: View {
     
     var photoUrl: String? {
         user?.photoUrl ?? contact.imageUrl
+    }
+    
+    var contactUserId: String? {
+        contact.userId ?? user?.id
     }
     
     var body: some View {
@@ -57,17 +68,31 @@ struct ContactDetailSheet: View {
                     .padding(.top, 20)
                     
                     VStack(spacing: 16) {
-                        AsyncImageView(
-                            imageUrl: photoUrl,
-                            placeholderText: displayName,
-                            contentMode: .fill,
-                            size: 140
-                        )
-                        .clipShape(Circle())
-                        .overlay(
-                            Circle()
-                                .stroke(Color.white.opacity(0.3), lineWidth: 4)
-                        )
+                        ZStack(alignment: .topTrailing) {
+                            AsyncImageView(
+                                imageUrl: photoUrl,
+                                placeholderText: displayName,
+                                contentMode: .fill,
+                                size: 140
+                            )
+                            .clipShape(Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 4)
+                            )
+                            
+                            if isFavorite {
+                                Image(systemName: "heart.fill")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.pink)
+                                    .padding(8)
+                                    .background(
+                                        Circle()
+                                            .fill(Color.white.opacity(0.9))
+                                    )
+                                    .offset(x: 10, y: -10)
+                            }
+                        }
                         
                         Text(displayName)
                             .font(.system(size: 28, weight: .bold))
@@ -131,7 +156,6 @@ struct ContactDetailSheet: View {
                             }
                         }
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 40)
                     } else {
                         InfoMessage(
                             message: "Información completa no disponible",
@@ -141,12 +165,49 @@ struct ContactDetailSheet: View {
                         .padding(.top, 20)
                     }
                     
+                    if let userId = contactUserId {
+                        NoteSection(
+                            noteText: $noteText,
+                            isEditingNote: $isEditingNote,
+                            hasNote: $hasNote,
+                            isFavorite: $isFavorite,
+                            contactUserId: userId,
+                            noteService: noteService
+                        )
+                        .padding(.horizontal, 20)
+                    }
+                    
                     Spacer()
                         .frame(height: 40)
                 }
                 .frame(maxWidth: .infinity)
             }
         }
+        .onAppear {
+            loadNote()
+        }
+        .onChange(of: contactUserId) { _, _ in
+            loadNote()
+        }
+    }
+    
+    private func loadNote() {
+        guard let userId = contactUserId else {
+            noteText = ""
+            hasNote = false
+            isFavorite = false
+            return
+        }
+        
+        if let note = noteService.getNote(contactUserId: userId) {
+            noteText = note
+            hasNote = true
+        } else {
+            noteText = ""
+            hasNote = false
+        }
+        
+        isFavorite = noteService.isFavorite(contactUserId: userId)
     }
 }
 
@@ -263,6 +324,170 @@ struct InfoMessage: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color.white.opacity(0.3), lineWidth: 1)
         )
+    }
+}
+
+struct NoteSection: View {
+    @Binding var noteText: String
+    @Binding var isEditingNote: Bool
+    @Binding var hasNote: Bool
+    @Binding var isFavorite: Bool
+    let contactUserId: String
+    let noteService: ContactNoteService
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 8) {
+                Image(systemName: "note.text")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.8))
+                
+                Text("Mi Nota Personal")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.7))
+                
+                Spacer()
+                
+                if hasNote && !isEditingNote {
+                    Button(action: {
+                        isEditingNote = true
+                    }) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.8))
+                            .padding(8)
+                            .background(Color.white.opacity(0.2))
+                            .clipShape(Circle())
+                    }
+                }
+            }
+            
+            if isEditingNote {
+                VStack(spacing: 12) {
+                    TextEditor(text: $noteText)
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.white)
+                        .frame(minHeight: 120)
+                        .padding(12)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                        )
+                        .scrollContentBackground(.hidden)
+                    
+                    HStack(spacing: 12) {
+                        if hasNote {
+                            Button(action: {
+                                deleteNote()
+                            }) {
+                                HStack {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 14))
+                                    Text("Eliminar")
+                                        .font(.system(size: 14, weight: .semibold))
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(Color.red.opacity(0.7))
+                                .cornerRadius(12)
+                            }
+                        }
+                        
+                        Button(action: {
+                            saveNote()
+                        }) {
+                            HStack {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 14))
+                                Text("Guardar")
+                                    .font(.system(size: 14, weight: .semibold))
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.white.opacity(0.3),
+                                        Color.white.opacity(0.2)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                            )
+                        }
+                    }
+                }
+            } else {
+                if hasNote {
+                    Text(noteText)
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                        )
+                        .onTapGesture {
+                            isEditingNote = true
+                        }
+                } else {
+                    Button(action: {
+                        isEditingNote = true
+                    }) {
+                        HStack {
+                            Image(systemName: "plus.circle")
+                                .font(.system(size: 16))
+                            Text("Agregar nota personal")
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                        .foregroundColor(.white.opacity(0.8))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                        )
+                    }
+                }
+            }
+        }
+    }
+    
+    private func saveNote() {
+        let trimmedNote = noteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if !trimmedNote.isEmpty {
+            noteService.saveNote(contactUserId: contactUserId, note: trimmedNote)
+            hasNote = true
+            isFavorite = true
+        } else {
+            deleteNote()
+        }
+        
+        isEditingNote = false
+    }
+    
+    private func deleteNote() {
+        noteService.deleteNote(contactUserId: contactUserId)
+        noteText = ""
+        hasNote = false
+        isFavorite = false
+        isEditingNote = false
     }
 }
 

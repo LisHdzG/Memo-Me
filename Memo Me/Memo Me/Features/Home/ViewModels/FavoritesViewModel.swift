@@ -17,6 +17,7 @@ class FavoritesViewModel: ObservableObject {
     private let favoriteService = FavoriteService()
     private let spaceService = SpaceService()
     private let userService = UserService()
+    private let noteService = ContactNoteService.shared
     
     var allFavorites: [FavoriteContact] {
         favoriteContactsBySpace.values.flatMap { $0 }
@@ -84,12 +85,50 @@ class FavoritesViewModel: ObservableObject {
                 }
             }
             
+            await addLocalFavorites(to: &groupedFavorites)
+            
             favoriteContactsBySpace = groupedFavorites
             isLoading = false
         } catch {
             errorMessage = "Error al cargar favoritos: \(error.localizedDescription)"
             favoriteContactsBySpace = [:]
             isLoading = false
+        }
+    }
+    
+    private func addLocalFavorites(to groupedFavorites: inout [String: [FavoriteContact]]) async {
+        let localFavorites = noteService.getFavoriteUserIds()
+        
+        for userId in localFavorites {
+            if let user = try? await userService.getUser(userId: userId) {
+                let imageIndex = abs(userId.hashValue) % 37 + 1
+                let imageNumber = String(format: "%02d", imageIndex)
+                
+                let contact = Contact(
+                    id: UUID(uuidString: userId) ?? UUID(),
+                    name: user.name,
+                    imageName: user.photoUrl == nil ? "dummy_profile_\(imageNumber)" : nil,
+                    imageUrl: user.photoUrl,
+                    userId: userId
+                )
+                
+                let spaceName = "Personal"
+                
+                let favoriteContact = FavoriteContact(
+                    id: "local_\(userId)",
+                    contact: contact,
+                    spaceId: "local",
+                    spaceName: spaceName
+                )
+                
+                if groupedFavorites[spaceName] == nil {
+                    groupedFavorites[spaceName] = []
+                }
+                
+                if !groupedFavorites[spaceName]!.contains(where: { $0.contact.userId == userId }) {
+                    groupedFavorites[spaceName]?.append(favoriteContact)
+                }
+            }
         }
     }
 }
