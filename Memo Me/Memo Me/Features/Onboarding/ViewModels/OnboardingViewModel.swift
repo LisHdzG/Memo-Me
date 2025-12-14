@@ -17,9 +17,9 @@ class OnboardingViewModel: ObservableObject {
     var pages: [OnboardingPage] {
         [
             OnboardingPage(
-                title: "Remember",
-                subtitle: "people",
-                description: "effortlessly"
+                title: "¿Te acuerdas de la persona… pero no del contexto?",
+                subtitle: "Los contactos guardan números.\nMemoME guarda historias.",
+                description: ""
             ),
             OnboardingPage(
                 title: "Organiza",

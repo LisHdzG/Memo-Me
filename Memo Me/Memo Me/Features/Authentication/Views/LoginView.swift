@@ -9,17 +9,17 @@ import SwiftUI
 import AuthenticationServices
 
 struct LoginView: View {
-    @StateObject private var viewModel = AuthenticationManager()
+    @EnvironmentObject var authManager: AuthenticationManager
     
     var body: some View {
         Group {
-            if viewModel.isAuthenticated {
+            if authManager.isAuthenticated {
                 ContentView()
-                    .environmentObject(viewModel)
+                    .environmentObject(authManager)
                     .transition(.opacity)
-            } else if viewModel.authenticationState == .needsRegistration {
+            } else if authManager.authenticationState == .needsRegistration {
                 RegistrationView()
-                    .environmentObject(viewModel)
+                    .environmentObject(authManager)
                     .transition(.opacity)
             } else {
                 ZStack {
@@ -50,7 +50,7 @@ struct LoginView: View {
                         
                         Spacer()
                         
-                        if let errorMessage = viewModel.errorMessage {
+                        if let errorMessage = authManager.errorMessage {
                             VStack(spacing: 12) {
                                 Text(errorMessage)
                                     .font(.system(size: 14, weight: .medium))
@@ -59,7 +59,7 @@ struct LoginView: View {
                                     .padding(.horizontal, 40)
                                 
                                 Button(action: {
-                                    viewModel.clearError()
+                                    authManager.clearError()
                                 }) {
                                     Text("Entendido")
                                         .font(.system(size: 14, weight: .semibold))
@@ -85,10 +85,10 @@ struct LoginView: View {
                         .frame(height: 50)
                         .cornerRadius(10)
                         .padding(.horizontal, 40)
-                        .disabled(viewModel.authenticationState == .loading)
-                        .opacity(viewModel.authenticationState == .loading ? 0.6 : 1.0)
+                        .disabled(authManager.authenticationState == .loading)
+                        .opacity(authManager.authenticationState == .loading ? 0.6 : 1.0)
                         
-                        if viewModel.authenticationState == .loading {
+                        if authManager.authenticationState == .loading {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                 .scaleEffect(1.2)
@@ -106,17 +106,17 @@ struct LoginView: View {
     private func handleSignInResult(_ result: Result<ASAuthorization, Error>) {
         switch result {
         case .success(let authorization):
-            viewModel.handleAuthorization(authorization)
+            authManager.handleAuthorization(authorization)
             
         case .failure(let error):
             if let asError = error as? ASAuthorizationError,
                asError.code != .canceled {
-                viewModel.handleError(error)
+                authManager.handleError(error)
             } else if let asError = error as? ASAuthorizationError,
                       asError.code == .canceled {
-                viewModel.clearError()
+                authManager.clearError()
             } else {
-                viewModel.handleError(error)
+                authManager.handleError(error)
             }
         }
     }

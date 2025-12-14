@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct SplashView: View {
+    @StateObject private var authManager = AuthenticationManager()
     @State private var isActive = false
     @State private var showMemo = false
     @State private var showMeReflection = false
@@ -18,8 +19,15 @@ struct SplashView: View {
     
     var body: some View {
         if isActive {
-            LoginView()
-                .transition(.opacity)
+            if authManager.isAuthenticated {
+                ContentView()
+                    .environmentObject(authManager)
+                    .transition(.opacity)
+            } else {
+                OnboardingView()
+                    .environmentObject(authManager)
+                    .transition(.opacity)
+            }
         } else {
             ZStack {
                 LinearGradient(
