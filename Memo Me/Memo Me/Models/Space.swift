@@ -14,6 +14,8 @@ struct Space: Codable, Identifiable, Equatable {
     let name: String
     var bannerUrl: String
     var memberIds: [String]
+    var isPublic: Bool
+    var code: String?
     
     enum CodingKeys: String, CodingKey {
         case id
@@ -21,14 +23,18 @@ struct Space: Codable, Identifiable, Equatable {
         case name
         case bannerUrl
         case memberIds
+        case isPublic
+        case code
     }
     
-    init(id: String? = nil, spaceId: String, name: String, bannerUrl: String = "", memberIds: [String] = []) {
+    init(id: String? = nil, spaceId: String, name: String, bannerUrl: String = "", memberIds: [String] = [], isPublic: Bool = false, code: String? = nil) {
         self.id = id
         self.spaceId = spaceId
         self.name = name
         self.bannerUrl = bannerUrl
         self.memberIds = memberIds
+        self.isPublic = isPublic
+        self.code = code
     }
 }
 
