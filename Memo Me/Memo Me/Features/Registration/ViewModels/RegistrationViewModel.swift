@@ -33,29 +33,93 @@ class RegistrationViewModel: ObservableObject {
     
     var authenticationManager: AuthenticationManager?
     
-    let countries: [String] = [
-        "México", "Estados Unidos", "España", "Argentina", "Colombia",
-        "Chile", "Perú", "Venezuela", "Ecuador", "Guatemala",
-        "Cuba", "Haití", "Bolivia", "República Dominicana", "Honduras",
-        "Paraguay", "El Salvador", "Nicaragua", "Costa Rica", "Panamá",
-        "Uruguay", "Jamaica", "Trinidad y Tobago", "Guyana", "Surinam",
-        "Brasil", "Canadá", "Reino Unido", "Francia", "Alemania",
-        "Italia", "Portugal", "Países Bajos", "Bélgica", "Suiza",
-        "Austria", "Suecia", "Noruega", "Dinamarca", "Finlandia",
-        "Polonia", "Grecia", "Rusia", "China", "Japón",
-        "India", "Corea del Sur", "Australia", "Nueva Zelanda", "Sudáfrica"
-    ]
+    var countries: [String] {
+        let unsortedCountries = [
+            "中国", "भारत", "United States", "Indonesia", "پاکستان",
+            "Brasil", "বাংলাদেশ", "Nigeria", "Россия", "México",
+            "日本", "Pilipinas", "ኢትዮጵያ", "مصر", "Việt Nam", "ایران", "Türkiye", "Deutschland", "ประเทศไทย",
+            "United Kingdom", "France", "Italia", "Tanzania", "South Africa",
+            "မြန်မာ", "Kenya", "대한민국", "Colombia", "España",
+            "Uganda", "Argentina", "الجزائر", "السودان", "Україна",
+            "العراق", "افغانستان", "Polska", "Canada", "المغرب",
+            "السعودية", "Oʻzbekiston", "Perú", "Angola", "Malaysia",
+            "Moçambique", "Ghana", "اليمن", "नेपाल", "Venezuela",
+            "Madagasikara", "Cameroun", "Côte d'Ivoire", "조선민주주의인민공화국", "Australia"
+        ]
+        return unsortedCountries.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
     
-    let expertiseAreas: [String] = [
-        "Desarrollo iOS", "Desarrollo Android", "Desarrollo Web",
-        "Backend Development", "Frontend Development", "Full Stack",
-        "UI/UX Design", "Diseño Gráfico", "Product Design",
-        "Machine Learning", "Data Science", "Inteligencia Artificial",
-        "DevOps", "Cloud Computing", "Cybersecurity",
-        "Game Development", "AR/VR Development", "Blockchain",
-        "Mobile Development", "Desktop Development", "Embedded Systems",
-        "QA/Testing", "Project Management", "Business Analysis"
-    ]
+    var notInListCountry: String {
+        String(localized: "picker.not.in.list", comment: "Not in list option")
+    }
+    
+    var expertiseAreas: [String] {
+        let areas = [
+            String(localized: "area.ios.development", comment: "iOS Development"),
+            String(localized: "area.android.development", comment: "Android Development"),
+            String(localized: "area.web.development", comment: "Web Development"),
+            String(localized: "area.backend.development", comment: "Backend Development"),
+            String(localized: "area.frontend.development", comment: "Frontend Development"),
+            String(localized: "area.full.stack", comment: "Full Stack Development"),
+            String(localized: "area.ui.ux.design", comment: "UI/UX Design"),
+            String(localized: "area.graphic.design", comment: "Graphic Design"),
+            String(localized: "area.product.design", comment: "Product Design"),
+            String(localized: "area.machine.learning", comment: "Machine Learning"),
+            String(localized: "area.data.science", comment: "Data Science"),
+            String(localized: "area.artificial.intelligence", comment: "Artificial Intelligence"),
+            String(localized: "area.devops", comment: "DevOps"),
+            String(localized: "area.cloud.computing", comment: "Cloud Computing"),
+            String(localized: "area.cybersecurity", comment: "Cybersecurity"),
+            String(localized: "area.game.development", comment: "Game Development"),
+            String(localized: "area.qa.testing", comment: "QA/Testing"),
+            String(localized: "area.project.management", comment: "Project Management"),
+            String(localized: "area.business.analysis", comment: "Business Analysis"),
+            String(localized: "area.mobile.development", comment: "Mobile Development"),
+            String(localized: "area.database.administration", comment: "Database Administration"),
+            String(localized: "area.software.architecture", comment: "Software Architecture"),
+            String(localized: "area.system.administration", comment: "System Administration"),
+            String(localized: "area.network.engineering", comment: "Network Engineering"),
+            String(localized: "area.embedded.systems", comment: "Embedded Systems"),
+            String(localized: "area.blockchain", comment: "Blockchain"),
+            String(localized: "area.ar.vr.development", comment: "AR/VR Development"),
+            String(localized: "area.desktop.development", comment: "Desktop Development"),
+            String(localized: "area.digital.marketing", comment: "Digital Marketing"),
+            String(localized: "area.content.creation", comment: "Content Creation"),
+            String(localized: "area.social.media.management", comment: "Social Media Management"),
+            String(localized: "area.video.production", comment: "Video Production"),
+            String(localized: "area.photography", comment: "Photography"),
+            String(localized: "area.writing.editing", comment: "Writing & Editing"),
+            String(localized: "area.translation", comment: "Translation"),
+            String(localized: "area.finance.accounting", comment: "Finance & Accounting"),
+            String(localized: "area.human.resources", comment: "Human Resources"),
+            String(localized: "area.legal", comment: "Legal"),
+            String(localized: "area.consulting", comment: "Consulting"),
+            String(localized: "area.education", comment: "Education"),
+            String(localized: "area.research", comment: "Research"),
+            String(localized: "area.healthcare", comment: "Healthcare"),
+            String(localized: "area.engineering", comment: "Engineering"),
+            String(localized: "area.architecture", comment: "Architecture"),
+            String(localized: "area.sales", comment: "Sales"),
+            String(localized: "area.customer.service", comment: "Customer Service"),
+            String(localized: "area.operations", comment: "Operations"),
+            String(localized: "area.logistics", comment: "Logistics"),
+            String(localized: "area.supply.chain", comment: "Supply Chain"),
+            String(localized: "area.quality.assurance", comment: "Quality Assurance"),
+            String(localized: "area.automation", comment: "Automation"),
+            String(localized: "area.robotics", comment: "Robotics"),
+            String(localized: "area.iot", comment: "Internet of Things (IoT)"),
+            String(localized: "area.big.data", comment: "Big Data"),
+            String(localized: "area.business.intelligence", comment: "Business Intelligence"),
+            String(localized: "area.analytics", comment: "Analytics"),
+            String(localized: "area.ecommerce", comment: "E-commerce"),
+            String(localized: "area.product.management", comment: "Product Management"),
+            String(localized: "area.agile.scrum", comment: "Agile/Scrum"),
+            String(localized: "area.api.development", comment: "API Development"),
+            String(localized: "area.microservices", comment: "Microservices"),
+            String(localized: "area.serverless", comment: "Serverless")
+        ]
+        return areas.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
     
     var isFormValid: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

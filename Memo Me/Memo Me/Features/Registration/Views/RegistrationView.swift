@@ -48,12 +48,24 @@ struct RegistrationView: View {
                 viewModel.name = name
             }
         }
-        .customPicker($viewModel.countryConfig, items: viewModel.countries)
-        .customPicker($viewModel.primaryExpertiseConfig, items: viewModel.expertiseAreas)
-        .customPicker($viewModel.secondaryExpertiseConfig, items: viewModel.expertiseAreas)
+        .customPicker($viewModel.countryConfig, items: viewModel.countries, addNotInList: true, notInListText: viewModel.notInListCountry)
+        .customPicker($viewModel.primaryExpertiseConfig, items: viewModel.expertiseAreas, addNotInList: true)
+        .customPicker($viewModel.secondaryExpertiseConfig, items: viewModel.expertiseAreas, addNotInList: true)
         .onChange(of: viewModel.countryConfig.text) { oldValue, newValue in
             Task { @MainActor in
-                if newValue != String(localized: "registration.select.country", comment: "Select country placeholder") && 
+                let preferNotToSay = String(localized: "picker.prefer.not.to.say", comment: "Prefer not to say option")
+                let notInList = String(localized: "picker.not.in.list", comment: "Not in list option")
+                let notInListValue = String(localized: "picker.not.in.list.value", comment: "Not yet in the list value")
+                let countryPlaceholder = String(localized: "registration.select.country", comment: "Select country placeholder")
+                
+                // Si el nuevo valor es "Prefiero no decir" o si cambió al placeholder (después de seleccionar "Prefiero no decir")
+                if newValue == preferNotToSay || (newValue == countryPlaceholder && oldValue != countryPlaceholder && viewModel.country != nil) {
+                    // Si selecciona "Prefiero no decir", limpiar (nil)
+                    viewModel.clearCountry()
+                } else if newValue == notInList {
+                    // Si selecciona "No está en la lista", guardar "Aún no está en la lista"
+                    viewModel.selectCountry(notInListValue)
+                } else if newValue != countryPlaceholder && 
                    newValue != oldValue && 
                    viewModel.country != newValue {
                     viewModel.selectCountry(newValue)
@@ -62,7 +74,19 @@ struct RegistrationView: View {
         }
         .onChange(of: viewModel.primaryExpertiseConfig.text) { oldValue, newValue in
             Task { @MainActor in
-                if newValue != String(localized: "registration.select.interests", comment: "Select interests placeholder") && 
+                let preferNotToSay = String(localized: "picker.prefer.not.to.say", comment: "Prefer not to say option")
+                let notInList = String(localized: "picker.not.in.list", comment: "Not in list option")
+                let notInListValue = String(localized: "picker.not.in.list.value", comment: "Not yet in the list value")
+                let interestsPlaceholder = String(localized: "registration.select.interests", comment: "Select interests placeholder")
+                
+                // Si el nuevo valor es "Prefiero no decir" o si cambió al placeholder (después de seleccionar "Prefiero no decir")
+                if newValue == preferNotToSay || (newValue == interestsPlaceholder && oldValue != interestsPlaceholder && viewModel.primaryExpertiseArea != nil) {
+                    // Si selecciona "Prefiero no decir", limpiar (nil)
+                    viewModel.clearPrimaryExpertise()
+                } else if newValue == notInList {
+                    // Si selecciona "No está en la lista", guardar "Aún no está en la lista"
+                    viewModel.selectPrimaryExpertise(notInListValue)
+                } else if newValue != interestsPlaceholder && 
                    newValue != oldValue && 
                    viewModel.primaryExpertiseArea != newValue {
                     viewModel.selectPrimaryExpertise(newValue)
@@ -71,7 +95,19 @@ struct RegistrationView: View {
         }
         .onChange(of: viewModel.secondaryExpertiseConfig.text) { oldValue, newValue in
             Task { @MainActor in
-                if newValue != String(localized: "registration.select.interests", comment: "Select interests placeholder") && 
+                let preferNotToSay = String(localized: "picker.prefer.not.to.say", comment: "Prefer not to say option")
+                let notInList = String(localized: "picker.not.in.list", comment: "Not in list option")
+                let notInListValue = String(localized: "picker.not.in.list.value", comment: "Not yet in the list value")
+                let interestsPlaceholder = String(localized: "registration.select.interests", comment: "Select interests placeholder")
+                
+                // Si el nuevo valor es "Prefiero no decir" o si cambió al placeholder (después de seleccionar "Prefiero no decir")
+                if newValue == preferNotToSay || (newValue == interestsPlaceholder && oldValue != interestsPlaceholder && viewModel.secondaryExpertiseArea != nil) {
+                    // Si selecciona "Prefiero no decir", limpiar (nil)
+                    viewModel.clearSecondaryExpertise()
+                } else if newValue == notInList {
+                    // Si selecciona "No está en la lista", guardar "Aún no está en la lista"
+                    viewModel.selectSecondaryExpertise(notInListValue)
+                } else if newValue != interestsPlaceholder && 
                    newValue != oldValue && 
                    viewModel.secondaryExpertiseArea != newValue {
                     viewModel.selectSecondaryExpertise(newValue)
@@ -157,7 +193,7 @@ struct RegistrationView: View {
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.primaryDark)
             
-            TextField("", text: $viewModel.name)
+            TextField(String(localized: "registration.name.placeholder", comment: "Name placeholder example"), text: $viewModel.name)
                 .textFieldStyle(CustomTextFieldStyle())
                 .focused($focusedField, equals: .name)
                 .onChange(of: viewModel.name) { oldValue, newValue in

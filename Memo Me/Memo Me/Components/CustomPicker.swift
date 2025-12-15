@@ -9,14 +9,27 @@ import SwiftUI
 
 extension View {
     @ViewBuilder
-    func customPicker(_ config: Binding<PickerConfig>, items: [String]) -> some View {
+    func customPicker(_ config: Binding<PickerConfig>, items: [String], addNotInList: Bool = false, notInListText: String? = nil) -> some View {
         self
             .overlay {
                 if config.wrappedValue.show {
-                    CustomPickerView(texts: items, config: config)
+                    let preferNotToSay = String(localized: "picker.prefer.not.to.say", comment: "Prefer not to say option")
+                    let notInListOption = addNotInList ? (notInListText ?? String(localized: "picker.not.in.list", comment: "Not in list option")) : nil
+                    let itemsWithOptions = buildItemsList(items: items, preferNotToSay: preferNotToSay, addNotInList: addNotInList, notInListText: notInListOption)
+                    
+                    CustomPickerView(texts: itemsWithOptions, originalItems: items, config: config)
                         .transition(.identity)
                 }
             }
+    }
+    
+    private func buildItemsList(items: [String], preferNotToSay: String, addNotInList: Bool, notInListText: String?) -> [String] {
+        var result = [preferNotToSay]
+        result.append(contentsOf: items)
+        if addNotInList, let notInListText = notInListText {
+            result.append(notInListText)
+        }
+        return result
     }
 }
 
@@ -47,11 +60,14 @@ struct PickerConfig {
 
 fileprivate struct CustomPickerView: View {
     var texts: [String]
+    var originalItems: [String]
     @Binding var config: PickerConfig
     @State private var activeText: String?
     @State private var showContents: Bool = false
     @State private var showScrollView: Bool = false
     @State private var expandItems: Bool = false
+    @State private var hasScrolled: Bool = false
+    @State private var initialText: String?
     
     var body: some View {
         GeometryReader {
@@ -97,6 +113,7 @@ fileprivate struct CustomPickerView: View {
         }
         .task {
             guard activeText == nil else { return }
+            initialText = config.text
             if texts.contains(config.text) {
                 activeText = config.text
             } else {
@@ -114,8 +131,9 @@ fileprivate struct CustomPickerView: View {
             }
         }
         .onChange(of: activeText) { oldValue, newValue in
-            if let newValue {
-                config.text = newValue
+            if let newValue, let oldValue = oldValue, oldValue != newValue {
+                // Detectar si el usuario ha hecho scroll (cambió de item)
+                hasScrolled = true
             }
         }
     }
@@ -124,6 +142,37 @@ fileprivate struct CustomPickerView: View {
     func CloseButton() -> some View {
         Button {
             Task {
+                if hasScrolled {
+                    // Si ha hecho scroll, guardar la selección
+                    if let selectedText = activeText {
+                        let preferNotToSay = String(localized: "picker.prefer.not.to.say", comment: "Prefer not to say option")
+                        let notInList = String(localized: "picker.not.in.list", comment: "Not in list option")
+                        let notInListValue = String(localized: "picker.not.in.list.value", comment: "Not yet in the list value")
+                        
+                        if selectedText == preferNotToSay {
+                            // Si seleccionó "prefiero no decir", restaurar el placeholder original
+                            if let initial = initialText {
+                                config.text = initial
+                            } else {
+                                // Intentar determinar el placeholder basado en el texto actual
+                                if config.text.contains("country") || config.text.contains("país") || config.text.contains("country") {
+                                    config.text = String(localized: "registration.select.country", comment: "Select country placeholder")
+                                } else if config.text.contains("interests") || config.text.contains("intereses") {
+                                    config.text = String(localized: "registration.select.interests", comment: "Select interests placeholder")
+                                } else {
+                                    config.text = preferNotToSay
+                                }
+                            }
+                        } else if selectedText == notInList {
+                            // Si seleccionó "No está en la lista", guardar el valor "Aún no está en la lista"
+                            config.text = notInListValue
+                        } else {
+                            // Guardar la selección normal
+                            config.text = selectedText
+                        }
+                    }
+                }
+                
                 withAnimation(.easeInOut(duration: 0.2)) {
                     expandItems = false
                 }
@@ -138,13 +187,19 @@ fileprivate struct CustomPickerView: View {
                 
                 config.show = false
                 activeText = nil
+                hasScrolled = false
+                initialText = nil
             }
         } label: {
-            Image(systemName: "xmark")
-                .font(.title2)
-                .foregroundStyle(Color.primary)
-                .frame(width: 45, height: 45)
-                .contentShape(.rect)
+            ZStack {
+                Circle()
+                    .fill(hasScrolled ? Color(.deepSpace) : Color.gray.opacity(0.3))
+                    .frame(width: 45, height: 45)
+                
+                Image(systemName: hasScrolled ? "checkmark" : "xmark")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(hasScrolled ? .white : .gray)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
         .offset(x: showContents ? -50 : -20, y: -10)
@@ -156,11 +211,13 @@ fileprivate struct CustomPickerView: View {
     private func CardView(_ text: String, size: CGSize) -> some View {
         GeometryReader { proxy in
             let width = proxy.size.width
+            let isActive = activeText == text
+            let isSelected = config.text == text
             
             Text(text)
                 .fontWeight(.semibold)
-                .foregroundStyle(config.text == text ? .blue : .gray)
-                .blur(radius: expandItems ? 0 : config.text == text ? 0 : 5)
+                .foregroundStyle(isActive ? Color(.deepSpace) : .gray)
+                .blur(radius: expandItems ? 0 : isActive ? 0 : 5)
                 .offset(y: offset(proxy))
                 .clipped()
                 .offset(x: -width * 0.3)
@@ -170,7 +227,7 @@ fileprivate struct CustomPickerView: View {
         }
         .frame(height: 20)
         .lineLimit(1)
-        .zIndex(config.text == text ? 1000 : 0)
+        .zIndex(activeText == text ? 1000 : 0)
     }
     
     private func offset(_ proxy: GeometryProxy) -> CGFloat {
