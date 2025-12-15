@@ -8,12 +8,18 @@
         {
           "blend-mode-specializations" : [
             {
+              "value" : "normal"
+            },
+            {
               "appearance" : "dark",
               "value" : "darken"
             }
           ],
+          "fill" : "none",
+          "glass" : false,
           "image-name" : "Pet Base.svg",
           "name" : "Pet Base",
+          "opacity" : 1,
           "position" : {
             "scale" : 0.6,
             "translation-in-points" : [
@@ -23,6 +29,40 @@
           }
         }
       ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    },
+    {
+      "layers" : [
+        {
+          "blend-mode" : "darken",
+          "fill" : {
+            "linear-gradient" : [
+              "display-p3:0.37796,0.64558,1.00000,0.00000",
+              "srgb:0.00000,0.53333,1.00000,0.00000"
+            ]
+          },
+          "glass" : true,
+          "hidden" : false,
+          "image-name" : "Bubbles.svg",
+          "name" : "Bubbles",
+          "opacity" : 1,
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              100,
+              0
+            ]
+          }
+        }
+      ],
+      "name" : "Bubbles",
       "shadow" : {
         "kind" : "neutral",
         "opacity" : 0.5

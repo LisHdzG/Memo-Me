@@ -39,7 +39,7 @@ struct OnboardingFourthPageView: View {
                         Spacer()
 
                         VStack(spacing: -10) {
-                            Text("onboarding.page4.ready", comment: "You're ready to text")
+                            Text("You're ready to")
                                 .font(.system(size: 25, weight: .bold, design: .rounded))
                                 .foregroundColor(.primaryDark.opacity(0.7))
                                 .opacity(showContent ? 1.0 : 0.0)
@@ -49,7 +49,7 @@ struct OnboardingFourthPageView: View {
                                     .delay(0.3),
                                     value: showContent
                                 )
-                            Text("onboarding.page4.connect", comment: "Connect text")
+                            Text("Connect")
                                 .font(.system(size: 48, weight: .bold, design: .rounded))
                                 .foregroundColor(.primaryDark)
                                 .opacity(showContent ? 1.0 : 0.0)
@@ -137,7 +137,7 @@ struct OnboardingFourthPageView: View {
     }
 
     private var termsAndConditionsText: Text {
-        let fullText = String(localized: "onboarding.page4.terms")
+        let fullText = "By continuing, you accept our Terms and Conditions"
         let boldKeywords = [
             "Terms and Conditions",
             "términos y condiciones",
@@ -202,3 +202,4 @@ struct OnboardingFourthPageView: View {
         }
     }
 }
+

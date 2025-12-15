@@ -18,12 +18,12 @@ struct NetworkErrorView: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(height: 150)
             
-            Text("error.network.title", comment: "Network error title")
+            Text("Connection Lost")
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundColor(.primaryDark)
                 .multilineTextAlignment(.center)
             
-            Text("error.network.message", comment: "Network error message")
+            Text("It seems you've lost your internet connection. Please check your network settings and try again.")
                 .font(.system(size: 16, weight: .medium, design: .rounded))
                 .foregroundColor(.primaryDark.opacity(0.7))
                 .multilineTextAlignment(.center)
@@ -32,7 +32,7 @@ struct NetworkErrorView: View {
             Button {
                 errorPresenter.retry()
             } label: {
-                Text("error.retry", comment: "Retry button")
+                Text("Retry")
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -49,3 +49,4 @@ struct NetworkErrorView: View {
         }
     }
 }
+

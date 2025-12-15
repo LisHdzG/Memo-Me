@@ -24,19 +24,19 @@ class OnboardingViewModel: ObservableObject {
     var pages: [OnboardingPage] {
         [
             OnboardingPage(
-                title: String(localized: "onboarding.page1.title"),
-                subtitle: String(localized: "onboarding.page1.subtitle"),
+                title: "Do you remember the person… but not the name?",
+                subtitle: "Contacts save numbers.\nMemoME saves stories.",
                 description: ""
             ),
             OnboardingPage(
-                title: String(localized: "onboarding.page2.title"),
-                subtitle: String(localized: "onboarding.page2.subtitle"),
-                description: String(localized: "onboarding.page2.description")
+                title: "Organize people by spaces",
+                subtitle: "No more \"where do I know them from?\"",
+                description: "Everything has its place."
             ),
             OnboardingPage(
-                title: String(localized: "onboarding.page3.title"),
+                title: "Remember what matters",
                 subtitle: "",
-                description: String(localized: "onboarding.page3.description")
+                description: "That's MemoME."
             ),
             OnboardingPage(
                 title: "",

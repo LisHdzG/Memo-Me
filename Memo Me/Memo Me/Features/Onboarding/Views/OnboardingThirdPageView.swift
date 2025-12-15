@@ -35,17 +35,17 @@ struct OnboardingThirdPageView: View {
 
                 HStack(spacing: 8) {
                     AnimatedWord(
-                        text: String(localized: "onboarding.page3.word1"),
+                        text: "Context.",
                         show: showSubtitleWord1,
                         delay: 0.0
                     )
                     AnimatedWord(
-                        text: String(localized: "onboarding.page3.word2"),
+                        text: "People.",
                         show: showSubtitleWord2,
                         delay: 0.3
                     )
                     AnimatedWord(
-                        text: String(localized: "onboarding.page3.word3"),
+                        text: "Memory.",
                         show: showSubtitleWord3,
                         delay: 0.6
                     )
@@ -122,3 +122,4 @@ struct OnboardingThirdPageView: View {
         }
     }
 }
+

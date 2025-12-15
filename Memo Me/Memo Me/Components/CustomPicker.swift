@@ -13,8 +13,8 @@ extension View {
         self
             .overlay {
                 if config.wrappedValue.show {
-                    let preferNotToSay = String(localized: "picker.prefer.not.to.say", comment: "Prefer not to say option")
-                    let notInListOption = addNotInList ? (notInListText ?? String(localized: "picker.not.in.list", comment: "Not in list option")) : nil
+                    let preferNotToSay = "Prefer not to say"
+                    let notInListOption = addNotInList ? (notInListText ?? "Not yet in the list") : nil
                     let itemsWithOptions = buildItemsList(items: items, preferNotToSay: preferNotToSay, addNotInList: addNotInList, notInListText: notInListOption)
                     
                     CustomPickerView(texts: itemsWithOptions, originalItems: items, config: config)
@@ -99,14 +99,13 @@ fileprivate struct CustomPickerView: View {
                 height: showContents ? -10 : config.sourceFrame.minY
             )
             
-            // Texto oculto para la animación - no visible para el usuario
             Text(config.text)
                 .fontWeight(showContents ? .semibold : .regular)
                 .foregroundStyle(.blue)
                 .frame(height: 20)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: showContents ? .trailing : .topLeading)
                 .offset(offset)
-                .opacity(0) // Siempre invisible
+                .opacity(0)
                 .ignoresSafeArea(.all, edges: showContents ? [] : .all)
             
             CloseButton()
@@ -132,7 +131,6 @@ fileprivate struct CustomPickerView: View {
         }
         .onChange(of: activeText) { oldValue, newValue in
             if let newValue, let oldValue = oldValue, oldValue != newValue {
-                // Detectar si el usuario ha hecho scroll (cambió de item)
                 hasScrolled = true
             }
         }
@@ -143,31 +141,38 @@ fileprivate struct CustomPickerView: View {
         Button {
             Task {
                 if hasScrolled {
-                    // Si ha hecho scroll, guardar la selección
                     if let selectedText = activeText {
-                        let preferNotToSay = String(localized: "picker.prefer.not.to.say", comment: "Prefer not to say option")
-                        let notInList = String(localized: "picker.not.in.list", comment: "Not in list option")
-                        let notInListValue = String(localized: "picker.not.in.list.value", comment: "Not yet in the list value")
+                        let preferNotToSay = "Prefer not to say"
+                        let notInList = "Not yet in the list"
+                        let notInListValue = "Not yet in the list"
                         
                         if selectedText == preferNotToSay {
-                            // Si seleccionó "prefiero no decir", restaurar el placeholder original
                             if let initial = initialText {
-                                config.text = initial
-                            } else {
-                                // Intentar determinar el placeholder basado en el texto actual
-                                if config.text.contains("country") || config.text.contains("país") || config.text.contains("country") {
-                                    config.text = String(localized: "registration.select.country", comment: "Select country placeholder")
-                                } else if config.text.contains("interests") || config.text.contains("intereses") {
-                                    config.text = String(localized: "registration.select.interests", comment: "Select interests placeholder")
+                                if initial.contains("country") || initial.contains("país") {
+                                    config.text = "Select your country"
+                                } else if initial.contains("interests") || initial.contains("intereses") {
+                                    config.text = "Select your professional interests"
                                 } else {
-                                    config.text = preferNotToSay
+                                    if config.text.contains("country") || config.text.contains("país") {
+                                        config.text = "Select your country"
+                                    } else if config.text.contains("interests") || config.text.contains("intereses") {
+                                        config.text = "Select your professional interests"
+                                    } else {
+                                        config.text = "Select your country"
+                                    }
+                                }
+                            } else {
+                                if config.text.contains("country") || config.text.contains("país") {
+                                    config.text = "Select your country"
+                                } else if config.text.contains("interests") || config.text.contains("intereses") {
+                                    config.text = "Select your professional interests"
+                                } else {
+                                    config.text = "Select your country"
                                 }
                             }
                         } else if selectedText == notInList {
-                            // Si seleccionó "No está en la lista", guardar el valor "Aún no está en la lista"
                             config.text = notInListValue
                         } else {
-                            // Guardar la selección normal
                             config.text = selectedText
                         }
                     }
@@ -212,7 +217,6 @@ fileprivate struct CustomPickerView: View {
         GeometryReader { proxy in
             let width = proxy.size.width
             let isActive = activeText == text
-            let isSelected = config.text == text
             
             Text(text)
                 .fontWeight(.semibold)

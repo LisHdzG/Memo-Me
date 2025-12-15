@@ -183,7 +183,6 @@ struct ContactDetailView: View {
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .sheet(isPresented: $showContactDetail) {
-                // Aseguramos que siempre tengamos el contacto antes de mostrar el sheet
                 if let contact = selectedContact {
                     ContactDetailSheet(
                         user: selectedUser,
@@ -191,14 +190,11 @@ struct ContactDetailView: View {
                         spaceId: space?.spaceId ?? spaceSelectionService.selectedSpace?.spaceId
                     )
                 } else {
-                    // Fallback: si por alguna razón no hay contacto, mostramos un sheet vacío
                     EmptyView()
                 }
             }
             .onChange(of: showContactDetail) { oldValue, newValue in
-                // Limpiamos el estado cuando se cierra el sheet
                 if oldValue == true && newValue == false {
-                    // Pequeño delay para asegurar que el sheet se cierre completamente
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         selectedContact = nil
                         selectedUser = nil

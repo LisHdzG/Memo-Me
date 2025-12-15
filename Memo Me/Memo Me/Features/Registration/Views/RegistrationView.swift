@@ -8,6 +8,7 @@
 import SwiftUI
 import PhotosUI
 
+@MainActor
 struct RegistrationView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @StateObject private var viewModel = RegistrationViewModel()
@@ -53,20 +54,33 @@ struct RegistrationView: View {
         .customPicker($viewModel.secondaryExpertiseConfig, items: viewModel.expertiseAreas, addNotInList: true)
         .onChange(of: viewModel.countryConfig.text) { oldValue, newValue in
             Task { @MainActor in
-                let preferNotToSay = String(localized: "picker.prefer.not.to.say", comment: "Prefer not to say option")
-                let notInList = String(localized: "picker.not.in.list", comment: "Not in list option")
-                let notInListValue = String(localized: "picker.not.in.list.value", comment: "Not yet in the list value")
-                let countryPlaceholder = String(localized: "registration.select.country", comment: "Select country placeholder")
+                let preferNotToSay = "Prefer not to say"
+                let notInList = "Not yet in the list"
+                let notInListValue = "Not yet in the list"
+                let countryPlaceholder = "Select your country"
                 
-                // Si el nuevo valor es "Prefiero no decir" o si cambió al placeholder (después de seleccionar "Prefiero no decir")
-                if newValue == preferNotToSay || (newValue == countryPlaceholder && oldValue != countryPlaceholder && viewModel.country != nil) {
-                    // Si selecciona "Prefiero no decir", limpiar (nil)
-                    viewModel.clearCountry()
-                } else if newValue == notInList {
-                    // Si selecciona "No está en la lista", guardar "Aún no está en la lista"
+                if newValue == preferNotToSay {
+                    viewModel.country = nil
+                    viewModel.countryConfig.text = countryPlaceholder
+                    return
+                }
+                
+                if newValue == countryPlaceholder && oldValue != countryPlaceholder {
+                    if viewModel.country != nil {
+                        viewModel.country = nil
+                    }
+                    return
+                }
+                
+                if newValue == notInList {
                     viewModel.selectCountry(notInListValue)
-                } else if newValue != countryPlaceholder && 
+                    return
+                }
+                
+                if newValue != countryPlaceholder && 
                    newValue != oldValue && 
+                   newValue != preferNotToSay &&
+                   newValue != notInList &&
                    viewModel.country != newValue {
                     viewModel.selectCountry(newValue)
                 }
@@ -74,17 +88,14 @@ struct RegistrationView: View {
         }
         .onChange(of: viewModel.primaryExpertiseConfig.text) { oldValue, newValue in
             Task { @MainActor in
-                let preferNotToSay = String(localized: "picker.prefer.not.to.say", comment: "Prefer not to say option")
-                let notInList = String(localized: "picker.not.in.list", comment: "Not in list option")
-                let notInListValue = String(localized: "picker.not.in.list.value", comment: "Not yet in the list value")
-                let interestsPlaceholder = String(localized: "registration.select.interests", comment: "Select interests placeholder")
+                let preferNotToSay = "Prefer not to say"
+                let notInList = "Not yet in the list"
+                let notInListValue = "Not yet in the list"
+                let interestsPlaceholder = "Select your professional interests"
                 
-                // Si el nuevo valor es "Prefiero no decir" o si cambió al placeholder (después de seleccionar "Prefiero no decir")
                 if newValue == preferNotToSay || (newValue == interestsPlaceholder && oldValue != interestsPlaceholder && viewModel.primaryExpertiseArea != nil) {
-                    // Si selecciona "Prefiero no decir", limpiar (nil)
                     viewModel.clearPrimaryExpertise()
                 } else if newValue == notInList {
-                    // Si selecciona "No está en la lista", guardar "Aún no está en la lista"
                     viewModel.selectPrimaryExpertise(notInListValue)
                 } else if newValue != interestsPlaceholder && 
                    newValue != oldValue && 
@@ -95,17 +106,14 @@ struct RegistrationView: View {
         }
         .onChange(of: viewModel.secondaryExpertiseConfig.text) { oldValue, newValue in
             Task { @MainActor in
-                let preferNotToSay = String(localized: "picker.prefer.not.to.say", comment: "Prefer not to say option")
-                let notInList = String(localized: "picker.not.in.list", comment: "Not in list option")
-                let notInListValue = String(localized: "picker.not.in.list.value", comment: "Not yet in the list value")
-                let interestsPlaceholder = String(localized: "registration.select.interests", comment: "Select interests placeholder")
+                let preferNotToSay = "Prefer not to say"
+                let notInList = "Not yet in the list"
+                let notInListValue = "Not yet in the list"
+                let interestsPlaceholder = "Select your professional interests"
                 
-                // Si el nuevo valor es "Prefiero no decir" o si cambió al placeholder (después de seleccionar "Prefiero no decir")
                 if newValue == preferNotToSay || (newValue == interestsPlaceholder && oldValue != interestsPlaceholder && viewModel.secondaryExpertiseArea != nil) {
-                    // Si selecciona "Prefiero no decir", limpiar (nil)
                     viewModel.clearSecondaryExpertise()
                 } else if newValue == notInList {
-                    // Si selecciona "No está en la lista", guardar "Aún no está en la lista"
                     viewModel.selectSecondaryExpertise(notInListValue)
                 } else if newValue != interestsPlaceholder && 
                    newValue != oldValue && 
@@ -120,8 +128,6 @@ struct RegistrationView: View {
         }
     }
     
-    // MARK: - View Components
-    
     private var titleSection: some View {
         Text(buildTitleText())
             .foregroundColor(.primaryDark)
@@ -131,7 +137,10 @@ struct RegistrationView: View {
     }
     
     private var profilePhotoSection: some View {
-        VStack(spacing: 16) {
+        let profileImage = viewModel.profileImage
+        let isLoading = viewModel.isLoading
+        
+        return VStack(spacing: 16) {
             PhotosPicker(
                 selection: $viewModel.selectedPhotoItem,
                 matching: .images,
@@ -144,7 +153,7 @@ struct RegistrationView: View {
                         .frame(width: 140, height: 140)
                     
                     ZStack {
-                        if let image = viewModel.profileImage {
+                        if let image = profileImage {
                             Image(uiImage: image)
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
@@ -157,13 +166,13 @@ struct RegistrationView: View {
                                     .aspectRatio(contentMode: .fit)
                                     .frame(width: 60, height: 60)
                                 
-                                Text("registration.add.photo", comment: "Add photo text")
+                                Text("Add photo")
                                     .font(.system(size: 14, weight: .medium))
                                     .foregroundColor(.primaryDark)
                             }
                         }
                         
-                        if viewModel.isLoading {
+                        if isLoading {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .primaryDark))
                         }
@@ -174,26 +183,26 @@ struct RegistrationView: View {
                         .fill(.primaryDark)
                         .frame(width: 36, height: 36)
                         .overlay(
-                            Image(systemName: viewModel.profileImage != nil ? "arrow.2.circlepath" : "camera.fill")
-                                .font(.system(size: viewModel.profileImage != nil ? 14 : 16, weight: .semibold))
+                            Image(systemName: profileImage != nil ? "arrow.2.circlepath" : "camera.fill")
+                                .font(.system(size: profileImage != nil ? 14 : 16, weight: .semibold))
                                 .foregroundColor(.white)
                         )
                         .offset(x: 50, y: 50)
                 }
                 .frame(height: 180)
             }
-            .disabled(viewModel.isLoading)
+            .disabled(isLoading)
         }
         .padding(.horizontal, 20)
     }
     
     private var nameFieldSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("registration.preferred.name", comment: "Preferred name label")
+            Text("Preferred name *")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.primaryDark)
             
-            TextField(String(localized: "registration.name.placeholder", comment: "Name placeholder example"), text: $viewModel.name)
+            TextField("e.g. John Smith", text: $viewModel.name)
                 .textFieldStyle(CustomTextFieldStyle())
                 .focused($focusedField, equals: .name)
                 .onChange(of: viewModel.name) { oldValue, newValue in
@@ -215,7 +224,7 @@ struct RegistrationView: View {
     
     private var nationalitySection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("registration.nationality", comment: "Nationality label")
+            Text("Nationality")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.primaryDark)
 
@@ -253,7 +262,7 @@ struct RegistrationView: View {
     
     private var focusAreaSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("registration.focus.area", comment: "Focus Area label")
+            Text("Focus Area")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.primaryDark)
             
@@ -267,7 +276,7 @@ struct RegistrationView: View {
     
     private var primaryAreaView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("registration.primary.area", comment: "Primary area label")
+            Text("Primary area")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.primaryDark.opacity(0.7))
             
@@ -305,7 +314,7 @@ struct RegistrationView: View {
     
     private var secondaryAreaView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("registration.secondary.area", comment: "Secondary area label")
+            Text("Secondary area")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(.primaryDark.opacity(0.7))
             
@@ -356,7 +365,7 @@ struct RegistrationView: View {
                     Button(action: {
                         viewModel.clearError()
                     }) {
-                        Text("registration.understood", comment: "Understood button")
+                        Text("Understood")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.white)
                             .padding(.horizontal, 20)
@@ -371,7 +380,10 @@ struct RegistrationView: View {
     }
     
     private var continueButton: some View {
-        Button(action: {
+        let isLoading = viewModel.isLoading
+        let isFormValid = viewModel.isFormValid
+        
+        return Button(action: {
             Task {
                 let success = await viewModel.submitRegistration()
                 if success {
@@ -379,12 +391,12 @@ struct RegistrationView: View {
             }
         }) {
             HStack {
-                if viewModel.isLoading {
+                if isLoading {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         .scaleEffect(0.9)
                 } else {
-                    Text("registration.continue", comment: "Continue button")
+                    Text("Continue")
                         .font(.system(size: 18, weight: .semibold))
                 }
             }
@@ -392,21 +404,21 @@ struct RegistrationView: View {
             .frame(maxWidth: .infinity)
             .frame(height: 50)
             .background(
-                viewModel.isFormValid && !viewModel.isLoading
+                isFormValid && !isLoading
                 ? Color(.deepSpace)
                 : Color.gray.opacity(0.5)
             )
             .cornerRadius(12)
         }
-        .disabled(!viewModel.isFormValid || viewModel.isLoading)
+        .disabled(!isFormValid || isLoading)
         .padding(.horizontal, 20)
         .padding(.top, 8)
         .padding(.bottom, 40)
     }
     
     private func buildTitleText() -> AttributedString {
-        let baseText = String(localized: "registration.title", comment: "Registration title")
-        let keyword = String(localized: "registration.title.keyword", comment: "Keyword in title")
+        let baseText = "Add your details to personalize your experience"
+        let keyword = "personalize"
         var attributedString = AttributedString(baseText)
         attributedString.font = .system(size: 20, weight: .medium, design: .rounded)
         if let range = attributedString.range(of: keyword) {

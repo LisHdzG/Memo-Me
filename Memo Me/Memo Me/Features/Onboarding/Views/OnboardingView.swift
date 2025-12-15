@@ -73,7 +73,7 @@ struct OnboardingView: View {
             Button {
                 viewModel.currentPage = 3
             } label: {
-                Text("onboarding.skip", comment: "Skip button on onboarding")
+                Text("Skip")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
             }
             .padding(.top, 8)

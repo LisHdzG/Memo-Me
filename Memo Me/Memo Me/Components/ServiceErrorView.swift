@@ -18,21 +18,21 @@ struct ServiceErrorView: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(height: 150)
             
-            Text("error.service.title", comment: "Service error title")
+            Text("Service Error")
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundColor(.primaryDark)
                 .multilineTextAlignment(.center)
             
-            Text("error.service.message", comment: "Service error message")
+            Text("Something went wrong with the service. Please try again in a moment.")
                 .font(.system(size: 16, weight: .medium, design: .rounded))
                 .foregroundColor(.primaryDark.opacity(0.7))
                 .multilineTextAlignment(.center)
-            
+
             Spacer()
             Button {
                 errorPresenter.retry()
             } label: {
-                Text("error.retry", comment: "Retry button")
+                Text("Retry")
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -49,3 +49,4 @@ struct ServiceErrorView: View {
         }
     }
 }
+
