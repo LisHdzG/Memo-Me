@@ -15,10 +15,12 @@ class RegistrationViewModel: ObservableObject {
     @Published var selectedPhotoItem: PhotosPickerItem?
     @Published var name: String = ""
     @Published var country: String?
-    @Published var expertiseArea: String?
+    @Published var primaryExpertiseArea: String?
+    @Published var secondaryExpertiseArea: String?
     
-    @Published var countryConfig: PickerConfig = .init(text: "Seleccionar país")
-    @Published var expertiseConfig: PickerConfig = .init(text: "Seleccionar área")
+    @Published var countryConfig: PickerConfig = .init(text: "Select your country")
+    @Published var primaryExpertiseConfig: PickerConfig = .init(text: "Select your professional interests")
+    @Published var secondaryExpertiseConfig: PickerConfig = .init(text: "Select your professional interests")
     
     @Published var nameError: String?
     @Published var isLoading: Bool = false
@@ -128,19 +130,41 @@ class RegistrationViewModel: ObservableObject {
         countryConfig.text = country
     }
     
-    func selectExpertise(_ expertise: String) {
-        self.expertiseArea = expertise
-        expertiseConfig.text = expertise
+    func selectPrimaryExpertise(_ expertise: String) {
+        // Si ya está seleccionada como secundaria, intercambiar
+        if secondaryExpertiseArea == expertise {
+            if let oldPrimary = primaryExpertiseArea {
+                secondaryExpertiseArea = oldPrimary
+                secondaryExpertiseConfig.text = oldPrimary
+            } else {
+                secondaryExpertiseArea = nil
+                secondaryExpertiseConfig.text = "Select your professional interests"
+            }
+        }
+        self.primaryExpertiseArea = expertise
+        primaryExpertiseConfig.text = expertise
+    }
+    
+    func selectSecondaryExpertise(_ expertise: String) {
+        // No permitir seleccionar la misma que la principal
+        guard expertise != primaryExpertiseArea else { return }
+        self.secondaryExpertiseArea = expertise
+        secondaryExpertiseConfig.text = expertise
     }
     
     func clearCountry() {
         country = nil
-        countryConfig.text = "Seleccionar país"
+        countryConfig.text = "Select your country"
     }
     
-    func clearExpertise() {
-        expertiseArea = nil
-        expertiseConfig.text = "Seleccionar área"
+    func clearPrimaryExpertise() {
+        primaryExpertiseArea = nil
+        primaryExpertiseConfig.text = "Select your professional interests"
+    }
+    
+    func clearSecondaryExpertise() {
+        secondaryExpertiseArea = nil
+        secondaryExpertiseConfig.text = "Select your professional interests"
     }
     
     func submitRegistration() async -> Bool {
@@ -168,17 +192,21 @@ class RegistrationViewModel: ObservableObject {
                 )
             }
             
-            var areas: [String]?
-            if let expertise = expertiseArea {
-                areas = [expertise]
+            var areas: [String] = []
+            if let primary = primaryExpertiseArea {
+                areas.append(primary)
             }
+            if let secondary = secondaryExpertiseArea, secondary != primaryExpertiseArea {
+                areas.append(secondary)
+            }
+            let areasToSave: [String]? = areas.isEmpty ? nil : areas
             
             let user = User(
                 id: nil,
                 appleId: appleId,
                 name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                 country: country,
-                areas: areas,
+                areas: areasToSave,
                 interests: nil,
                 photoUrl: photoUrl,
                 instagramUrl: nil,

@@ -19,50 +19,59 @@ struct RegistrationView: View {
     
     var body: some View {
         ZStack {
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color("PurpleGradientTop"),
-                    Color("PurpleGradientMiddle"),
-                    Color("PurpleGradientBottom")
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            Color(.ghostWhite)
+                .ignoresSafeArea()
             
             ScrollView {
-                VStack(spacing: 24) {
-                    VStack(spacing: 16) {
-                        Image("MemoMe")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 120, height: 120)
-                        
-                        Text("Completa tu perfil")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
-                            .foregroundColor(Color("SplashTextColor"))
-                        
-                        Text("Cuéntanos sobre ti")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(Color("SplashTextColor").opacity(0.8))
-                    }
-                    .padding(.top, 20)
-                    .padding(.bottom, 10)
+                VStack(spacing: 20) {
+                    Text(buildTitleText())
+                        .foregroundColor(.primaryDark)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 20)
+                        .padding(.horizontal, 20)
                     
-                    VStack(spacing: 12) {
-                        Text("Foto de perfil (opcional)")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(Color("SplashTextColor").opacity(0.7))
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        
-                        PhotosPicker(
-                            selection: $viewModel.selectedPhotoItem,
-                            matching: .images,
-                            photoLibrary: .shared()
-                        ) {
-                            registrationProfileImageContent
+                    VStack(spacing: 16) {
+                        ZStack {
+
+                            Circle()
+                                .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8, 4]))
+                                .foregroundColor(.primaryDark)
+                                .frame(width: 140, height: 140)
+                            
+                            ZStack {
+                                if let image = viewModel.profileImage {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 130, height: 130)
+                                        .clipShape(Circle())
+                                } else {
+                                    VStack(spacing: 8) {
+                                        Image("MemoMePhoto")
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fit)
+                                            .frame(width: 60, height: 60)
+                                        
+                                        Text("Add photo")
+                                            .font(.system(size: 14, weight: .medium))
+                                            .foregroundColor(.primaryDark)
+                                    }
+                                }
+                                
+                                if viewModel.isLoading {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .primaryDark))
+                                }
+                            }
+                            .frame(width: 130, height: 130)
+                            
+                            PhotoPickerButton(
+                                hasProfileImage: viewModel.profileImage != nil,
+                                selection: $viewModel.selectedPhotoItem
+                            )
+                            .disabled(viewModel.isLoading)
                         }
-                        .disabled(viewModel.isLoading)
+                        .frame(height: 180)
                         
                         if viewModel.profileImage != nil {
                             Button(action: {
@@ -77,17 +86,11 @@ struct RegistrationView: View {
                     .padding(.horizontal, 20)
                     
                     VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Nombre")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(Color("SplashTextColor"))
-                            
-                            Text("*")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.red)
-                        }
+                        Text("Preferred name *")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primaryDark)
                         
-                        TextField("Ingresa tu nombre", text: $viewModel.name)
+                        TextField("", text: $viewModel.name)
                             .textFieldStyle(CustomTextFieldStyle())
                             .focused($focusedField, equals: .name)
                             .onChange(of: viewModel.name) { oldValue, newValue in
@@ -107,17 +110,21 @@ struct RegistrationView: View {
                     .padding(.horizontal, 20)
                     
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("País (opcional)")
+                        Text("Nationality")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(Color("SplashTextColor"))
-                        
+                            .foregroundColor(.primaryDark)
+
                         Button {
                             viewModel.countryConfig.show.toggle()
                         } label: {
-                            HStack {
+                            HStack(spacing: 12) {
+                                Image(systemName: "globe")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.primaryDark.opacity(0.6))
+                                
                                 Text(viewModel.countryConfig.text)
                                     .font(.system(size: 16))
-                                    .foregroundColor(viewModel.country == nil ? Color("SplashTextColor").opacity(0.6) : Color("SplashTextColor"))
+                                    .foregroundColor(viewModel.country == nil ? .primaryDark.opacity(0.6) : .primaryDark)
                                 
                                 Spacer()
                                 
@@ -125,7 +132,7 @@ struct RegistrationView: View {
                                 
                                 Image(systemName: "chevron.down")
                                     .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(Color("SplashTextColor").opacity(0.6))
+                                    .foregroundColor(.primaryDark.opacity(0.6))
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 14)
@@ -150,26 +157,35 @@ struct RegistrationView: View {
                     }
                     .padding(.horizontal, 20)
                     
+                    // Área principal de expertise
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Área de expertise (opcional)")
+                        Text("Focus Area")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(Color("SplashTextColor"))
+                            .foregroundColor(.primaryDark)
+                        
+                        Text("Primary area")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.primaryDark.opacity(0.7))
                         
                         Button {
-                            viewModel.expertiseConfig.show.toggle()
+                            viewModel.primaryExpertiseConfig.show.toggle()
                         } label: {
-                            HStack {
-                                Text(viewModel.expertiseConfig.text)
+                            HStack(spacing: 12) {
+                                Image(systemName: "lightbulb")
                                     .font(.system(size: 16))
-                                    .foregroundColor(viewModel.expertiseArea == nil ? Color("SplashTextColor").opacity(0.6) : Color("SplashTextColor"))
+                                    .foregroundColor(.primaryDark.opacity(0.6))
+                                
+                                Text(viewModel.primaryExpertiseConfig.text)
+                                    .font(.system(size: 16))
+                                    .foregroundColor(viewModel.primaryExpertiseArea == nil ? .primaryDark.opacity(0.6) : .primaryDark)
                                 
                                 Spacer()
                                 
-                                SourcePickerView(config: $viewModel.expertiseConfig)
+                                SourcePickerView(config: $viewModel.primaryExpertiseConfig)
                                 
                                 Image(systemName: "chevron.down")
                                     .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(Color("SplashTextColor").opacity(0.6))
+                                    .foregroundColor(.primaryDark.opacity(0.6))
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 14)
@@ -177,9 +193,60 @@ struct RegistrationView: View {
                             .cornerRadius(12)
                         }
                         
-                        if viewModel.expertiseArea != nil {
+                        if viewModel.primaryExpertiseArea != nil {
                             Button(action: {
-                                viewModel.clearExpertise()
+                                viewModel.clearPrimaryExpertise()
+                            }) {
+                                HStack {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 14))
+                                    Text("Limpiar selección")
+                                        .font(.system(size: 14, weight: .medium))
+                                }
+                                .foregroundColor(.red.opacity(0.8))
+                            }
+                            .padding(.leading, 4)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    // Área secundaria de expertise
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Secondary area")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.primaryDark.opacity(0.7))
+                        
+                        Button {
+                            viewModel.secondaryExpertiseConfig.show.toggle()
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "lightbulb")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.primaryDark.opacity(0.6))
+                                
+                                Text(viewModel.secondaryExpertiseConfig.text)
+                                    .font(.system(size: 16))
+                                    .foregroundColor(viewModel.secondaryExpertiseArea == nil ? .primaryDark.opacity(0.6) : .primaryDark)
+                                
+                                Spacer()
+                                
+                                SourcePickerView(config: $viewModel.secondaryExpertiseConfig)
+                                
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(.primaryDark.opacity(0.6))
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(12)
+                        }
+                        .disabled(viewModel.primaryExpertiseArea == nil)
+                        .opacity(viewModel.primaryExpertiseArea == nil ? 0.6 : 1.0)
+                        
+                        if viewModel.secondaryExpertiseArea != nil {
+                            Button(action: {
+                                viewModel.clearSecondaryExpertise()
                             }) {
                                 HStack {
                                     Image(systemName: "xmark.circle.fill")
@@ -230,7 +297,7 @@ struct RegistrationView: View {
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                     .scaleEffect(0.9)
                             } else {
-                                Text("Continuar")
+                                Text("Continue")
                                     .font(.system(size: 18, weight: .semibold))
                             }
                         }
@@ -260,22 +327,32 @@ struct RegistrationView: View {
             }
         }
         .customPicker($viewModel.countryConfig, items: viewModel.countries)
-        .customPicker($viewModel.expertiseConfig, items: viewModel.expertiseAreas)
+        .customPicker($viewModel.primaryExpertiseConfig, items: viewModel.expertiseAreas)
+        .customPicker($viewModel.secondaryExpertiseConfig, items: viewModel.expertiseAreas)
         .onChange(of: viewModel.countryConfig.text) { oldValue, newValue in
             Task { @MainActor in
-                if newValue != "Seleccionar país" && 
+                if newValue != "Select your country" && 
                    newValue != oldValue && 
                    viewModel.country != newValue {
                     viewModel.selectCountry(newValue)
                 }
             }
         }
-        .onChange(of: viewModel.expertiseConfig.text) { oldValue, newValue in
+        .onChange(of: viewModel.primaryExpertiseConfig.text) { oldValue, newValue in
             Task { @MainActor in
-                if newValue != "Seleccionar área" && 
+                if newValue != "Select your professional interests" && 
                    newValue != oldValue && 
-                   viewModel.expertiseArea != newValue {
-                    viewModel.selectExpertise(newValue)
+                   viewModel.primaryExpertiseArea != newValue {
+                    viewModel.selectPrimaryExpertise(newValue)
+                }
+            }
+        }
+        .onChange(of: viewModel.secondaryExpertiseConfig.text) { oldValue, newValue in
+            Task { @MainActor in
+                if newValue != "Select your professional interests" && 
+                   newValue != oldValue && 
+                   viewModel.secondaryExpertiseArea != newValue {
+                    viewModel.selectSecondaryExpertise(newValue)
                 }
             }
         }
@@ -285,40 +362,37 @@ struct RegistrationView: View {
         }
     }
     
-    @ViewBuilder
-    private var registrationProfileImageContent: some View {
-        ZStack {
-            if let image = viewModel.profileImage {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 120, height: 120)
-                    .clipShape(Circle())
-            } else {
-                let nameText = viewModel.name.isEmpty ? "Usuario" : viewModel.name
-                AsyncImageView(
-                    imageUrl: nil,
-                    placeholderText: nameText,
-                    contentMode: .fill,
-                    size: 120
-                )
-                .clipShape(Circle())
-                .overlay(
-                    Group {
-                        if viewModel.name.isEmpty {
-                            Image(systemName: "camera.fill")
-                                .font(.system(size: 40))
-                                .foregroundColor(Color("SplashTextColor").opacity(0.6))
-                        }
-                    }
-                )
-            }
-            
-            if viewModel.isLoading {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-            }
+    private func buildTitleText() -> AttributedString {
+        var attributedString = AttributedString("Add your details to personalize your experience")
+        attributedString.font = .system(size: 20, weight: .medium, design: .rounded)
+        if let range = attributedString.range(of: "personalize") {
+            attributedString[range].font = .system(size: 24, weight: .bold, design: .rounded)
         }
+        
+        return attributedString
+    }
+}
+
+private struct PhotoPickerButton: View {
+    let hasProfileImage: Bool
+    @Binding var selection: PhotosPickerItem?
+    
+    var body: some View {
+        PhotosPicker(
+            selection: $selection,
+            matching: .images,
+            photoLibrary: .shared()
+        ) {
+            Circle()
+                .fill(.primaryDark)
+                .frame(width: 36, height: 36)
+                .overlay(
+                    Image(systemName: hasProfileImage ? "arrow.2.circlepath" : "camera.fill")
+                        .font(.system(size: hasProfileImage ? 14 : 16, weight: .semibold))
+                        .foregroundColor(.white)
+                )
+        }
+        .offset(x: 50, y: 50)
     }
 }
 
