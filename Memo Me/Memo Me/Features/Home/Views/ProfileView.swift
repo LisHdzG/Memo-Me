@@ -11,479 +11,118 @@ import PhotosUI
 struct ProfileView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @StateObject private var viewModel = ProfileViewModel()
-    @State private var isEditing: Bool = false
+    @State private var showEditProfile: Bool = false
     @State private var showDeleteAccountAlert: Bool = false
-    @FocusState private var focusedField: Field?
-    
-    enum Field {
-        case name
-        case instagram
-        case linkedin
-    }
     
     var body: some View {
         ZStack {
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color("PurpleGradientTop"),
-                    Color("PurpleGradientMiddle"),
-                    Color("PurpleGradientBottom")
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            Color(.ghostWhite)
             .ignoresSafeArea()
             
             ScrollView {
                 VStack(spacing: 24) {
-                    VStack(spacing: 12) {
+                    // Toolbar button en la esquina superior
                         HStack {
-                            Text("Mi Perfil")
-                                .font(.system(size: 32, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
-                            
                             Spacer()
                             
-                            if !isEditing {
                                 Button(action: {
-                                    startEditing()
-                                }) {
-                                    Text("Editar")
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 8)
-                                        .background(
-                                            LinearGradient(
-                                                gradient: Gradient(colors: [
-                                                    Color.white.opacity(0.3),
-                                                    Color.white.opacity(0.2)
-                                                ]),
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                        .cornerRadius(12)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                                        )
-                                }
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                showEditProfile = true
                             }
-                            
-                            if isEditing {
-                                HStack(spacing: 12) {
-                                    Button(action: {
-                                        cancelEditing()
-                                    }) {
-                                        Text("Cancelar")
-                                            .font(.system(size: 16, weight: .semibold))
-                                            .foregroundColor(.white)
-                                            .padding(.horizontal, 16)
-                                            .padding(.vertical, 8)
-                                            .background(
-                                                LinearGradient(
-                                                    gradient: Gradient(colors: [
-                                                        Color.white.opacity(0.2),
-                                                        Color.white.opacity(0.1)
-                                                    ]),
-                                                    startPoint: .topLeading,
-                                                    endPoint: .bottomTrailing
-                                                )
-                                            )
-                                            .cornerRadius(12)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 12)
-                                                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                                            )
-                                    }
-                                    
-                                    if viewModel.hasChanges {
-                                        Button(action: {
-                                            Task {
-                                                let success = await viewModel.saveProfile()
-                                                if success {
-                                                    isEditing = false
-                                                }
-                                            }
-                                        }) {
-                                            Text("Guardar")
-                                                .font(.system(size: 16, weight: .semibold))
-                                                .foregroundColor(.white)
-                                                .padding(.horizontal, 16)
-                                                .padding(.vertical, 8)
-                                                .background(
-                                                    LinearGradient(
-                                                        gradient: Gradient(colors: [
-                                                            Color.white.opacity(0.3),
-                                                            Color.white.opacity(0.2)
-                                                        ]),
-                                                        startPoint: .topLeading,
-                                                        endPoint: .bottomTrailing
-                                                    )
-                                                )
-                                                .cornerRadius(12)
-                                                .overlay(
-                                                    RoundedRectangle(cornerRadius: 12)
-                                                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                                                )
-                                        }
-                                        .disabled(viewModel.isLoading)
-                                    }
-                                }
-                            }
+                        }) {
+                            Image(systemName: "pencil")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.primaryDark)
+                                .frame(width: 44, height: 44)
+                                .background(Color.white.opacity(0.3))
+                                .clipShape(Circle())
+                                .shadow(color: .primaryDark.opacity(0.1), radius: 4, x: 0, y: 2)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 20)
+                        .scaleEffect(showEditProfile ? 0.95 : 1.0)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: showEditProfile)
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
                     
-                    if isEditing {
-                        VStack(spacing: 12) {
-                            Text("Foto de perfil (opcional)")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white.opacity(0.7))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            
-                            PhotosPicker(
-                                selection: $viewModel.selectedPhotoItem,
-                                matching: .images,
-                                photoLibrary: .shared()
-                            ) {
-                                profileImageContent
-                            }
-                            .disabled(viewModel.isLoading)
-                            
-                            let hasPhotoUrl = authManager.currentUser?.photoUrl != nil
-                            if viewModel.profileImage != nil || hasPhotoUrl {
-                                Button(action: {
-                                    viewModel.removePhoto()
-                                }) {
-                                    Text("Eliminar foto")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.red.opacity(0.8))
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        } else {
+                    // Foto de perfil
                             let photoUrl = authManager.currentUser?.photoUrl
-                            VStack(spacing: 16) {
+                    VStack(spacing: 20) {
                             AsyncImageView(
                                 imageUrl: photoUrl,
                                 placeholderText: userName,
                                 contentMode: .fill,
-                                size: 120
+                            size: 140
                             )
                             .clipShape(Circle())
                             .overlay(
                                 Circle()
-                                    .stroke(Color.white.opacity(0.3), lineWidth: 3)
-                            )
+                                .stroke(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.primaryDark.opacity(0.4),
+                                            Color.primaryDark.opacity(0.2)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 4
+                                )
+                        )
+                        .shadow(color: .primaryDark.opacity(0.15), radius: 12, x: 0, y: 4)
                             
                             Text(userName)
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundColor(.white)
-                        }
-                        .padding(.top, 10)
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundColor(.primaryDark)
                     }
+                    .padding(.top, 20)
+                    .padding(.bottom, 10)
                     
-                    if isEditing {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text("Nombre")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(.white)
-                                
-                                Text("*")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(.red)
-                            }
-                            
-                            TextField("Ingresa tu nombre", text: $viewModel.name)
-                                .textFieldStyle(CustomTextFieldStyle())
-                                .focused($focusedField, equals: .name)
-                                .submitLabel(.next)
-                        }
-                        .padding(.horizontal, 20)
-                    }
-                    
-                    if isEditing {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("País (opcional)")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                            
-                            Button {
-                                viewModel.countryConfig.show.toggle()
-                            } label: {
-                                HStack {
-                                    Text(viewModel.countryConfig.text)
-                                        .font(.system(size: 16))
-                                        .foregroundColor(viewModel.country == nil ? Color.white.opacity(0.6) : Color.white)
-                                    
-                                    Spacer()
-                                    
-                                    SourcePickerView(config: $viewModel.countryConfig)
-                                    
-                                    Image(systemName: "chevron.down")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundColor(.white.opacity(0.6))
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 14)
-                                .background(Color.white.opacity(0.2))
-                                .cornerRadius(12)
-                            }
-                            
-                            if viewModel.country != nil {
-                                Button(action: {
-                                    viewModel.clearCountry()
-                                }) {
-                                    HStack {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.system(size: 14))
-                                        Text("Limpiar selección")
-                                            .font(.system(size: 14, weight: .medium))
-                                    }
-                                    .foregroundColor(.red.opacity(0.8))
-                                }
-                                .padding(.leading, 4)
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                    } else {
+                    // Información del perfil
                         let country = authManager.currentUser?.country ?? "No especificado"
-                        ProfileInfoSection(
+                    ProfileInfoCard(
+                        icon: "globe",
                             title: "País",
-                            displayValue: country
+                        value: country
                         )
                         .padding(.horizontal, 20)
-                    }
                     
-                    if isEditing {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Image(systemName: "camera.fill")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.white.opacity(0.7))
-                                Text("Instagram (opcional)")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(.white)
-                            }
-                            
-                            HStack(spacing: 8) {
-                                Text("@")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.white.opacity(0.6))
-                                    .padding(.leading, 4)
-                                
-                                TextField("tu_usuario", text: $viewModel.instagramUrl)
-                                    .textFieldStyle(CustomTextFieldStyle())
-                                    .focused($focusedField, equals: .instagram)
-                                    .keyboardType(.default)
-                                    .autocapitalization(.none)
-                                    .autocorrectionDisabled()
-                                    .submitLabel(.next)
-                            }
-                            
-                            Text("Solo ingresa tu nombre de usuario (sin @ ni URL)")
-                                .font(.system(size: 12))
-                                .foregroundColor(.white.opacity(0.5))
-                                .padding(.leading, 4)
-                        }
-                        .padding(.horizontal, 20)
-                    } else {
                         let instagramUrl = authManager.currentUser?.instagramUrl
                         if let url = instagramUrl, !url.isEmpty {
-                            ProfileInfoSection(
+                        ProfileInfoCard(
+                            icon: "camera.fill",
                                 title: "Instagram",
-                                displayValue: url
-                            )
-                            .padding(.horizontal, 20)
-                        }
-                    }
-                    
-                    if isEditing {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Image(systemName: "briefcase.fill")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.white.opacity(0.7))
-                                Text("LinkedIn (opcional)")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(.white)
-                            }
-                            
-                            TextField("tu_perfil", text: $viewModel.linkedinUrl)
-                                .textFieldStyle(CustomTextFieldStyle())
-                                .focused($focusedField, equals: .linkedin)
-                                .keyboardType(.default)
-                                .autocapitalization(.none)
-                                .autocorrectionDisabled()
-                                .submitLabel(.done)
-                            
-                            Text("Solo ingresa tu nombre de perfil (sin URL)")
-                                .font(.system(size: 12))
-                                .foregroundColor(.white.opacity(0.5))
-                                .padding(.leading, 4)
-                        }
-                        .padding(.horizontal, 20)
-                    } else {
-                        let linkedinUrl = authManager.currentUser?.linkedinUrl
-                        if let url = linkedinUrl, !url.isEmpty {
-                            ProfileInfoSection(
-                                title: "LinkedIn",
-                                displayValue: url
-                            )
-                            .padding(.horizontal, 20)
-                        }
-                    }
-                    
-                    if isEditing {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Áreas de expertise (opcional)")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                            
-                            Button {
-                                viewModel.areasConfig.show.toggle()
-                            } label: {
-                                HStack {
-                                    Text(viewModel.areasConfig.text)
-                                        .font(.system(size: 16))
-                                        .foregroundColor(Color.white.opacity(0.6))
-                                    
-                                    Spacer()
-                                    
-                                    SourcePickerView(config: $viewModel.areasConfig)
-                                    
-                                    Image(systemName: "chevron.down")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundColor(.white.opacity(0.6))
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 14)
-                                .background(Color.white.opacity(0.2))
-                                .cornerRadius(12)
-                            }
-                            
-                            if !viewModel.selectedAreas.isEmpty {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    ForEach(viewModel.selectedAreas, id: \.self) { area in
-                                        HStack {
-                                            Text(area)
-                                                .font(.system(size: 14))
-                                                .foregroundColor(.white)
-                                            
-                                            Spacer()
-                                            
-                                            Button(action: {
-                                                viewModel.removeArea(area)
-                                            }) {
-                                                Image(systemName: "xmark.circle.fill")
-                                                    .font(.system(size: 16))
-                                                    .foregroundColor(.red.opacity(0.8))
-                                            }
-                                        }
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
-                                        .background(Color.white.opacity(0.1))
-                                        .cornerRadius(8)
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                    } else {
-                        ProfileInfoSection(
-                            title: "Áreas",
-                            displayValue: areasDisplay
+                            value: url
                         )
                         .padding(.horizontal, 20)
                     }
                     
-                    if isEditing {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Intereses (opcional)")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                            
-                            Button {
-                                viewModel.interestsConfig.show.toggle()
-                            } label: {
-                                HStack {
-                                    Text(viewModel.interestsConfig.text)
-                                        .font(.system(size: 16))
-                                        .foregroundColor(Color.white.opacity(0.6))
-                                    
-                                    Spacer()
-                                    
-                                    SourcePickerView(config: $viewModel.interestsConfig)
-                                    
-                                    Image(systemName: "chevron.down")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundColor(.white.opacity(0.6))
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 14)
-                                .background(Color.white.opacity(0.2))
-                                .cornerRadius(12)
-                            }
-                            
-                            if !viewModel.selectedInterests.isEmpty {
-                                VStack(alignment: .leading, spacing: 8) {
-                                    ForEach(viewModel.selectedInterests, id: \.self) { interest in
-                                        HStack {
-                                            Text(interest)
-                                                .font(.system(size: 14))
-                                                .foregroundColor(.white)
-                                            
-                                            Spacer()
-                                            
-                                            Button(action: {
-                                                viewModel.removeInterest(interest)
-                                            }) {
-                                                Image(systemName: "xmark.circle.fill")
-                                                    .font(.system(size: 16))
-                                                    .foregroundColor(.red.opacity(0.8))
-                                            }
-                                        }
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
-                                        .background(Color.white.opacity(0.1))
-                                        .cornerRadius(8)
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                    } else {
-                        ProfileInfoSection(
-                            title: "Intereses",
-                            displayValue: interestsDisplay
+                    let linkedinUrl = authManager.currentUser?.linkedinUrl
+                    if let url = linkedinUrl, !url.isEmpty {
+                        ProfileInfoCard(
+                            icon: "briefcase.fill",
+                            title: "LinkedIn",
+                            value: url
                         )
                         .padding(.horizontal, 20)
                     }
                     
-                    if let errorMessage = viewModel.errorMessage {
-                        Text(errorMessage)
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.red.opacity(0.9))
-                            .multilineTextAlignment(.center)
+                    let areas = authManager.currentUser?.areas ?? []
+                    ProfileInfoCardWithTags(
+                        icon: "lightbulb.fill",
+                        title: "Áreas de Expertise",
+                        items: areas.isEmpty ? ["No especificadas"] : areas
+                    )
                             .padding(.horizontal, 20)
-                            .padding(.top, 8)
-                    }
                     
-                    if let successMessage = viewModel.successMessage {
-                        Text(successMessage)
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.green.opacity(0.9))
-                            .multilineTextAlignment(.center)
+                    let interests = authManager.currentUser?.interests ?? []
+                    ProfileInfoCardWithTags(
+                        icon: "heart.fill",
+                        title: "Intereses",
+                        items: interests.isEmpty ? ["No especificados"] : interests
+                    )
                             .padding(.horizontal, 20)
-                            .padding(.top, 8)
-                    }
                     
-                    if !isEditing {
+                    // Botones de acción
                         VStack(spacing: 16) {
                             Button(action: {
                                 authManager.signOut()
@@ -496,22 +135,9 @@ struct ProfileView: View {
                                 }
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color.orange.opacity(0.6),
-                                            Color.orange.opacity(0.4)
-                                        ]),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .cornerRadius(16)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                                )
+                            .frame(height: 50)
+                            .background(Color.orange.opacity(0.7))
+                            .cornerRadius(12)
                             }
                             
                             Button(action: {
@@ -525,68 +151,27 @@ struct ProfileView: View {
                                 }
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color.red.opacity(0.6),
-                                            Color.red.opacity(0.4)
-                                        ]),
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .cornerRadius(16)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                                )
-                            }
+                            .frame(height: 50)
+                            .background(Color.red.opacity(0.7))
+                            .cornerRadius(12)
+                        }
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 8)
                         .padding(.bottom, 50)
-                    } else {
-                        Spacer()
-                            .frame(height: 50)
-                    }
                 }
             }
             .scrollDismissesKeyboard(.interactively)
         }
+        .sheet(isPresented: $showEditProfile) {
+            EditProfileView()
+                .environmentObject(authManager)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .interactiveDismissDisabled(false)
+        }
         .onAppear {
             viewModel.authenticationManager = authManager
-            if !isEditing {
-                viewModel.loadUserData()
-            }
-        }
-        .customPicker($viewModel.countryConfig, items: viewModel.countries)
-        .customPicker($viewModel.areasConfig, items: viewModel.expertiseAreas)
-        .customPicker($viewModel.interestsConfig, items: viewModel.interestsOptions)
-        .onChange(of: viewModel.countryConfig.text) { oldValue, newValue in
-            Task { @MainActor in
-                if newValue != "Seleccionar país" &&
-                   newValue != oldValue &&
-                   viewModel.country != newValue {
-                    viewModel.selectCountry(newValue)
-                }
-            }
-        }
-        .onChange(of: viewModel.areasConfig.text) { oldValue, newValue in
-            Task { @MainActor in
-                if newValue != "Seleccionar área" &&
-                   newValue != oldValue {
-                    viewModel.addArea(newValue)
-                }
-            }
-        }
-        .onChange(of: viewModel.interestsConfig.text) { oldValue, newValue in
-            Task { @MainActor in
-                if newValue != "Seleccionar interés" &&
-                   newValue != oldValue {
-                    viewModel.addInterest(newValue)
-                }
-            }
         }
         .alert("Eliminar Cuenta", isPresented: $showDeleteAccountAlert) {
             Button("Cancelar", role: .cancel) { }
@@ -598,86 +183,174 @@ struct ProfileView: View {
         } message: {
             Text("¿Estás seguro de que deseas eliminar tu cuenta? Esta acción es permanente y se perderán todos tus datos. No podrás recuperar tu cuenta después.")
         }
+        .overlay {
+            if viewModel.isLoading {
+                LoaderView()
+            }
+        }
     }
     
     private var userName: String {
         authManager.currentUser?.name ?? authManager.userName ?? "Usuario"
     }
     
-    private var areasDisplay: String {
-        guard let areas = authManager.currentUser?.areas, !areas.isEmpty else {
-            return "No especificadas"
-        }
-        return areas.joined(separator: ", ")
-    }
     
-    private var interestsDisplay: String {
-        guard let interests = authManager.currentUser?.interests, !interests.isEmpty else {
-            return "No especificados"
-        }
-        return interests.joined(separator: ", ")
-    }
+}
+
+struct ProfileInfoCard: View {
+    let icon: String
+    let title: String
+    let value: String
     
-    private func startEditing() {
-        viewModel.loadUserData()
-        isEditing = true
-    }
-    
-    private func cancelEditing() {
-        viewModel.loadUserData()
-        isEditing = false
-    }
-    
-    @ViewBuilder
-    private var profileImageContent: some View {
-        ZStack {
-            if let image = viewModel.profileImage {
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 120, height: 120)
-                    .clipShape(Circle())
-            } else {
-                let photoUrl = authManager.currentUser?.photoUrl
-                AsyncImageView(
-                    imageUrl: photoUrl,
-                    placeholderText: userName,
-                    contentMode: .fill,
-                    size: 120
-                )
-                .clipShape(Circle())
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.primaryDark.opacity(0.8))
+                    .frame(width: 28, height: 28)
+                
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundColor(.primaryDark.opacity(0.7))
             }
             
-            if viewModel.isLoading {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-            }
+            Text(value)
+                .font(.system(size: 17, weight: .medium, design: .rounded))
+                .foregroundColor(.primaryDark)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color.white.opacity(0.4))
+                        .shadow(color: .primaryDark.opacity(0.08), radius: 8, x: 0, y: 2)
+                )
         }
+        .padding(.vertical, 4)
     }
 }
 
-struct ProfileInfoSection: View {
+struct ProfileInfoCardWithTags: View {
+    let icon: String
     let title: String
-    let displayValue: String
+    let items: [String]
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.primaryDark.opacity(0.8))
+                    .frame(width: 28, height: 28)
+                
             Text(title)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.white.opacity(0.7))
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundColor(.primaryDark.opacity(0.7))
+            }
             
-            Text(displayValue)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundColor(.white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+            if items.isEmpty || (items.count == 1 && (items.first == "No especificadas" || items.first == "No especificados")) {
+                Text(items.first ?? "No especificado")
+                    .font(.system(size: 17, weight: .medium, design: .rounded))
+                    .foregroundColor(.primaryDark.opacity(0.6))
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.white.opacity(0.4))
+                            .shadow(color: .primaryDark.opacity(0.08), radius: 8, x: 0, y: 2)
+                    )
+            } else {
+                FlowLayout(spacing: 10) {
+                    ForEach(items, id: \.self) { item in
+                        Text(item)
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundColor(.primaryDark)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(
+                                Capsule()
+                                    .fill(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color.white.opacity(0.5),
+                                                Color.white.opacity(0.3)
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                            )
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.primaryDark.opacity(0.15), lineWidth: 1)
+                            )
+                    }
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.white.opacity(0.1))
-                .cornerRadius(12)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color.white.opacity(0.4))
+                        .shadow(color: .primaryDark.opacity(0.08), radius: 8, x: 0, y: 2)
                 )
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+    
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let result = FlowResult(
+            in: proposal.replacingUnspecifiedDimensions().width,
+            subviews: subviews,
+            spacing: spacing
+        )
+        return result.size
+    }
+    
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = FlowResult(
+            in: bounds.width,
+            subviews: subviews,
+            spacing: spacing
+        )
+        for (index, subview) in subviews.enumerated() {
+            subview.place(at: CGPoint(x: bounds.minX + result.frames[index].minX, y: bounds.minY + result.frames[index].minY), proposal: .unspecified)
+        }
+    }
+    
+    struct FlowResult {
+        var size: CGSize = .zero
+        var frames: [CGRect] = []
+        
+        init(in maxWidth: CGFloat, subviews: Subviews, spacing: CGFloat) {
+            var currentX: CGFloat = 0
+            var currentY: CGFloat = 0
+            var lineHeight: CGFloat = 0
+            
+            for subview in subviews {
+                let size = subview.sizeThatFits(.unspecified)
+                
+                if currentX + size.width > maxWidth && currentX > 0 {
+                    currentX = 0
+                    currentY += lineHeight + spacing
+                    lineHeight = 0
+                }
+                
+                frames.append(CGRect(x: currentX, y: currentY, width: size.width, height: size.height))
+                lineHeight = max(lineHeight, size.height)
+                currentX += size.width + spacing
+            }
+            
+            self.size = CGSize(width: maxWidth, height: currentY + lineHeight)
         }
     }
 }

@@ -20,8 +20,8 @@ class ProfileViewModel: ObservableObject {
     @Published var instagramUrl: String = ""
     @Published var linkedinUrl: String = ""
     
-    @Published var countryConfig: PickerConfig = .init(text: "Seleccionar país")
-    @Published var areasConfig: PickerConfig = .init(text: "Seleccionar área")
+    @Published var countryConfig: PickerConfig = .init(text: "Select your country")
+    @Published var areasConfig: PickerConfig = .init(text: "Select your professional interests")
     @Published var interestsConfig: PickerConfig = .init(text: "Seleccionar interés")
     
     @Published var isLoading: Bool = false
@@ -38,6 +38,7 @@ class ProfileViewModel: ObservableObject {
     
     private let userService = UserService()
     private let profileImageService = ProfileImageService.shared
+    private let selectionListsService = SelectionListsService.shared
     
     private var cancellables = Set<AnyCancellable>()
     
@@ -55,30 +56,13 @@ class ProfileViewModel: ObservableObject {
         return nameChanged || countryChanged || areasChanged || interestsChanged || photoChanged || instagramChanged || linkedinChanged
     }
     
-    let countries: [String] = [
-        "México", "Estados Unidos", "España", "Argentina", "Colombia",
-        "Chile", "Perú", "Venezuela", "Ecuador", "Guatemala",
-        "Cuba", "Haití", "Bolivia", "República Dominicana", "Honduras",
-        "Paraguay", "El Salvador", "Nicaragua", "Costa Rica", "Panamá",
-        "Uruguay", "Jamaica", "Trinidad y Tobago", "Guyana", "Surinam",
-        "Brasil", "Canadá", "Reino Unido", "Francia", "Alemania",
-        "Italia", "Portugal", "Países Bajos", "Bélgica", "Suiza",
-        "Austria", "Suecia", "Noruega", "Dinamarca", "Finlandia",
-        "Polonia", "Grecia", "Rusia", "China", "Japón",
-        "India", "Corea del Sur", "Australia", "Nueva Zelanda", "Sudáfrica"
-    ]
+    var countries: [String] {
+        selectionListsService.countries
+    }
     
-    let expertiseAreas: [String] = [
-        "Desarrollo iOS", "Desarrollo Android", "Desarrollo Web",
-        "Backend Development", "Frontend Development", "Full Stack",
-        "UI/UX Design", "Diseño Gráfico", "Product Design",
-        "Product Management", "Machine Learning", "Data Science",
-        "Inteligencia Artificial", "DevOps", "Cloud Computing",
-        "Cybersecurity", "Game Development", "AR/VR Development",
-        "Blockchain", "Mobile Development", "Desktop Development",
-        "Embedded Systems", "QA/Testing", "Project Management",
-        "Business Analysis", "Design"
-    ]
+    var expertiseAreas: [String] {
+        selectionListsService.expertiseAreas
+    }
     
     let interestsOptions: [String] = [
         "Música", "Cine", "Literatura", "Arte", "Fotografía",
@@ -119,7 +103,7 @@ class ProfileViewModel: ObservableObject {
         if let country = country {
             countryConfig.text = country
         } else {
-            countryConfig.text = "Seleccionar país"
+            countryConfig.text = "Select your country"
         }
         
         selectedAreas = user.areas ?? []
@@ -210,13 +194,13 @@ class ProfileViewModel: ObservableObject {
     
     func clearCountry() {
         country = nil
-        countryConfig.text = "Seleccionar país"
+        countryConfig.text = "Select your country"
     }
     
     func addArea(_ area: String) {
         if !selectedAreas.contains(area) {
             selectedAreas.append(area)
-            areasConfig.text = "Seleccionar área"
+            areasConfig.text = "Select your professional interests"
         }
     }
     

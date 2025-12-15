@@ -277,3 +277,4 @@ struct CreateSpaceView: View {
         }
     }
 }
+

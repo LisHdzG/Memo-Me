@@ -207,3 +207,4 @@ class CreateSpaceViewModel: ObservableObject {
         errorMessage = nil
     }
 }
+

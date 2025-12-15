@@ -49,4 +49,3 @@ struct ServiceErrorView: View {
         }
     }
 }
-
