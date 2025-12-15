@@ -83,13 +83,14 @@ fileprivate struct CustomPickerView: View {
                 height: showContents ? -10 : config.sourceFrame.minY
             )
             
+            // Texto oculto para la animación - no visible para el usuario
             Text(config.text)
                 .fontWeight(showContents ? .semibold : .regular)
                 .foregroundStyle(.blue)
                 .frame(height: 20)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: showContents ? .trailing : .topLeading)
                 .offset(offset)
-                .opacity(showScrollView ? 0 : 1)
+                .opacity(0) // Siempre invisible
                 .ignoresSafeArea(.all, edges: showContents ? [] : .all)
             
             CloseButton()

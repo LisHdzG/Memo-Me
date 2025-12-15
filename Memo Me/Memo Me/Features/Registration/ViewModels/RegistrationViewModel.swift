@@ -18,9 +18,9 @@ class RegistrationViewModel: ObservableObject {
     @Published var primaryExpertiseArea: String?
     @Published var secondaryExpertiseArea: String?
     
-    @Published var countryConfig: PickerConfig = .init(text: "Select your country")
-    @Published var primaryExpertiseConfig: PickerConfig = .init(text: "Select your professional interests")
-    @Published var secondaryExpertiseConfig: PickerConfig = .init(text: "Select your professional interests")
+    @Published var countryConfig: PickerConfig = .init(text: String(localized: "registration.select.country", comment: "Select country placeholder"))
+    @Published var primaryExpertiseConfig: PickerConfig = .init(text: String(localized: "registration.select.interests", comment: "Select interests placeholder"))
+    @Published var secondaryExpertiseConfig: PickerConfig = .init(text: String(localized: "registration.select.interests", comment: "Select interests placeholder"))
     
     @Published var nameError: String?
     @Published var isLoading: Bool = false
@@ -115,11 +115,11 @@ class RegistrationViewModel: ObservableObject {
     func validateName() {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmedName.isEmpty {
-            nameError = "El nombre es obligatorio"
+            nameError = String(localized: "registration.error.name.required", comment: "Name required error")
         } else if trimmedName.count < 2 {
-            nameError = "El nombre debe tener al menos 2 caracteres"
+            nameError = String(localized: "registration.error.name.min", comment: "Name minimum length error")
         } else if trimmedName.count > 50 {
-            nameError = "El nombre no puede exceder 50 caracteres"
+            nameError = String(localized: "registration.error.name.max", comment: "Name maximum length error")
         } else {
             nameError = nil
         }
@@ -138,7 +138,7 @@ class RegistrationViewModel: ObservableObject {
                 secondaryExpertiseConfig.text = oldPrimary
             } else {
                 secondaryExpertiseArea = nil
-                secondaryExpertiseConfig.text = "Select your professional interests"
+                secondaryExpertiseConfig.text = String(localized: "registration.select.interests", comment: "Select interests placeholder")
             }
         }
         self.primaryExpertiseArea = expertise
@@ -154,17 +154,17 @@ class RegistrationViewModel: ObservableObject {
     
     func clearCountry() {
         country = nil
-        countryConfig.text = "Select your country"
+        countryConfig.text = String(localized: "registration.select.country", comment: "Select country placeholder")
     }
     
     func clearPrimaryExpertise() {
         primaryExpertiseArea = nil
-        primaryExpertiseConfig.text = "Select your professional interests"
+        primaryExpertiseConfig.text = String(localized: "registration.select.interests", comment: "Select interests placeholder")
     }
     
     func clearSecondaryExpertise() {
         secondaryExpertiseArea = nil
-        secondaryExpertiseConfig.text = "Select your professional interests"
+        secondaryExpertiseConfig.text = String(localized: "registration.select.interests", comment: "Select interests placeholder")
     }
     
     func submitRegistration() async -> Bool {
@@ -175,7 +175,7 @@ class RegistrationViewModel: ObservableObject {
         }
         
         guard let appleId = authenticationManager?.userIdentifier else {
-            errorMessage = "No se encontró el ID de Apple. Por favor, inicia sesión nuevamente."
+            errorMessage = String(localized: "registration.error.apple.id", comment: "Apple ID not found error")
             return false
         }
         
@@ -226,7 +226,7 @@ class RegistrationViewModel: ObservableObject {
             return true
         } catch {
             isLoading = false
-            errorMessage = "Error al guardar el registro: \(error.localizedDescription)"
+            errorMessage = String(localized: "registration.error.save", comment: "Save error") + ": \(error.localizedDescription)"
             
             // Determinar si es error de red o del servicio y mostrar la vista apropiada
             if isNetworkError(error) {
