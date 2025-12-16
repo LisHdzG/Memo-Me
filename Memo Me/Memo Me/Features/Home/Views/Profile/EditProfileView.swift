@@ -13,6 +13,7 @@ struct EditProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = ProfileViewModel()
     @FocusState private var focusedField: Field?
+    @State private var showDiscardChangesAlert: Bool = false
     
     enum Field {
         case name
@@ -27,59 +28,6 @@ struct EditProfileView: View {
             
             ScrollView {
                 VStack(spacing: 24) {
-                    HStack {
-                        Button(action: {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                dismiss()
-                            }
-                        }) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.primaryDark)
-                                .frame(width: 44, height: 44)
-                                .background(Color.white.opacity(0.3))
-                                .clipShape(Circle())
-                                .shadow(color: .primaryDark.opacity(0.1), radius: 4, x: 0, y: 2)
-                        }
-                        
-                        Spacer()
-                        
-                        Text("Editar Perfil")
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .foregroundColor(.primaryDark)
-                        
-                        Spacer()
-                        
-                        if viewModel.hasChanges {
-                            Button(action: {
-                                Task {
-                                    let success = await viewModel.saveProfile()
-                                    if success {
-                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                            dismiss()
-                                        }
-                                    }
-                                }
-                            }) {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .frame(width: 44, height: 44)
-                                    .background(Color(.deepSpace))
-                                    .clipShape(Circle())
-                                    .shadow(color: .primaryDark.opacity(0.2), radius: 6, x: 0, y: 3)
-                            }
-                            .disabled(viewModel.isLoading)
-                            .scaleEffect(viewModel.isLoading ? 0.95 : 1.0)
-                            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: viewModel.isLoading)
-                        } else {
-                            Color.clear
-                                .frame(width: 44, height: 44)
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                    
                     VStack(spacing: 16) {
                         PhotosPicker(
                             selection: $viewModel.selectedPhotoItem,
@@ -144,30 +92,12 @@ struct EditProfileView: View {
                             .frame(height: 180)
                         }
                         .disabled(viewModel.isLoading)
-                        
-                        let hasPhotoUrl = authManager.currentUser?.photoUrl != nil
-                        if viewModel.profileImage != nil || hasPhotoUrl {
-                            Button(action: {
-                                viewModel.removePhoto()
-                            }) {
-                                Text("Eliminar foto")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(Color(.electricRuby))
-                            }
-                        }
                     }
                     .padding(.horizontal, 20)
                     
                     VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Nombre")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.primaryDark)
-                            
-                            Text("*")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(Color(.electricRuby))
-                        }
+                        Text(buildNameLabel())
+                            .font(.system(size: 16, weight: .semibold))
                         
                         TextField("e.g. John Smith", text: $viewModel.name)
                             .textFieldStyle(CustomTextFieldStyle())
@@ -177,11 +107,12 @@ struct EditProfileView: View {
                     .padding(.horizontal, 20)
                     
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("País (opcional)")
+                        Text("Country (optional)")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.primaryDark)
                         
                         Button {
+                            focusedField = nil
                             viewModel.countryConfig.show.toggle()
                         } label: {
                             HStack(spacing: 12) {
@@ -195,8 +126,6 @@ struct EditProfileView: View {
                                 
                                 Spacer()
                                 
-                                SourcePickerView(config: $viewModel.countryConfig)
-                                
                                 Image(systemName: "chevron.down")
                                     .font(.system(size: 12, weight: .semibold))
                                     .foregroundColor(.primaryDark.opacity(0.6))
@@ -205,21 +134,11 @@ struct EditProfileView: View {
                             .padding(.vertical, 14)
                             .background(Color.white.opacity(0.2))
                             .cornerRadius(12)
-                        }
-                        
-                        if viewModel.country != nil {
-                            Button(action: {
-                                viewModel.clearCountry()
-                            }) {
-                                HStack {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 14))
-                                    Text("Limpiar selección")
-                                        .font(.system(size: 14, weight: .medium))
-                                }
-                                .foregroundColor(Color(.electricRuby))
+                            .onGeometryChange(for: CGRect.self) { proxy in
+                                proxy.frame(in: .global)
+                            } action: { newValue in
+                                viewModel.countryConfig.sourceFrame = newValue
                             }
-                            .padding(.leading, 4)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -229,7 +148,7 @@ struct EditProfileView: View {
                             Image(systemName: "camera.fill")
                                 .font(.system(size: 14))
                                 .foregroundColor(.primaryDark.opacity(0.7))
-                            Text("Instagram (opcional)")
+                            Text("Instagram (optional)")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.primaryDark)
                         }
@@ -240,7 +159,7 @@ struct EditProfileView: View {
                                 .foregroundColor(.primaryDark.opacity(0.6))
                                 .padding(.leading, 4)
                             
-                            TextField("tu_usuario", text: $viewModel.instagramUrl)
+                            TextField("your_username", text: $viewModel.instagramUrl)
                                 .textFieldStyle(CustomTextFieldStyle())
                                 .focused($focusedField, equals: .instagram)
                                 .keyboardType(.default)
@@ -249,7 +168,7 @@ struct EditProfileView: View {
                                 .submitLabel(.next)
                         }
                         
-                        Text("Solo ingresa tu nombre de usuario (sin @ ni URL)")
+                        Text("Enter only your username (without @ or URL)")
                             .font(.system(size: 12))
                             .foregroundColor(.primaryDark.opacity(0.5))
                             .padding(.leading, 4)
@@ -261,12 +180,12 @@ struct EditProfileView: View {
                             Image(systemName: "briefcase.fill")
                                 .font(.system(size: 14))
                                 .foregroundColor(.primaryDark.opacity(0.7))
-                            Text("LinkedIn (opcional)")
+                            Text("LinkedIn (optional)")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.primaryDark)
                         }
                         
-                        TextField("tu_perfil", text: $viewModel.linkedinUrl)
+                        TextField("your_profile", text: $viewModel.linkedinUrl)
                             .textFieldStyle(CustomTextFieldStyle())
                             .focused($focusedField, equals: .linkedin)
                             .keyboardType(.default)
@@ -274,7 +193,7 @@ struct EditProfileView: View {
                             .autocorrectionDisabled()
                             .submitLabel(.done)
                         
-                        Text("Solo ingresa tu nombre de perfil (sin URL)")
+                        Text("Enter only your profile name (without URL)")
                             .font(.system(size: 12))
                             .foregroundColor(.primaryDark.opacity(0.5))
                             .padding(.leading, 4)
@@ -282,88 +201,46 @@ struct EditProfileView: View {
                     .padding(.horizontal, 20)
                     
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Áreas de expertise (opcional)")
+                        Text("Focus Area")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.primaryDark)
                         
-                        Button {
-                            viewModel.areasConfig.show.toggle()
-                        } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: "lightbulb")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.primaryDark.opacity(0.6))
-                                
-                                Text(viewModel.areasConfig.text)
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.primaryDark.opacity(0.6))
-                                
-                                Spacer()
-                                
-                                SourcePickerView(config: $viewModel.areasConfig)
-                                
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.primaryDark.opacity(0.6))
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 14)
-                            .background(Color.white.opacity(0.2))
-                            .cornerRadius(12)
-                        }
-                        
-                        if !viewModel.selectedAreas.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
-                                ForEach(viewModel.selectedAreas, id: \.self) { area in
-                                    HStack {
-                                        Text(area)
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.primaryDark)
-                                        
-                                        Spacer()
-                                        
-                                        Button(action: {
-                                            viewModel.removeArea(area)
-                                        }) {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .font(.system(size: 16))
-                                                .foregroundColor(Color(.electricRuby))
-                                        }
-                                    }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(Color.white.opacity(0.2))
-                                    .cornerRadius(8)
-                                }
-                            }
+                        VStack(spacing: 16) {
+                            primaryAreaView
+                            secondaryAreaView
                         }
                     }
                     .padding(.horizontal, 20)
                     
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Intereses (opcional)")
+                        Text("Interests (optional)")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.primaryDark)
                         
                         Button {
-                            viewModel.interestsConfig.show.toggle()
+                            focusedField = nil
+                            viewModel.showInterestsSheet = true
                         } label: {
                             HStack(spacing: 12) {
-                                Image(systemName: "heart.fill")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.primaryDark.opacity(0.6))
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(Color("RoyalPurple"))
                                 
-                                Text(viewModel.interestsConfig.text)
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.primaryDark.opacity(0.6))
+                                Text("Add interests")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.primaryDark)
                                 
                                 Spacer()
                                 
-                                SourcePickerView(config: $viewModel.interestsConfig)
-                                
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(.primaryDark.opacity(0.6))
+                                if !viewModel.selectedInterests.isEmpty {
+                                    Text("\(viewModel.selectedInterests.count)")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color("RoyalPurple"))
+                                        .clipShape(Capsule())
+                                }
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 14)
@@ -372,29 +249,28 @@ struct EditProfileView: View {
                         }
                         
                         if !viewModel.selectedInterests.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
+                            FlowLayout(spacing: 8) {
                                 ForEach(viewModel.selectedInterests, id: \.self) { interest in
-                                    HStack {
+                                    HStack(spacing: 6) {
                                         Text(interest)
-                                            .font(.system(size: 14))
+                                            .font(.system(size: 14, weight: .medium))
                                             .foregroundColor(.primaryDark)
-                                        
-                                        Spacer()
                                         
                                         Button(action: {
                                             viewModel.removeInterest(interest)
                                         }) {
                                             Image(systemName: "xmark.circle.fill")
-                                                .font(.system(size: 16))
+                                                .font(.system(size: 14))
                                                 .foregroundColor(Color(.electricRuby))
                                         }
                                     }
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 8)
-                                    .background(Color.white.opacity(0.2))
-                                    .cornerRadius(8)
+                                    .background(Color.white.opacity(0.3))
+                                    .cornerRadius(16)
                                 }
                             }
+                            .padding(.top, 4)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -423,37 +299,163 @@ struct EditProfileView: View {
             }
             .scrollDismissesKeyboard(.interactively)
         }
+        .navigationTitle("Edit Profile")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("Edit Profile")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(Color("DeepSpace"))
+            }
+            
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: {
+                    if viewModel.isDataLoaded && viewModel.hasChanges {
+                        showDiscardChangesAlert = true
+                    } else {
+                        dismiss()
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                    }
+                    .font(.system(size: 17))
+                    .foregroundColor(Color("RoyalPurple"))
+                }
+            }
+            
+            ToolbarItem(placement: .navigationBarTrailing) {
+                if viewModel.isDataLoaded && viewModel.hasChanges {
+                    Button(action: {
+                        Task {
+                            let success = await viewModel.saveProfile()
+                            if success {
+                                dismiss()
+                            }
+                        }
+                    }) {
+                        Text("Save")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(Color("RoyalPurple"))
+                    }
+                    .disabled(viewModel.isLoading)
+                }
+            }
+        }
+        .gesture(
+            DragGesture(minimumDistance: 10)
+                .onEnded { value in
+                    if value.translation.width > 100 && abs(value.translation.height) < 50 {
+                        if viewModel.isDataLoaded && viewModel.hasChanges {
+                            showDiscardChangesAlert = true
+                        } else {
+                            dismiss()
+                        }
+                    }
+                }
+        )
+        .interactiveDismissDisabled(viewModel.isDataLoaded && viewModel.hasChanges)
+        .confirmationDialog(
+            "Discard Changes?",
+            isPresented: $showDiscardChangesAlert,
+            titleVisibility: .visible
+        ) {
+            Button("Save", role: .none) {
+                Task {
+                    let success = await viewModel.saveProfile()
+                    if success {
+                        dismiss()
+                    }
+                }
+            }
+            
+            Button("Discard Changes", role: .destructive) {
+                dismiss()
+            }
+            
+            Button("Continue Editing", role: .cancel) { }
+        } message: {
+            Text("If you go back, your changes will be lost.")
+        }
         .onAppear {
             viewModel.authenticationManager = authManager
             viewModel.loadUserData()
         }
-        .customPicker($viewModel.countryConfig, items: viewModel.countries)
-        .customPicker($viewModel.areasConfig, items: viewModel.expertiseAreas)
-        .customPicker($viewModel.interestsConfig, items: viewModel.interestsOptions)
+        .customPicker($viewModel.countryConfig, items: viewModel.countries, addNotInList: true, notInListText: viewModel.notInListCountry)
+        .customPicker($viewModel.primaryExpertiseConfig, items: viewModel.expertiseAreas, addNotInList: true)
+        .customPicker($viewModel.secondaryExpertiseConfig, items: viewModel.expertiseAreas, addNotInList: true)
+        .sheet(isPresented: $viewModel.showInterestsSheet) {
+            InterestSelectionSheet(viewModel: viewModel)
+        }
         .onChange(of: viewModel.countryConfig.text) { oldValue, newValue in
             Task { @MainActor in
+                let preferNotToSay = "Prefer not to say"
+                let notInList = "Not yet in the list"
+                let notInListValue = "Not yet in the list"
                 let countryPlaceholder = "Select your country"
-                if newValue != countryPlaceholder &&
-                   newValue != oldValue &&
+                
+                if newValue == preferNotToSay {
+                    viewModel.country = nil
+                    viewModel.countryConfig.text = countryPlaceholder
+                    return
+                }
+                
+                if newValue == countryPlaceholder && oldValue != countryPlaceholder {
+                    if viewModel.country != nil {
+                        viewModel.country = nil
+                    }
+                    return
+                }
+                
+                if newValue == notInList {
+                    viewModel.selectCountry(notInListValue)
+                    return
+                }
+                
+                if newValue != countryPlaceholder && 
+                   newValue != oldValue && 
+                   newValue != preferNotToSay &&
+                   newValue != notInList &&
                    viewModel.country != newValue {
                     viewModel.selectCountry(newValue)
                 }
             }
         }
-        .onChange(of: viewModel.areasConfig.text) { oldValue, newValue in
+        .onChange(of: viewModel.primaryExpertiseConfig.text) { oldValue, newValue in
             Task { @MainActor in
+                let preferNotToSay = "Prefer not to say"
+                let notInList = "Not yet in the list"
+                let notInListValue = "Not yet in the list"
                 let interestsPlaceholder = "Select your professional interests"
-                if newValue != interestsPlaceholder &&
-                   newValue != oldValue {
-                    viewModel.addArea(newValue)
+                
+                if newValue == preferNotToSay || (newValue == interestsPlaceholder && oldValue != interestsPlaceholder && viewModel.primaryExpertiseArea != nil) {
+                    viewModel.clearPrimaryExpertise()
+                } else if newValue == notInList {
+                    viewModel.selectPrimaryExpertise(notInListValue)
+                } else if newValue != interestsPlaceholder && 
+                   newValue != oldValue && 
+                   viewModel.primaryExpertiseArea != newValue {
+                    viewModel.selectPrimaryExpertise(newValue)
                 }
             }
         }
-        .onChange(of: viewModel.interestsConfig.text) { oldValue, newValue in
+        .onChange(of: viewModel.secondaryExpertiseConfig.text) { oldValue, newValue in
             Task { @MainActor in
-                if newValue != "Seleccionar interés" &&
-                   newValue != oldValue {
-                    viewModel.addInterest(newValue)
+                let preferNotToSay = "Prefer not to say"
+                let notInList = "Not yet in the list"
+                let notInListValue = "Not yet in the list"
+                let interestsPlaceholder = "Select your professional interests"
+                
+                if newValue == preferNotToSay || (newValue == interestsPlaceholder && oldValue != interestsPlaceholder && viewModel.secondaryExpertiseArea != nil) {
+                    viewModel.clearSecondaryExpertise()
+                } else if newValue == notInList {
+                    viewModel.selectSecondaryExpertise(notInListValue)
+                } else if newValue != interestsPlaceholder && 
+                   newValue != oldValue && 
+                   viewModel.secondaryExpertiseArea != newValue {
+                    viewModel.selectSecondaryExpertise(newValue)
                 }
             }
         }
@@ -465,7 +467,97 @@ struct EditProfileView: View {
     }
     
     private var userName: String {
-        authManager.currentUser?.name ?? authManager.userName ?? "Usuario"
+        authManager.currentUser?.name ?? authManager.userName ?? "User"
+    }
+    
+    private var primaryAreaView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Primary area")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.primaryDark.opacity(0.7))
+            
+            Button {
+                focusedField = nil
+                viewModel.primaryExpertiseConfig.show.toggle()
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "lightbulb")
+                        .font(.system(size: 16))
+                        .foregroundColor(.primaryDark.opacity(0.6))
+                    
+                    Text(viewModel.primaryExpertiseConfig.text)
+                        .font(.system(size: 16))
+                        .foregroundColor(viewModel.primaryExpertiseArea == nil ? .primaryDark.opacity(0.6) : .primaryDark)
+                        .lineLimit(1)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.primaryDark.opacity(0.6))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(Color.white.opacity(0.2))
+                .cornerRadius(12)
+                .onGeometryChange(for: CGRect.self) { proxy in
+                    proxy.frame(in: .global)
+                } action: { newValue in
+                    viewModel.primaryExpertiseConfig.sourceFrame = newValue
+                }
+            }
+        }
+    }
+    
+    private var secondaryAreaView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Secondary area")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.primaryDark.opacity(0.7))
+            
+            Button {
+                focusedField = nil
+                viewModel.secondaryExpertiseConfig.show.toggle()
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "lightbulb")
+                        .font(.system(size: 16))
+                        .foregroundColor(.primaryDark.opacity(0.6))
+                    
+                    Text(viewModel.secondaryExpertiseConfig.text)
+                        .font(.system(size: 16))
+                        .foregroundColor(viewModel.secondaryExpertiseArea == nil ? .primaryDark.opacity(0.6) : .primaryDark)
+                        .lineLimit(1)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.primaryDark.opacity(0.6))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(Color.white.opacity(0.2))
+                .cornerRadius(12)
+                .onGeometryChange(for: CGRect.self) { proxy in
+                    proxy.frame(in: .global)
+                } action: { newValue in
+                    viewModel.secondaryExpertiseConfig.sourceFrame = newValue
+                }
+            }
+            .disabled(viewModel.primaryExpertiseArea == nil)
+            .opacity(viewModel.primaryExpertiseArea == nil ? 0.6 : 1.0)
+        }
+    }
+    
+    private func buildNameLabel() -> AttributedString {
+        var attributedString = AttributedString("Name ")
+        attributedString.foregroundColor = .primaryDark
+        
+        var asterisk = AttributedString("*")
+        asterisk.foregroundColor = Color("RoyalPurple")
+        attributedString.append(asterisk)
+        
+        return attributedString
     }
 }
-

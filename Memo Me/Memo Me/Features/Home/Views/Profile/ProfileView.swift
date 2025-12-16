@@ -166,13 +166,10 @@ struct ProfileView: View {
                     .animation(.spring(response: 0.3, dampingFraction: 0.6), value: showEditProfile)
                 }
             }
-        }
-        .sheet(isPresented: $showEditProfile) {
-            EditProfileView()
-                .environmentObject(authManager)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-                .interactiveDismissDisabled(false)
+            .navigationDestination(isPresented: $showEditProfile) {
+                EditProfileView()
+                    .environmentObject(authManager)
+            }
         }
         .onAppear {
             viewModel.authenticationManager = authManager
@@ -313,7 +310,6 @@ struct ProfileProgressView: View {
             }
             .buttonStyle(PlainButtonStyle())
         } else {
-            // Si está completo, mostrar mensaje de éxito
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 16))

@@ -23,10 +23,9 @@ struct AsyncImageView: View {
                     .aspectRatio(contentMode: contentMode)
                     .frame(width: size, height: size)
             } else {
-                // Placeholder estilo Apple: círculo claro con la primera letra
                 ZStack {
                     Circle()
-                        .fill(Color.gray.opacity(0.15))
+                        .fill(.splashText)
                         .frame(width: size, height: size)
                     
                     Text(String(placeholderText.prefix(1)).uppercased())
