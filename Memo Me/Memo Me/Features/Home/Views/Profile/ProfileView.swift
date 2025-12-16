@@ -454,8 +454,20 @@ struct SocialButton: View {
     let imageName: String
     let url: String
     
+    private let socialMediaService = SocialMediaService.shared
+    
     var body: some View {
-        Link(destination: URL(string: url)!) {
+        Button(action: {
+            if imageName.lowercased().contains("instagram") {
+                socialMediaService.openInstagram(urlString: url)
+            } else if imageName.lowercased().contains("linkedin") {
+                socialMediaService.openLinkedIn(urlString: url)
+            } else {
+                if let urlObj = URL(string: url) {
+                    UIApplication.shared.open(urlObj)
+                }
+            }
+        }) {
             Image(imageName)
                 .resizable()
                 .aspectRatio(contentMode: .fit)

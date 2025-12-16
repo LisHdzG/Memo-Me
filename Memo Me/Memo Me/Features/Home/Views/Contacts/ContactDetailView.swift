@@ -190,9 +190,9 @@ struct ContactDetailView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .transition(.opacity.combined(with: .scale(scale: 0.95)))
-            .sheet(isPresented: $showContactDetail) {
+            .navigationDestination(isPresented: $showContactDetail) {
                 if let contact = selectedContact {
-                    ContactDetailSheet(
+                    ContactDetailPageView(
                         user: selectedUser,
                         contact: contact,
                         spaceId: space?.spaceId ?? spaceSelectionService.selectedSpace?.spaceId

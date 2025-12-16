@@ -13,6 +13,9 @@ class FavoritesViewModel: ObservableObject {
     @Published var favoriteContactsBySpace: [String: [FavoriteContact]] = [:]
     @Published var isLoading: Bool = true
     @Published var errorMessage: String?
+    @Published var showContactDetail: Bool = false
+    @Published var selectedContact: Contact?
+    @Published var selectedUser: User?
     
     private let favoriteService = FavoriteService()
     private let spaceService = SpaceService()
@@ -132,4 +135,3 @@ class FavoritesViewModel: ObservableObject {
         }
     }
 }
-
