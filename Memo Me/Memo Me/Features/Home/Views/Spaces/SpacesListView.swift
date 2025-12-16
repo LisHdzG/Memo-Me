@@ -22,6 +22,8 @@ struct SpacesListView: View {
     @State private var cameraPermissionDenied = false
     @State private var showPermissionAlert = false
     @State private var showCreateSpace = false
+    @State private var showJoinConfirmation = false
+    @State private var spaceToJoin: Space?
     
     init(isPresentedAsSheet: Bool = false, shouldDismissOnSelection: Bool = false) {
         self.isPresentedAsSheet = isPresentedAsSheet
@@ -31,61 +33,71 @@ struct SpacesListView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color("PurpleGradientTop"),
-                        Color("PurpleGradientMiddle"),
-                        Color("PurpleGradientBottom")
-                    ]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
+                Color(.ghostWhite)
+                    .ignoresSafeArea()
                 
-                if viewModel.isLoading && viewModel.publicSpaces.isEmpty && viewModel.userSpaces.isEmpty {
-                    VStack(spacing: 20) {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(1.5)
-                        
-                        Text("Cargando espacios...")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white.opacity(0.8))
-                    }
-                } else {
-                    ScrollView {
-                        VStack(spacing: 24) {
-                            JoinPrivateSpaceSection(
-                                code: $privateSpaceCode,
-                                onJoin: {
-                                    if let userId = authManager.currentUser?.id {
-                                        Task {
-                                            if let joinedSpace = await viewModel.joinSpaceByCode(code: privateSpaceCode, userId: userId) {
-                                                spaceSelectionService.saveSelectedSpace(joinedSpace)
-                                                privateSpaceCode = ""
-                                                if shouldDismissOnSelection {
-                                                    dismiss()
-                                                }
-                                            }
+                VStack(spacing: 0) {
+                    Text("Spaces")
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .foregroundColor(Color("DeepSpace"))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 16)
+                        .background(Color(.ghostWhite))
+                    
+                    JoinPrivateSpaceSection(
+                        code: $privateSpaceCode,
+                        onJoin: {
+                            if let userId = authManager.currentUser?.id {
+                                Task {
+                                    if let joinedSpace = await viewModel.joinSpaceByCode(code: privateSpaceCode, userId: userId) {
+                                        spaceSelectionService.saveSelectedSpace(joinedSpace)
+                                        privateSpaceCode = ""
+                                        if shouldDismissOnSelection {
+                                            dismiss()
                                         }
                                     }
-                                },
-                                onScanQR: {
-                                    showQRScanner = true
-                                },
-                                isJoining: viewModel.isJoiningPrivateSpace
-                            )
-                            .padding(.horizontal, 20)
-                            .padding(.top, 20)
+                                }
+                            }
+                        },
+                        onScanQR: {
+                            showQRScanner = true
+                        },
+                        isJoining: viewModel.isJoiningPrivateSpace
+                    )
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 16)
+                    .background(Color(.ghostWhite))
+                    
+                    if viewModel.isLoading && viewModel.publicSpaces.isEmpty && viewModel.userSpaces.isEmpty {
+                        Spacer()
+                        VStack(spacing: 20) {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: Color("DeepSpace")))
+                                .scaleEffect(1.5)
                             
-                            if !viewModel.userSpaces.isEmpty {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Espacios a los que perteneces")
-                                        .font(.system(size: 20, weight: .bold))
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 20)
+                            Text("Loading spaces...")
+                                .font(.system(size: 16, weight: .medium, design: .rounded))
+                                .foregroundColor(.primaryDark.opacity(0.6))
+                        }
+                        Spacer()
+                    } else {
+                        ScrollView {
+                            VStack(spacing: 24) {
+                                if !viewModel.userSpaces.isEmpty {
+                                    VStack(alignment: .leading, spacing: 16) {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "square.stack.3d.up.fill")
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundColor(Color("RoyalPurple").opacity(0.8))
+                                        
+                                        Text("My Spaces")
+                                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                                            .foregroundColor(.primaryDark)
+                                    }
+                                    .padding(.horizontal, 20)
                                     
-                                    LazyVStack(spacing: 16) {
+                                    LazyVStack(spacing: 12) {
                                         ForEach(viewModel.userSpaces) { space in
                                             SpaceCardView(
                                                 space: space,
@@ -106,11 +118,17 @@ struct SpacesListView: View {
                             }
                             
                             if !viewModel.publicSpaces.isEmpty {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Espacios públicos")
-                                        .font(.system(size: 20, weight: .bold))
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 20)
+                                VStack(alignment: .leading, spacing: 16) {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "globe")
+                                            .font(.system(size: 16, weight: .medium))
+                                            .foregroundColor(Color("DeepSpace").opacity(0.7))
+                                        
+                                        Text("Public Spaces")
+                                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                                            .foregroundColor(.primaryDark)
+                                    }
+                                    .padding(.horizontal, 20)
                                     
                                     LazyVStack(spacing: 16) {
                                         ForEach(viewModel.publicSpaces) { space in
@@ -121,16 +139,8 @@ struct SpacesListView: View {
                                                     space: space,
                                                     isMember: isMember,
                                                     onJoin: {
-                                                        Task {
-                                                            await viewModel.joinSpace(space: space, userId: currentUserId)
-                                                            await viewModel.refreshSpaces(userId: currentUserId)
-                                                            if let updatedSpace = viewModel.publicSpaces.first(where: { $0.spaceId == space.spaceId }) ?? viewModel.userSpaces.first(where: { $0.spaceId == space.spaceId }) {
-                                                                spaceSelectionService.saveSelectedSpace(updatedSpace)
-                                                                if shouldDismissOnSelection {
-                                                                    dismiss()
-                                                                }
-                                                            }
-                                                        }
+                                                        spaceToJoin = space
+                                                        showJoinConfirmation = true
                                                     },
                                                     onView: {
                                                         spaceSelectionService.saveSelectedSpace(space)
@@ -151,46 +161,47 @@ struct SpacesListView: View {
                                 VStack(spacing: 20) {
                                     Image(systemName: "rectangle.3.group")
                                         .font(.system(size: 60))
-                                        .foregroundColor(.white.opacity(0.6))
+                                        .foregroundColor(.primaryDark.opacity(0.3))
                                     
-                                    Text("No hay espacios disponibles")
-                                        .font(.system(size: 18, weight: .semibold))
-                                        .foregroundColor(.white)
+                                    Text("No spaces available")
+                                        .font(.system(size: 18, weight: .semibold, design: .rounded))
+                                        .foregroundColor(.primaryDark)
                                     
-                                    Text("Únete a un espacio público o privado para comenzar")
-                                        .font(.system(size: 14, weight: .regular))
-                                        .foregroundColor(.white.opacity(0.7))
+                                    Text("Join a public or private space to get started")
+                                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                                        .foregroundColor(.primaryDark.opacity(0.6))
                                         .multilineTextAlignment(.center)
                                 }
                                 .padding(.top, 40)
+                                .padding(.horizontal, 20)
                             }
                             
-                            if !isPresentedAsSheet {
-                                Button(action: {
-                                    spaceSelectionService.markAsContinuedWithoutSpace()
-                                }) {
-                                    Text("Continuar sin espacio seleccionado")
-                                        .font(.system(size: 16, weight: .semibold))
-                                        .foregroundColor(.white)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 16)
-                                        .background(Color.white.opacity(0.2))
-                                        .cornerRadius(12)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                                        )
+                            if !isPresentedAsSheet && !spaceSelectionService.hasContinuedWithoutSpace {
+                                VStack(spacing: 4) {
+                                    Button(action: {
+                                        spaceSelectionService.markAsContinuedWithoutSpace()
+                                    }) {
+                                        Text("Skip for now")
+                                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                            .foregroundColor(Color("DeepSpace"))
+                                            .underline()
+                                    }
+                                    
+                                    Text("(Enter without space)")
+                                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                                        .foregroundColor(Color("DeepSpace").opacity(0.7))
                                 }
-                                .padding(.horizontal, 20)
+                                .frame(maxWidth: .infinity)
                                 .padding(.top, 20)
                                 .padding(.bottom, 40)
                             }
+                            }
+                            .padding(.bottom, 20)
                         }
-                        .padding(.bottom, 20)
-                    }
-                    .refreshable {
-                        if let userId = authManager.currentUser?.id {
-                            await viewModel.refreshSpaces(userId: userId)
+                        .refreshable {
+                            if let userId = authManager.currentUser?.id {
+                                await viewModel.refreshSpaces(userId: userId)
+                            }
                         }
                     }
                 }
@@ -199,41 +210,26 @@ struct SpacesListView: View {
                     VStack {
                         Spacer()
                         Text(errorMessage)
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
                             .foregroundColor(.white)
                             .padding()
-                            .background(Color.red.opacity(0.8))
-                            .cornerRadius(10)
+                            .background(Color(.electricRuby).opacity(0.9))
+                            .cornerRadius(12)
                             .padding(.horizontal, 20)
                             .padding(.bottom, 50)
+                            .shadow(color: Color(.electricRuby).opacity(0.3), radius: 8, x: 0, y: 4)
                     }
                 }
             }
-            .navigationTitle("Espacios")
-            .navigationBarTitleDisplayMode(.large)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         showCreateSpace = true
                     }) {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundColor(.white)
-                            .font(.system(size: 24))
+                        Text("Create Space")
+                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                            .foregroundColor(Color("RoyalPurple"))
                     }
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        if let userId = authManager.currentUser?.id {
-                            Task {
-                                await viewModel.refreshSpaces(userId: userId)
-                            }
-                        }
-                    }) {
-                        Image(systemName: "arrow.clockwise")
-                            .foregroundColor(.white)
-                    }
-                    .disabled(viewModel.isLoading)
                 }
             }
             .sheet(isPresented: $showCreateSpace) {
@@ -253,28 +249,55 @@ struct SpacesListView: View {
                     isPresented: $showQRScanner,
                     permissionDenied: $cameraPermissionDenied
                 )
-            }
-            .onChange(of: scannedCode) { oldValue, newValue in
-                if let code = newValue {
-                    privateSpaceCode = code
-                    showQRScanner = false
+                .environmentObject(authManager)
+                .onDisappear {
+                    if let userId = authManager.currentUser?.id {
+                        Task {
+                            await viewModel.refreshSpaces(userId: userId)
+                        }
+                    }
                 }
             }
-            .onChange(of: cameraPermissionDenied) { oldValue, newValue in
+            .onChange(of: cameraPermissionDenied) { _, newValue in
                 if newValue {
                     showPermissionAlert = true
                     cameraPermissionDenied = false
                 }
             }
-            .alert("Permiso de cámara requerido", isPresented: $showPermissionAlert) {
-                Button("Cancelar", role: .cancel) { }
-                Button("Abrir Configuración") {
+            .alert("Camera Permission Required", isPresented: $showPermissionAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Open Settings") {
                     if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
                         UIApplication.shared.open(settingsUrl)
                     }
                 }
             } message: {
-                Text("Necesitamos acceso a la cámara para escanear códigos QR. Por favor, habilita el permiso de cámara en Configuración.")
+                Text("We need camera access to scan QR codes. Please enable camera permission in Settings.")
+            }
+            .alert("Join Space", isPresented: $showJoinConfirmation) {
+                Button("Cancel", role: .cancel) {
+                    spaceToJoin = nil
+                }
+                Button("Join") {
+                    if let space = spaceToJoin, let userId = authManager.currentUser?.id {
+                        Task {
+                            await viewModel.joinSpace(space: space, userId: userId)
+                            await viewModel.refreshSpaces(userId: userId)
+                            if let updatedSpace = viewModel.publicSpaces.first(where: { $0.spaceId == space.spaceId }) ?? viewModel.userSpaces.first(where: { $0.spaceId == space.spaceId }) {
+                                spaceSelectionService.saveSelectedSpace(updatedSpace)
+                                if shouldDismissOnSelection {
+                                    dismiss()
+                                }
+                            }
+                            spaceToJoin = nil
+                        }
+                    }
+                }
+                .tint(Color("RoyalPurple"))
+            } message: {
+                if let space = spaceToJoin {
+                    Text("Do you want to join \"\(space.name)\"?\n\nOnce you join, members of this space will be able to see your profile.")
+                }
             }
         }
         .task {
@@ -295,63 +318,55 @@ struct JoinPrivateSpaceSection: View {
     let isJoining: Bool
     
     var body: some View {
-        VStack(spacing: 16) {
-            Text("Unirse a un espacio")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
-            
-            HStack(spacing: 12) {
-                TextField("Ingresa el código del espacio (público o privado)", text: $code)
+        VStack(spacing: 12) {
+            HStack(spacing: 8) {
+                TextField("Enter space code", text: $code)
                     .textFieldStyle(PlainTextFieldStyle())
-                    .padding(12)
-                    .background(Color.white.opacity(0.2))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(Color.white.opacity(0.3))
                     .cornerRadius(10)
-                    .foregroundColor(.white)
+                    .foregroundColor(.primaryDark)
+                    .font(.system(size: 14, design: .rounded))
                     .autocapitalization(.allCharacters)
                     .autocorrectionDisabled()
                 
                 Button(action: onScanQR) {
                     Image(systemName: "qrcode.viewfinder")
-                        .font(.system(size: 20))
-                        .foregroundColor(.white)
-                        .frame(width: 44, height: 44)
-                        .background(Color("PurpleGradientTop"))
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(Color("DeepSpace"))
+                        .frame(width: 40, height: 40)
+                        .background(Color("DeepSpace").opacity(0.1))
                         .cornerRadius(10)
                 }
-            }
-            
-            Button(action: onJoin) {
-                if isJoining {
-                    HStack {
+                
+                Button(action: onJoin) {
+                    if isJoining {
                         ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(0.8)
-                        Text("Uniéndose...")
-                            .font(.system(size: 16, weight: .semibold))
+                            .progressViewStyle(CircularProgressViewStyle(tint: Color("DeepSpace")))
+                            .scaleEffect(0.7)
+                            .frame(width: 40, height: 40)
+                    } else {
+                        Text("Join")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white)
+                            .frame(width: 60, height: 40)
+                            .background(Color("DeepSpace"))
+                            .cornerRadius(10)
                     }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color("PurpleGradientTop").opacity(0.7))
-                    .cornerRadius(10)
-                } else {
-                    Text("Unirse")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color("PurpleGradientTop"))
-                        .cornerRadius(10)
                 }
+                .disabled(code.isEmpty || isJoining)
             }
-            .disabled(code.isEmpty || isJoining)
         }
-        .padding(16)
-        .background(Color.white.opacity(0.1))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.4))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color("DeepSpace").opacity(0.08), lineWidth: 1)
+                )
         )
     }
 }
@@ -360,38 +375,132 @@ struct QRCodeScannerView: View {
     @Binding var scannedCode: String?
     @Binding var isPresented: Bool
     @Binding var permissionDenied: Bool
+    @EnvironmentObject var authManager: AuthenticationManager
+    @StateObject private var viewModel = SpacesViewModel()
+    @State private var isJoining = false
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                QRCodeScanner(
-                    scannedCode: $scannedCode,
-                    isPresented: $isPresented,
-                    permissionDenied: $permissionDenied
-                )
-                
+        ZStack {
+            QRCodeScanner(
+                scannedCode: $scannedCode,
+                isPresented: $isPresented,
+                permissionDenied: $permissionDenied
+            )
+            .ignoresSafeArea()
+            
+            GeometryReader { geometry in
                 VStack {
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            isPresented = false
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 32))
+                                .foregroundColor(.white)
+                                .background(Color.black.opacity(0.3))
+                                .clipShape(Circle())
+                        }
+                        .padding(.top, 16)
+                        .padding(.trailing, 20)
+                    }
+                    
                     Spacer()
-                    Text("Apunta la cámara al código QR")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding()
-                        .background(Color.black.opacity(0.7))
-                        .cornerRadius(10)
-                        .padding(.bottom, 50)
+                    
+                    VStack(spacing: 24) {
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(style: StrokeStyle(lineWidth: 3, dash: [10, 8]))
+                            .foregroundColor(.white)
+                            .frame(width: 250, height: 250)
+                            .overlay(
+                                VStack(spacing: 12) {
+                                    Image(systemName: "qrcode.viewfinder")
+                                        .font(.system(size: 50))
+                                        .foregroundColor(.white)
+                                    
+                                    Text("Scan QR Code")
+                                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white)
+                                }
+                            )
+                        
+                        VStack(spacing: 10) {
+                            Text("Find or request the QR code of the space you want to join")
+                                .font(.system(size: 15, weight: .regular, design: .rounded))
+                                .foregroundColor(.primaryDark)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(nil)
+                            
+                            Text("Scan it and you're in!")
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                .foregroundColor(Color("RoyalPurple"))
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 18)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color.white.opacity(0.95))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(
+                                            LinearGradient(
+                                                gradient: Gradient(colors: [
+                                                    Color("RoyalPurple").opacity(0.2),
+                                                    Color("RoyalPurple").opacity(0.1)
+                                                ]),
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 1.5
+                                        )
+                                )
+                        )
+                        .shadow(color: Color("RoyalPurple").opacity(0.1), radius: 12, x: 0, y: 4)
+                        .padding(.horizontal, 20)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .offset(y: -geometry.size.height * 0.1)
+                    
+                    Spacer()
                 }
             }
-            .navigationTitle("Escanear QR")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Cancelar") {
-                        isPresented = false
-                    }
-                    .foregroundColor(.white)
+            
+            if isJoining {
+                Color.black.opacity(0.7)
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 20) {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .scaleEffect(1.5)
+                    
+                    Text("Joining space...")
+                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .foregroundColor(.white)
                 }
             }
         }
+        .onChange(of: scannedCode) { _, newValue in
+            if let code = newValue, !isJoining {
+                Task {
+                    await joinSpaceByCode(code: code)
+                }
+            }
+        }
+    }
+    
+    private func joinSpaceByCode(code: String) async {
+        guard let userId = authManager.currentUser?.id else { return }
+        
+        isJoining = true
+        
+        if let joinedSpace = await viewModel.joinSpaceByCode(code: code, userId: userId) {
+            SpaceSelectionService.shared.saveSelectedSpace(joinedSpace)
+            isPresented = false
+        }
+        
+        isJoining = false
+        scannedCode = nil
     }
 }
 
@@ -403,107 +512,170 @@ struct SpaceCardView: View {
     let isJoining: Bool
     
     var body: some View {
-        HStack(spacing: 16) {
-            if !space.bannerUrl.isEmpty {
-                AsyncImage(url: URL(string: space.bannerUrl)) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Rectangle()
-                        .fill(Color.white.opacity(0.2))
-                }
-                .frame(width: 80, height: 80)
-                .cornerRadius(12)
+        Button(action: {
+            if isMember {
+                onView()
             } else {
-                ZStack {
-                    Rectangle()
-                        .fill(Color.white.opacity(0.2))
-                        .frame(width: 80, height: 80)
-                        .cornerRadius(12)
-                    
-                    Image(systemName: "rectangle.3.group")
-                        .font(.system(size: 30))
-                        .foregroundColor(.white.opacity(0.6))
+                onJoin()
+            }
+        }) {
+            HStack(spacing: 16) {
+            ZStack(alignment: .topTrailing) {
+                if !space.bannerUrl.isEmpty {
+                    AsyncImage(url: URL(string: space.bannerUrl)) { phase in
+                        switch phase {
+                        case .empty:
+                            placeholderView
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 70, height: 70)
+                                .cornerRadius(12)
+                        case .failure:
+                            placeholderView
+                        @unknown default:
+                            placeholderView
+                        }
+                    }
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color("DeepSpace").opacity(0.1), lineWidth: 1)
+                    )
+                } else {
+                    placeholderView
+                }
+                
+                if space.isOfficial {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(Color("RoyalPurple"))
+                        .symbolRenderingMode(.hierarchical)
+                        .background(
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: 20, height: 20)
+                        )
+                        .offset(x: 4, y: -4)
                 }
             }
             
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    Text(space.name)
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundColor(.white)
-                    
-                    if space.isOfficial {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(.yellow)
-                            .symbolRenderingMode(.hierarchical)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(space.name)
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .foregroundColor(.primaryDark)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                
+                if !space.types.isEmpty {
+                    HStack(spacing: 4) {
+                        ForEach(space.types.prefix(2), id: \.self) { type in
+                            Text(type)
+                                .font(.system(size: 11, weight: .medium, design: .rounded))
+                                .foregroundColor(Color("RoyalPurple"))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color("RoyalPurple").opacity(0.1))
+                                .cornerRadius(6)
+                        }
+                        if space.types.count > 2 {
+                            Text("+\(space.types.count - 2)")
+                                .font(.system(size: 11, weight: .medium, design: .rounded))
+                                .foregroundColor(Color("RoyalPurple"))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color("RoyalPurple").opacity(0.1))
+                                .cornerRadius(6)
+                        }
                     }
                 }
                 
-                Text(space.spaceId)
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundColor(.white.opacity(0.7))
-                
                 HStack(spacing: 4) {
                     Image(systemName: "person.2.fill")
-                        .font(.system(size: 12))
-                        .foregroundColor(.white.opacity(0.6))
+                        .font(.system(size: 11))
+                        .foregroundColor(.primaryDark.opacity(0.5))
                     
-                    Text("\(space.members.count) miembros")
-                        .font(.system(size: 12, weight: .regular))
-                        .foregroundColor(.white.opacity(0.6))
+                    Text("\(space.members.count) members")
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundColor(.primaryDark.opacity(0.5))
                 }
             }
             
             Spacer()
             
             if isMember {
-                Button(action: onView) {
-                    HStack(spacing: 6) {
-                        Text("Ver")
-                            .font(.system(size: 14, weight: .semibold))
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .semibold))
+                HStack(spacing: 4) {
+                    Text("View")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundColor(Color("DeepSpace"))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Color("DeepSpace").opacity(0.1))
+                .cornerRadius(10)
+            } else {
+                if isJoining {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: Color("DeepSpace")))
+                        .scaleEffect(0.8)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                } else {
+                    HStack(spacing: 4) {
+                        Image(systemName: "person.badge.plus")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text("Join")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
                     }
                     .foregroundColor(.white)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 14)
                     .padding(.vertical, 8)
-                    .background(Color.white.opacity(0.2))
-                    .cornerRadius(8)
+                    .background(Color("DeepSpace"))
+                    .cornerRadius(10)
                 }
-            } else {
-                Button(action: onJoin) {
-                    if isJoining {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(0.8)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                    } else {
-                        HStack(spacing: 6) {
-                            Image(systemName: "person.badge.plus")
-                                .font(.system(size: 12, weight: .semibold))
-                            Text("Unirse")
-                                .font(.system(size: 14, weight: .semibold))
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color("PurpleGradientTop"))
-                        .cornerRadius(8)
-                    }
-                }
-                .disabled(isJoining)
             }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color.white.opacity(0.6))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color("DeepSpace").opacity(0.1),
+                                        Color("DeepSpace").opacity(0.05)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.5
+                            )
+                    )
+            )
+            .shadow(color: Color("DeepSpace").opacity(0.05), radius: 8, x: 0, y: 2)
         }
-        .padding(16)
-        .background(Color.white.opacity(0.1))
-        .cornerRadius(16)
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var placeholderView: some View {
+        ZStack {
+            Rectangle()
+                .fill(Color("DeepSpace").opacity(0.1))
+                .frame(width: 70, height: 70)
+                .cornerRadius(12)
+            
+            Image(systemName: "rectangle.3.group")
+                .font(.system(size: 28, weight: .medium))
+                .foregroundColor(Color("DeepSpace").opacity(0.4))
+        }
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color("DeepSpace").opacity(0.1), lineWidth: 1)
         )
     }
 }

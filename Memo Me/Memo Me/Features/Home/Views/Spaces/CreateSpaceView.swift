@@ -18,23 +18,22 @@ struct CreateSpaceView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color("PurpleGradientTop"),
-                        Color("PurpleGradientMiddle"),
-                        Color("PurpleGradientBottom")
-                    ]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
+                Color(.ghostWhite)
+                    .ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: 24) {
                         VStack(spacing: 16) {
-                            Text("Foto del espacio (opcional)")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
+                            HStack(spacing: 8) {
+                                Image(systemName: "photo.badge.plus")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(Color("DeepSpace").opacity(0.7))
+                                
+                                Text("Foto del espacio (opcional)")
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.primaryDark)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             
                             if let bannerImage = viewModel.bannerImage {
                                 ZStack(alignment: .topTrailing) {
@@ -65,18 +64,18 @@ struct CreateSpaceView: View {
                                     VStack(spacing: 12) {
                                         Image(systemName: "photo.badge.plus")
                                             .font(.system(size: 40))
-                                            .foregroundColor(.white.opacity(0.7))
+                                            .foregroundColor(Color("DeepSpace").opacity(0.4))
                                         
                                         Text("Agregar foto")
-                                            .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(.white.opacity(0.7))
+                                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                                            .foregroundColor(.primaryDark.opacity(0.6))
                                     }
                                     .frame(width: 200, height: 200)
-                                    .background(Color.white.opacity(0.1))
+                                    .background(Color("DeepSpace").opacity(0.05))
                                     .cornerRadius(16)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 16)
-                                            .stroke(Color.white.opacity(0.2), lineWidth: 2)
+                                            .stroke(Color("DeepSpace").opacity(0.15), lineWidth: 2)
                                     )
                                 }
                             }
@@ -85,15 +84,17 @@ struct CreateSpaceView: View {
                         
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Nombre del espacio *")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
+                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .foregroundColor(.primaryDark)
                             
                             TextField("Ingresa el nombre del espacio", text: $viewModel.name)
                                 .textFieldStyle(PlainTextFieldStyle())
-                                .padding(16)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
                                 .background(Color.white.opacity(0.2))
                                 .cornerRadius(12)
-                                .foregroundColor(.white)
+                                .foregroundColor(.primaryDark)
+                                .font(.system(size: 16, design: .rounded))
                                 .autocapitalization(.words)
                                 .onChange(of: viewModel.name) { oldValue, newValue in
                                     viewModel.validateName()
@@ -101,8 +102,8 @@ struct CreateSpaceView: View {
                             
                             if let nameError = viewModel.nameError {
                                 Text(nameError)
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.red.opacity(0.9))
+                                    .font(.system(size: 12, design: .rounded))
+                                    .foregroundColor(Color(.electricRuby))
                                     .padding(.horizontal, 4)
                             }
                         }
@@ -110,8 +111,8 @@ struct CreateSpaceView: View {
                         
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Descripción")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
+                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                .foregroundColor(.primaryDark)
                             
                             TextEditor(text: Binding(
                                 get: { viewModel.description },
@@ -125,29 +126,36 @@ struct CreateSpaceView: View {
                                 .padding(12)
                                 .background(Color.white.opacity(0.2))
                                 .cornerRadius(12)
-                                .foregroundColor(.white)
+                                .foregroundColor(.primaryDark)
+                                .font(.system(size: 16, design: .rounded))
                                 .scrollContentBackground(.hidden)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                        .stroke(Color("DeepSpace").opacity(0.15), lineWidth: 1.5)
                                 )
                             
                             Text("\(viewModel.description.count) / 500")
-                                .font(.system(size: 12))
-                                .foregroundColor(.white.opacity(0.6))
+                                .font(.system(size: 12, design: .rounded))
+                                .foregroundColor(.primaryDark.opacity(0.5))
                                 .frame(maxWidth: .infinity, alignment: .trailing)
                                 .padding(.horizontal, 4)
                         }
                         .padding(.horizontal, 20)
                         
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Tipos de espacio")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
+                            HStack(spacing: 8) {
+                                Image(systemName: "tag.fill")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(Color("DeepSpace").opacity(0.7))
+                                
+                                Text("Tipos de espacio")
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.primaryDark)
+                            }
                             
                             Text("Selecciona uno o más tipos (opcional)")
-                                .font(.system(size: 14))
-                                .foregroundColor(.white.opacity(0.7))
+                                .font(.system(size: 14, design: .rounded))
+                                .foregroundColor(.primaryDark.opacity(0.6))
                             
                             LazyVGrid(columns: [
                                 GridItem(.flexible()),
@@ -164,20 +172,20 @@ struct CreateSpaceView: View {
                                         HStack {
                                             Image(systemName: viewModel.selectedTypes.contains(type) ? "checkmark.circle.fill" : "circle")
                                                 .font(.system(size: 16))
-                                                .foregroundColor(viewModel.selectedTypes.contains(type) ? Color("PurpleGradientTop") : .white.opacity(0.6))
+                                                .foregroundColor(viewModel.selectedTypes.contains(type) ? Color("DeepSpace") : .primaryDark.opacity(0.4))
                                             
                                             Text(type)
-                                                .font(.system(size: 14, weight: .medium))
-                                                .foregroundColor(.white)
+                                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                                .foregroundColor(.primaryDark)
                                             
                                             Spacer()
                                         }
                                         .padding(12)
-                                        .background(viewModel.selectedTypes.contains(type) ? Color("PurpleGradientTop").opacity(0.3) : Color.white.opacity(0.1))
+                                        .background(viewModel.selectedTypes.contains(type) ? Color("DeepSpace").opacity(0.15) : Color.white.opacity(0.3))
                                         .cornerRadius(10)
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 10)
-                                                .stroke(viewModel.selectedTypes.contains(type) ? Color("PurpleGradientTop") : Color.white.opacity(0.2), lineWidth: 1)
+                                                .stroke(viewModel.selectedTypes.contains(type) ? Color("DeepSpace").opacity(0.3) : Color("DeepSpace").opacity(0.1), lineWidth: 1.5)
                                         )
                                     }
                                 }
@@ -186,29 +194,39 @@ struct CreateSpaceView: View {
                         .padding(.horizontal, 20)
                         
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Visibilidad")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
+                            HStack(spacing: 8) {
+                                Image(systemName: "eye.fill")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(Color("DeepSpace").opacity(0.7))
+                                
+                                Text("Visibilidad")
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.primaryDark)
+                            }
                             
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(viewModel.isPublic ? "Público" : "Privado")
-                                        .font(.system(size: 18, weight: .semibold))
-                                        .foregroundColor(.white)
+                                        .font(.system(size: 18, weight: .semibold, design: .rounded))
+                                        .foregroundColor(.primaryDark)
                                     
                                     Text(viewModel.isPublic ? "Cualquiera puede unirse" : "Solo con código")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.white.opacity(0.7))
+                                        .font(.system(size: 14, design: .rounded))
+                                        .foregroundColor(.primaryDark.opacity(0.6))
                                 }
                                 
                                 Spacer()
                                 
                                 Toggle("", isOn: $viewModel.isPublic)
-                                    .toggleStyle(SwitchToggleStyle(tint: Color("PurpleGradientTop")))
+                                    .toggleStyle(SwitchToggleStyle(tint: Color("DeepSpace")))
                             }
                             .padding(16)
-                            .background(Color.white.opacity(0.1))
+                            .background(Color.white.opacity(0.3))
                             .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color("DeepSpace").opacity(0.1), lineWidth: 1.5)
+                            )
                         }
                         .padding(.horizontal, 20)
                         
@@ -227,20 +245,20 @@ struct CreateSpaceView: View {
                                     ProgressView()
                                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                     Text("Creando...")
-                                        .font(.system(size: 16, weight: .semibold))
+                                        .font(.system(size: 16, weight: .semibold, design: .rounded))
                                 }
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(Color("PurpleGradientTop").opacity(0.7))
+                                .frame(height: 50)
+                                .background(Color("DeepSpace").opacity(0.7))
                                 .cornerRadius(12)
                             } else {
                                 Text("Crear espacio")
-                                    .font(.system(size: 16, weight: .semibold))
+                                    .font(.system(size: 16, weight: .semibold, design: .rounded))
                                     .foregroundColor(.white)
                                     .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 16)
-                                    .background(Color("PurpleGradientTop"))
+                                    .frame(height: 50)
+                                    .background(Color("DeepSpace"))
                                     .cornerRadius(12)
                             }
                         }
@@ -254,13 +272,14 @@ struct CreateSpaceView: View {
                     VStack {
                         Spacer()
                         Text(errorMessage)
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
                             .foregroundColor(.white)
                             .padding()
-                            .background(Color.red.opacity(0.8))
-                            .cornerRadius(10)
+                            .background(Color(.electricRuby).opacity(0.9))
+                            .cornerRadius(12)
                             .padding(.horizontal, 20)
                             .padding(.bottom, 50)
+                            .shadow(color: Color(.electricRuby).opacity(0.3), radius: 8, x: 0, y: 4)
                     }
                 }
             }
@@ -271,7 +290,8 @@ struct CreateSpaceView: View {
                     Button("Cancelar") {
                         dismiss()
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(Color("DeepSpace"))
+                    .font(.system(size: 17, weight: .semibold))
                 }
             }
         }
