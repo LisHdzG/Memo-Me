@@ -11,12 +11,15 @@ struct ContactDetailView: View {
     let space: Space?
     
     @StateObject private var viewModel = ContactDetailViewModel()
-    @State private var rotationSpeed: Double = 0.5
+    @State private var rotationSpeed: Double = 1.5
     @State private var isAutoRotating: Bool = true
     @State private var selectedContact: Contact?
     @State private var selectedUser: User?
     @State private var showContactDetail: Bool = false
     @State private var isLoadingUser: Bool = false
+    @State private var showQRCode: Bool = false
+    @State private var showLeaveSpaceAlert: Bool = false
+    @State private var isLeavingSpace: Bool = false
     @ObservedObject private var spaceSelectionService = SpaceSelectionService.shared
     @EnvironmentObject var authManager: AuthenticationManager
     
@@ -26,7 +29,8 @@ struct ContactDetailView: View {
     
     var body: some View {
         ZStack {
-            backgroundGradient
+            Color(.ghostWhite)
+                .ignoresSafeArea()
             mainContent
         }
         .task {
@@ -44,41 +48,56 @@ struct ContactDetailView: View {
         .onDisappear {
             viewModel.stopListening()
         }
-    }
-    
-    private var backgroundGradient: some View {
-        LinearGradient(
-            gradient: Gradient(colors: [
-                Color("PurpleGradientTop"),
-                Color("PurpleGradientMiddle"),
-                Color("PurpleGradientBottom")
-            ]),
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea()
+        .onAppear {
+            rotationSpeed = 1.5
+            isAutoRotating = true
+        }
+        .sheet(isPresented: $showQRCode) {
+            if let spaceCode = (space ?? spaceSelectionService.selectedSpace)?.code {
+                QRCodeSheetView(code: spaceCode)
+            }
+        }
+        .alert("Leave Space", isPresented: $showLeaveSpaceAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Leave", role: .destructive) {
+                Task {
+                    await leaveSpace()
+                }
+            }
+        } message: {
+            Text("If you leave this space, no one will be able to view your profile in this context. You can always rejoin later.")
+        }
     }
     
     private var mainContent: some View {
-        VStack(spacing: 0) {
-            headerSection
-            errorMessageView
-            contactsContent
-            controlsSection
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                if spaceSelectionService.selectedSpace != nil {
+                    headerSection
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                errorMessageView
+                contactsContent
+            }
+            
+            if spaceSelectionService.selectedSpace != nil {
+                VStack {
+                    Spacer()
+                    leaveSpaceButton
+                        .padding(.bottom, 30)
+                }
+            }
         }
+        .animation(.easeInOut(duration: 0.3), value: spaceSelectionService.selectedSpace?.spaceId)
     }
     
     private var headerSection: some View {
         VStack(spacing: 12) {
             HStack {
                 if spaceSelectionService.selectedSpace != nil {
-                    Text(space?.name ?? spaceSelectionService.selectedSpace?.name ?? "Mis Contactos")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                } else {
-                    Text("Contactos")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                    Text(space?.name ?? spaceSelectionService.selectedSpace?.name ?? "My Contacts")
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .foregroundColor(Color("DeepSpace"))
                 }
                 
                 Spacer()
@@ -88,60 +107,42 @@ struct ContactDetailView: View {
                 }
             }
             .padding(.horizontal, 20)
-            
-            if viewModel.isLoading && spaceSelectionService.selectedSpace != nil {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(0.8)
-            } else if spaceSelectionService.selectedSpace != nil {
-                Text("\(viewModel.contacts.count) contactos")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.white.opacity(0.7))
-            }
         }
         .padding(.top, 20)
-        .padding(.bottom, 10)
+        .padding(.bottom, 16)
+        .background(Color(.ghostWhite))
     }
     
     private var changeSpaceButton: some View {
         NavigationLink(destination: SpacesListView(shouldDismissOnSelection: true)) {
             HStack(spacing: 6) {
                 Image(systemName: "rectangle.3.group")
-                    .font(.system(size: 14, weight: .semibold))
-                Text("Cambiar espacio")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 14, weight: .medium))
+                Text("Spaces")
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
             }
-            .foregroundColor(.white)
-            .padding(.horizontal, 16)
+            .foregroundColor(Color("DeepSpace"))
+            .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color.white.opacity(0.3),
-                        Color.white.opacity(0.2)
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color("DeepSpace").opacity(0.12))
             )
         }
+        .buttonStyle(PlainButtonStyle())
     }
     
     @ViewBuilder
     private var errorMessageView: some View {
         if let errorMessage = viewModel.errorMessage {
             Text(errorMessage)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 14, weight: .medium, design: .rounded))
                 .foregroundColor(.white)
                 .padding()
-                .background(Color.red.opacity(0.8))
-                .cornerRadius(10)
+                .background(Color(.electricRuby).opacity(0.9))
+                .cornerRadius(12)
                 .padding(.horizontal, 20)
+                .shadow(color: Color(.electricRuby).opacity(0.3), radius: 8, x: 0, y: 4)
         }
     }
     
@@ -149,39 +150,46 @@ struct ContactDetailView: View {
     private var contactsContent: some View {
         if spaceSelectionService.selectedSpace == nil {
             noSpaceSelectedView
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
         } else if !viewModel.contacts.isEmpty {
-            ContactSphereView(
-                contacts: viewModel.contacts,
-                rotationSpeed: $rotationSpeed,
-                isAutoRotating: $isAutoRotating,
-                onContactTapped: { contact in
-                    selectedContact = contact
-                    selectedUser = viewModel.getUser(for: contact)
-                    
-                    if selectedUser == nil, let userId = contact.userId {
-                        isLoadingUser = true
-                        Task {
-                            do {
-                                let userService = UserService()
-                                let loadedUser = try await userService.getUser(userId: userId)
-                                await MainActor.run {
-                                    selectedUser = loadedUser
-                                    isLoadingUser = false
-                                    showContactDetail = true
-                                }
-                            } catch {
-                                await MainActor.run {
-                                    isLoadingUser = false
-                                    showContactDetail = true
+            ZStack {
+                Color(.ghostWhite)
+                    .ignoresSafeArea()
+                
+                ContactSphereView(
+                    contacts: viewModel.contacts,
+                    rotationSpeed: $rotationSpeed,
+                    isAutoRotating: $isAutoRotating,
+                    onContactTapped: { contact in
+                        selectedContact = contact
+                        selectedUser = viewModel.getUser(for: contact)
+                        
+                        if selectedUser == nil, let userId = contact.userId {
+                            isLoadingUser = true
+                            Task {
+                                do {
+                                    let userService = UserService()
+                                    let loadedUser = try await userService.getUser(userId: userId)
+                                    await MainActor.run {
+                                        selectedUser = loadedUser
+                                        isLoadingUser = false
+                                        showContactDetail = true
+                                    }
+                                } catch {
+                                    await MainActor.run {
+                                        isLoadingUser = false
+                                        showContactDetail = true
+                                    }
                                 }
                             }
+                        } else {
+                            showContactDetail = true
                         }
-                    } else {
-                        showContactDetail = true
                     }
-                }
-            )
+                )
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .transition(.opacity.combined(with: .scale(scale: 0.95)))
             .sheet(isPresented: $showContactDetail) {
                 if let contact = selectedContact {
                     ContactDetailSheet(
@@ -202,125 +210,144 @@ struct ContactDetailView: View {
                     }
                 }
             }
-        } else if !viewModel.isLoading {
+        } else {
             emptyContactsView
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
         }
     }
     
     private var noSpaceSelectedView: some View {
         VStack(spacing: 24) {
-            Image(systemName: "rectangle.3.group")
-                .font(.system(size: 60))
-                .foregroundColor(.white.opacity(0.6))
+            Spacer()
             
-            Text("Sin espacio seleccionado")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
+            Text("Are you lost?")
+                .font(.system(size: 32, weight: .bold, design: .rounded))
+                .foregroundColor(Color("DeepSpace"))
             
-            Text("Selecciona un espacio para ver los contactos")
-                .font(.system(size: 14, weight: .regular))
-                .foregroundColor(.white.opacity(0.7))
+            Image("MemoMeScared")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 200, height: 200)
+            
+            Text("You have not selected a space")
+                .font(.system(size: 20, weight: .bold, design: .rounded))
+                .foregroundColor(Color("DeepSpace"))
+            
+            Text("To view members and connect with them, you need to join a context.")
+                .font(.system(size: 15, weight: .regular, design: .rounded))
+                .foregroundColor(.primaryDark.opacity(0.6))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
+                .padding(.top, -10)
             
             NavigationLink(destination: SpacesListView(shouldDismissOnSelection: true)) {
-                Text("Unirme a un espacio")
-                    .font(.system(size: 16, weight: .semibold))
+                Text("Go to spaces")
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+                    .frame(height: 50)
+                    .background(Color("DeepSpace"))
+                    .cornerRadius(12)
+            }
+            .padding(.horizontal, 40)
+            .padding(.top, 8)
+            
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.ghostWhite))
+    }
+    
+    private var emptyContactsView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            Image(systemName: "person.3.fill")
+                .font(.system(size: 60))
+                .foregroundColor(.primaryDark.opacity(0.3))
+            
+            VStack(spacing: 12) {
+                Text("No members yet")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundColor(Color("DeepSpace"))
+                
+                Text("Only you are here. Share the QR code of this space and let others join!")
+                    .font(.system(size: 15, weight: .regular, design: .rounded))
+                    .foregroundColor(.primaryDark.opacity(0.6))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+            }
+            
+            if let spaceCode = (space ?? spaceSelectionService.selectedSpace)?.code {
+                Button(action: {
+                    showQRCode = true
+                }) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "qrcode")
+                            .font(.system(size: 18, weight: .semibold))
+                        Text("Show QR Code")
+                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
                     .background(
                         LinearGradient(
                             gradient: Gradient(colors: [
-                                Color.white.opacity(0.3),
-                                Color.white.opacity(0.2)
+                                Color("DeepSpace"),
+                                Color("DeepSpace").opacity(0.9)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .cornerRadius(16)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color.white.opacity(0.3), lineWidth: 1)
-                    )
-            }
-            .padding(.horizontal, 40)
-            .padding(.top, 8)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-    
-    private var emptyContactsView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "person.3.fill")
-                .font(.system(size: 60))
-                .foregroundColor(.white.opacity(0.6))
-            
-            Text("No hay miembros en este espacio")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-    
-    private var controlsSection: some View {
-        VStack(spacing: 16) {
-            speedControl
-            pauseResumeButton
-        }
-    }
-    
-    private var speedControl: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Text("Velocidad")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.white.opacity(0.8))
-                Spacer()
-                Text(String(format: "%.1fx", rotationSpeed))
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                    .shadow(color: Color("DeepSpace").opacity(0.2), radius: 4, x: 0, y: 2)
+                }
+                .padding(.horizontal, 40)
+                .padding(.top, 8)
             }
             
-            Slider(value: $rotationSpeed, in: 0.1...2.0)
-                .tint(.white)
+            Spacer()
         }
-        .padding(.horizontal, 24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.ghostWhite))
     }
     
-    private var pauseResumeButton: some View {
+    private var leaveSpaceButton: some View {
         Button(action: {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                isAutoRotating.toggle()
-            }
+            showLeaveSpaceAlert = true
         }) {
-            HStack(spacing: 12) {
-                Image(systemName: isAutoRotating ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 20))
-                Text(isAutoRotating ? "Pausar" : "Reanudar")
-                    .font(.system(size: 16, weight: .semibold))
+            HStack(spacing: 8) {
+                Image(systemName: "rectangle.portrait.and.arrow.right")
+                    .font(.system(size: 14, weight: .medium))
+                Text("Leave Space")
+                    .font(.system(size: 15, weight: .regular, design: .rounded))
             }
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background(
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color.white.opacity(0.3),
-                        Color.white.opacity(0.2)
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .cornerRadius(16)
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.white.opacity(0.3), lineWidth: 1)
-            )
+            .foregroundColor(.primaryDark.opacity(0.6))
         }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 30)
+        .disabled(isLeavingSpace)
+    }
+    
+    private func leaveSpace() async {
+        guard let currentSpace = space ?? spaceSelectionService.selectedSpace,
+              let userId = authManager.currentUser?.id else {
+            return
+        }
+        
+        isLeavingSpace = true
+        
+        do {
+            let spaceService = SpaceService()
+            try await spaceService.leaveSpace(spaceId: currentSpace.spaceId, userId: userId)
+            
+            spaceSelectionService.clearSelectedSpace()
+            viewModel.stopListening()
+            
+            isLeavingSpace = false
+        } catch {
+            isLeavingSpace = false
+            viewModel.errorMessage = "Error leaving space: \(error.localizedDescription)"
+        }
     }
 }

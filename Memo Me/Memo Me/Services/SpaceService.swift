@@ -690,5 +690,39 @@ class SpaceService: ObservableObject {
         userSpacesListener?.remove()
         userSpacesListener = nil
     }
+    
+    func leaveSpace(spaceId: String, userId: String) async throws {
+        let querySnapshot = try await db.collection(spacesCollection)
+            .whereField("spaceId", isEqualTo: spaceId)
+            .limit(to: 1)
+            .getDocuments()
+        
+        guard let document = querySnapshot.documents.first else {
+            throw NSError(domain: "SpaceService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Space not found"])
+        }
+        
+        let spaceRef = db.collection(spacesCollection).document(document.documentID)
+        let spaceDocument = try await spaceRef.getDocument()
+        
+        guard spaceDocument.exists else {
+            throw NSError(domain: "SpaceService", code: 2, userInfo: [NSLocalizedDescriptionKey: "Space does not exist"])
+        }
+        
+        let data = spaceDocument.data() ?? [:]
+        var members: [Any] = data["members"] as? [Any] ?? []
+        
+        members = members.filter { member in
+            if let ref = member as? DocumentReference {
+                return ref.documentID != userId
+            } else if let path = member as? String {
+                return !path.contains(userId)
+            }
+            return true
+        }
+        
+        try await spaceRef.updateData([
+            "members": members
+        ])
+    }
 }
 

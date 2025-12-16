@@ -608,8 +608,6 @@ struct SpaceCardView: View {
                 HStack(spacing: 4) {
                     Text("View")
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
                 }
                 .foregroundColor(Color("DeepSpace"))
                 .padding(.horizontal, 14)
