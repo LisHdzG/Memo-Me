@@ -14,7 +14,6 @@ struct AsyncImageView: View {
     let size: CGFloat
     
     @State private var loadedImage: UIImage?
-    @State private var isLoading = false
     
     var body: some View {
         Group {
@@ -24,28 +23,15 @@ struct AsyncImageView: View {
                     .aspectRatio(contentMode: contentMode)
                     .frame(width: size, height: size)
             } else {
+                // Placeholder estilo Apple: círculo claro con la primera letra
                 ZStack {
                     Circle()
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [
-                                    Color("PurpleGradientTop").opacity(0.6),
-                                    Color("PurpleGradientMiddle").opacity(0.6)
-                                ]),
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .fill(Color.gray.opacity(0.15))
                         .frame(width: size, height: size)
                     
-                    if isLoading {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    } else {
-                        Text(String(placeholderText.prefix(1)))
-                            .font(.system(size: size * 0.4, weight: .bold))
-                            .foregroundColor(.white)
-                    }
+                    Text(String(placeholderText.prefix(1)).uppercased())
+                        .font(.system(size: size * 0.4, weight: .semibold, design: .rounded))
+                        .foregroundColor(.primaryDark.opacity(0.6))
                 }
             }
         }
@@ -62,18 +48,13 @@ struct AsyncImageView: View {
     private func loadImage() async {
         guard let imageUrl = imageUrl, !imageUrl.isEmpty else {
             loadedImage = nil
-            isLoading = false
             return
         }
-        
-        isLoading = true
         
         if let image = await ImageLoaderService.shared.loadImage(from: imageUrl) {
             loadedImage = image
         } else {
             loadedImage = nil
         }
-        
-        isLoading = false
     }
 }

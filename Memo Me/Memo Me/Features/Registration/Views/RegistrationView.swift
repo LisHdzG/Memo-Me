@@ -385,9 +385,7 @@ struct RegistrationView: View {
         
         return Button(action: {
             Task {
-                let success = await viewModel.submitRegistration()
-                if success {
-                }
+                _ = await viewModel.submitRegistration()
             }
         }) {
             HStack {
@@ -426,29 +424,6 @@ struct RegistrationView: View {
         }
         
         return attributedString
-    }
-}
-
-private struct PhotoPickerButton: View {
-    let hasProfileImage: Bool
-    @Binding var selection: PhotosPickerItem?
-    
-    var body: some View {
-        PhotosPicker(
-            selection: $selection,
-            matching: .images,
-            photoLibrary: .shared()
-        ) {
-            Circle()
-                .fill(.primaryDark)
-                .frame(width: 36, height: 36)
-                .overlay(
-                    Image(systemName: hasProfileImage ? "arrow.2.circlepath" : "camera.fill")
-                        .font(.system(size: hasProfileImage ? 14 : 16, weight: .semibold))
-                        .foregroundColor(.white)
-                )
-        }
-        .offset(x: 50, y: 50)
     }
 }
 
