@@ -24,7 +24,7 @@ struct MainTabView: View {
             
             FavoritesView()
                 .tabItem {
-                    Label("Favorites", systemImage: "heart.fill")
+                    Label("Memos", systemImage: "star.fill")
                 }
                 .tag(1)
             

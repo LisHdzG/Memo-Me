@@ -199,13 +199,13 @@ struct ContactDetailPageView: View {
                 ImagePreviewOverlay(image: image, isPresented: $showImagePreview)
             }
         }
-        .alert("Remove from favorites?", isPresented: $showRemoveFavoriteAlert) {
+        .alert("Remove from memos?", isPresented: $showRemoveFavoriteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Remove", role: .destructive) {
                 removeFavoriteAndNote()
             }
         } message: {
-            Text("If you remove this contact from favorites, your note and vibe will also be deleted.")
+            Text("If you remove this contact from memos, your note and vibe will also be deleted.")
         }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -220,9 +220,9 @@ struct ContactDetailPageView: View {
                         toggleFavorite()
                     }
                 }) {
-                    Image(systemName: isFavorite ? "heart.fill" : "heart")
+                    Image(systemName: isFavorite ? "star.fill" : "star")
                         .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(isFavorite ? .pink : .primaryDark)
+                        .foregroundColor(isFavorite ? .yellow : .primaryDark)
                 }
             }
         }
@@ -698,7 +698,7 @@ struct NoteSection: View {
                                 }
                             }
                         }
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, 8)
                         .padding(.bottom, 14)
                 }
                 .background(
@@ -760,7 +760,7 @@ struct NoteSection: View {
                             .foregroundColor(.primaryDark)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
                             .multilineTextAlignment(.leading)
-                            .padding(.horizontal, 10)
+                            .padding(.horizontal, 16)
                             .padding(.bottom, 14)
                     }
                     .background(
