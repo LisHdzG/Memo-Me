@@ -6,477 +6,238 @@
 //
 
 import SwiftUI
-import SceneKit
+import UIKit
 
-struct ContactSphereView: UIViewRepresentable {
+/// Universo 2D animado para mostrar los contactos flotando.
+/// Mantiene la misma API pública que la versión previa en SceneKit.
+struct ContactSphereView: View {
     let contacts: [Contact]
     @Binding var rotationSpeed: Double
     @Binding var isAutoRotating: Bool
     var onContactTapped: ((Contact) -> Void)?
     
-    func makeUIView(context: Context) -> SCNView {
-        let sceneView = SCNView()
-        sceneView.allowsCameraControl = false
-        sceneView.autoenablesDefaultLighting = true
-        sceneView.backgroundColor = .clear
-        sceneView.antialiasingMode = .multisampling4X
-        
-        let panGesture = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePan(_:)))
-        panGesture.minimumNumberOfTouches = 1
-        panGesture.maximumNumberOfTouches = 1
-        sceneView.addGestureRecognizer(panGesture)
-        
-        let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
-        sceneView.addGestureRecognizer(tapGesture)
-        
-        context.coordinator.sceneView = sceneView
-        context.coordinator.contacts = contacts
-        context.coordinator.rotationSpeed = rotationSpeed
-        context.coordinator.isAutoRotating = isAutoRotating
-        context.coordinator.onContactTapped = onContactTapped
-        
-        context.coordinator.createScene()
-        context.coordinator.startAutoRotation()
-        
-        return sceneView
-    }
+    private let glowPalette: [Color] = [
+        Color(red: 0.61, green: 0.80, blue: 1.0),
+        Color(red: 0.76, green: 0.83, blue: 1.0),
+        Color(red: 0.70, green: 0.94, blue: 0.80),
+        Color(red: 1.0, green: 0.84, blue: 0.75),
+        Color(red: 0.89, green: 0.77, blue: 1.0)
+    ]
     
-    func updateUIView(_ uiView: SCNView, context: Context) {
-        let contactsChanged = context.coordinator.contacts != contacts
-        let sceneNeedsUpdate = uiView.scene == nil || contactsChanged
-        
-        if sceneNeedsUpdate {
-            context.coordinator.loadedImages.removeAll()
-            context.coordinator.contacts = contacts
-            context.coordinator.createScene()
-        } else {
-            context.coordinator.contacts = contacts
-        }
-        
-        context.coordinator.rotationSpeed = rotationSpeed
-        context.coordinator.isAutoRotating = isAutoRotating
-        
-        if isAutoRotating {
-            context.coordinator.startAutoRotation()
-        } else {
-            context.coordinator.stopAutoRotation()
-        }
-    }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(contacts: contacts, rotationSpeed: rotationSpeed, isAutoRotating: isAutoRotating, onContactTapped: onContactTapped)
-    }
-    
-    class Coordinator: NSObject {
-        var sceneView: SCNView?
-        var contacts: [Contact]
-        var rotationSpeed: Double
-        var isAutoRotating: Bool
-        var rotationAction: SCNAction?
-        var lastPanLocation: CGPoint = .zero
-        var isUserInteracting: Bool = false
-        var contactsContainer: SCNNode?
-        var loadedImages: [String: UIImage] = [:]
-        var contactNodes: [SCNNode: Contact] = [:]
-        var onContactTapped: ((Contact) -> Void)?
-        
-        init(contacts: [Contact], rotationSpeed: Double, isAutoRotating: Bool, onContactTapped: ((Contact) -> Void)? = nil) {
-            self.contacts = contacts
-            self.rotationSpeed = rotationSpeed
-            self.isAutoRotating = isAutoRotating
-            self.onContactTapped = onContactTapped
-        }
-        
-        func createScene() {
-            guard sceneView != nil else { return }
-            
-            Task {
-                await preloadImages()
-                await MainActor.run {
-                    self.createSceneWithLoadedImages()
+    var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                Color.clear
+                
+                TimelineView(.animation) { timelineContext in
+                    let time = timelineContext.date.timeIntervalSinceReferenceDate
+                    let baseRotation = isAutoRotating ? time * 0.12 * max(rotationSpeed, 0.25) : 0
+                    
+                    ForEach(Array(contacts.enumerated()), id: \.element.id) { index, contact in
+                        let config = orbitConfig(for: contact, index: index, in: geo.size)
+                        let angle = baseRotation * config.speed + config.phase
+                        let x = cos(angle) * config.radius
+                        let y = sin(angle) * config.radius * 0.62 + config.verticalOffset
+                        
+                        ContactBubble(contact: contact, size: config.size, glow: config.glow)
+                            .position(x: geo.size.width / 2 + x, y: geo.size.height / 2 + y)
+                            .allowsHitTesting(false)
+                    }
                 }
             }
         }
+    }
+    
+    // MARK: - Layout Helpers
+    
+    private func orbitConfig(for contact: Contact, index: Int, in size: CGSize) -> OrbitConfig {
+        let seed = abs(contact.id.hashValue &+ index * 9973)
+        let baseRadius = min(size.width, size.height) * 0.32
+        let radiusJitter = CGFloat((seed % 75) - 35)
+        let radius = max(baseRadius + radiusJitter, baseRadius * 0.65)
         
-        private func createSceneWithLoadedImages() {
-            guard let sceneView = sceneView else { return }
-            
-            contactNodes.removeAll()
-            
-            let scene = SCNScene()
-            
-            let contactsContainer = SCNNode()
-            contactsContainer.name = "contactsContainer"
-            scene.rootNode.addChildNode(contactsContainer)
-            self.contactsContainer = contactsContainer
-            
-            let contactCount = contacts.count
-            guard contactCount > 0 else {
-                sceneView.scene = scene
-                return
+        let verticalSpread = min(size.height * 0.18, 110)
+        let verticalOffset = CGFloat((seed % 200) - 100) / 100 * verticalSpread
+        
+        let speed = 0.6 + Double(seed % 60) / 120.0
+        let phase = Double(seed % 360) * (.pi / 180)
+        
+        let minSize: CGFloat = 52
+        let maxSize: CGFloat = 78
+        let sizeValue = minSize + CGFloat(seed % 100) / 100 * (maxSize - minSize)
+        
+        let glow = glowPalette[seed % glowPalette.count]
+        
+        return OrbitConfig(radius: radius,
+                           verticalOffset: verticalOffset,
+                           speed: speed,
+                           phase: phase,
+                           size: sizeValue,
+                           glow: glow)
+    }
+}
+
+// MARK: - Support Views
+
+private struct ContactBubble: View {
+    let contact: Contact
+    let size: CGFloat
+    let glow: Color
+    
+    var body: some View {
+        let accent = Color(red: 0.63, green: 0.46, blue: 1.0)
+        
+        VStack(spacing: 6) {
+            ZStack {
+                Circle()
+                    .fill(glow.opacity(0.55))
+                    .frame(width: size * 0.82, height: size * 0.82)
+                    .blur(radius: 18)
+                
+                Circle()
+                    .strokeBorder(glow.opacity(0.45), lineWidth: 2)
+                    .frame(width: size + 10, height: size + 10)
+                    .blur(radius: 1)
+                
+                ContactAvatar(contact: contact)
+                    .frame(width: size, height: size)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.9), lineWidth: 2)
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(style: StrokeStyle(lineWidth: 2.2, lineCap: .round, dash: [6, 6]))
+                            .foregroundColor(accent.opacity(0.85))
+                    )
+                    .shadow(color: accent.opacity(0.55), radius: 10, x: 0, y: 6)
+                    .shadow(color: glow.opacity(0.35), radius: 6, x: 0, y: 3)
+                    .overlay(
+                        Circle()
+                            .strokeBorder(accent.opacity(0.35), lineWidth: 1.2)
+                    )
             }
             
-            let cylinderRadius: Float = 4.0
-            let cylinderHeight: Float = 5.0
-            let minY: Float = -cylinderHeight / 2
-            let maxY: Float = cylinderHeight / 2
-            
-            var usedPositions: [(x: Float, y: Float, z: Float)] = []
-            let minDistance: Float = 0.85
-            
-            for (index, contact) in contacts.enumerated() {
-                let angleStep = (2.0 * Double.pi) / Double(contactCount)
-                let theta = angleStep * Double(index)
-                
-                let randomSeed1 = sin(Double(index) * 0.618033988749895)
-                let randomSeed2 = cos(Double(index) * 1.414213562373095)
-                let randomSeed3 = sin(Double(index) * 2.718281828459045)
-                let combinedRandom = (randomSeed1 + randomSeed2 + randomSeed3) / 3.0
-                let normalizedRandom = (combinedRandom + 1.0) / 2.0
-                var y = Float(minY + (maxY - minY) * Float(normalizedRandom))
-                
-                let x = Float(cos(theta)) * cylinderRadius
-                let z = Float(sin(theta)) * cylinderRadius
-                
-                var attempts = 0
-                var adjustmentDirection: Float = 1.0
-                while attempts < 20 {
-                    var tooClose = false
-                    var closestDistance: Float = Float.greatestFiniteMagnitude
-                    
-                    for usedPos in usedPositions {
-                        let distance = sqrt(pow(x - usedPos.x, 2) + pow(y - usedPos.y, 2) + pow(z - usedPos.z, 2))
-                        if distance < minDistance {
-                            tooClose = true
-                            closestDistance = min(closestDistance, distance)
-                        }
-                    }
-                    
-                    if !tooClose {
-                        break
-                    }
-                    
-                    let adjustment = minDistance - closestDistance + 0.2
-                    y = max(minY, min(maxY, y + adjustment * adjustmentDirection))
-                    adjustmentDirection *= -1.0
-                    
-                    attempts += 1
-                }
-                
-                usedPositions.append((x: x, y: y, z: z))
-                
-                let imageNode = createImageNode(for: contact, index: index)
-                imageNode.position = SCNVector3(x, y, z)
-                
-                imageNode.name = "contact_\(contact.id.uuidString)"
-                
-                let outwardDirection = SCNVector3(x, 0, z)
-                let targetPosition = SCNVector3(
-                    imageNode.position.x + outwardDirection.x,
-                    imageNode.position.y,
-                    imageNode.position.z + outwardDirection.z
+            Text(firstName(from: contact.name))
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(
+                            LinearGradient(
+                                colors: [accent.opacity(0.9), glow.opacity(0.85)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        )
                 )
-                imageNode.look(at: targetPosition, up: SCNVector3(0, 1, 0), localFront: SCNVector3(0, 0, 1))
-                
-                let randomDelay = Double.random(in: 0...2)
-                let randomDuration = 2.0 + Double.random(in: 0...1.5)
-                let pulseAction = SCNAction.sequence([
-                    SCNAction.wait(duration: randomDelay),
-                    SCNAction.scale(to: 1.15, duration: randomDuration),
-                    SCNAction.scale(to: 0.9, duration: randomDuration)
-                ])
-                let repeatPulse = SCNAction.repeatForever(pulseAction)
-                imageNode.runAction(repeatPulse)
-                
-                contactNodes[imageNode] = contact
-                
-                contactsContainer.addChildNode(imageNode)
-            }
-            
-            let cameraNode = SCNNode()
-            cameraNode.camera = SCNCamera()
-            cameraNode.camera?.fieldOfView = 75
-            cameraNode.position = SCNVector3(0, 0, 7)
-            cameraNode.look(at: SCNVector3(0, 0, 0), up: SCNVector3(0, 1, 0), localFront: SCNVector3(0, 0, 1))
-            scene.rootNode.addChildNode(cameraNode)
-            
-            let lightNode = SCNNode()
-            lightNode.light = SCNLight()
-            lightNode.light?.type = .omni
-            lightNode.light?.intensity = 1000
-            lightNode.position = SCNVector3(5, 5, 5)
-            scene.rootNode.addChildNode(lightNode)
-            
-            let ambientLightNode = SCNNode()
-            ambientLightNode.light = SCNLight()
-            ambientLightNode.light?.type = .ambient
-            ambientLightNode.light?.color = UIColor.white.withAlphaComponent(0.7)
-            scene.rootNode.addChildNode(ambientLightNode)
-            
-            sceneView.scene = scene
+                .shadow(color: accent.opacity(0.45), radius: 8, x: 0, y: 3)
         }
-        
-        private func createImageNode(for contact: Contact, index: Int) -> SCNNode {
-            let sizeVariation = [1.3, 1.0]
-            let baseSize: CGFloat = 0.6
-            let sizeMultiplier = sizeVariation[index % sizeVariation.count]
-            let finalSize = baseSize * sizeMultiplier
+    }
+    
+    private func firstName(from name: String) -> String {
+        let parts = name.split(separator: " ")
+        return parts.first.map(String.init) ?? name
+    }
+}
+
+private struct ContactAvatar: View {
+    let contact: Contact
+    
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color(red: 0.63, green: 0.46, blue: 1.0))
             
-            let circularImage = createCircularImage(
-                imageName: contact.imageName,
-                imageUrl: contact.imageUrl,
-                size: CGSize(width: 200, height: 200)
+            if let urlString = contact.imageUrl, let url = URL(string: urlString) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    case .empty:
+                        placeholderInitial
+                    case .failure:
+                        placeholderInitial
+                    @unknown default:
+                        placeholderInitial
+                    }
+                }
+                .clipShape(Circle())
+            } else if let imageName = contact.imageName, !imageName.isEmpty, UIImage(named: imageName) != nil {
+                Image(imageName)
+                    .resizable()
+                    .scaledToFill()
+                    .clipShape(Circle())
+            } else {
+                placeholderInitial
+            }
+        }
+        .contentShape(Circle())
+    }
+    
+    private var placeholderInitial: some View {
+        let initial = contact.name.first.map { String($0).uppercased() } ?? "?"
+        return Circle()
+            .fill(Color(red: 0.63, green: 0.46, blue: 1.0))
+            .overlay(
+                Text(initial)
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
             )
-            
-            let plane = SCNPlane(width: finalSize, height: finalSize)
-            plane.firstMaterial?.diffuse.contents = circularImage
-            plane.firstMaterial?.isDoubleSided = true
-            plane.firstMaterial?.lightingModel = .constant
-            
-            let imageNode = SCNNode(geometry: plane)
-            
-            let borderGeometry = SCNTorus(ringRadius: finalSize * 0.52, pipeRadius: 0.008)
-            borderGeometry.firstMaterial?.diffuse.contents = UIColor.white.withAlphaComponent(0.4)
-            borderGeometry.firstMaterial?.lightingModel = .constant
-            let borderNode = SCNNode(geometry: borderGeometry)
-            borderNode.rotation = SCNVector4(1, 0, 0, Double.pi / 2)
-            imageNode.addChildNode(borderNode)
-            
-            return imageNode
-        }
-        
-        private func preloadImages() async {
-            loadedImages.removeAll()
-            
-            for contact in contacts {
-                let key = contact.imageUrl ?? contact.imageName ?? ""
-                
-                if loadedImages[key] != nil {
-                    continue
-                }
-                
-                var image: UIImage?
-                
-                if let imageUrl = contact.imageUrl, let url = URL(string: imageUrl) {
-                    do {
-                        let (data, _) = try await URLSession.shared.data(from: url)
-                        image = UIImage(data: data)
-                    } catch {
-                        continue
-                    }
-                }
-                
-                if image == nil, let imageName = contact.imageName {
-                    image = UIImage(named: imageName)
-                }
-                
-                if let finalImage = image {
-                    loadedImages[key] = finalImage
-                }
-            }
-        }
-        
-        private func createCircularImage(imageName: String?, imageUrl: String?, size: CGSize) -> UIImage? {
-            var image: UIImage?
-            
-            let key = imageUrl ?? imageName ?? ""
-            if let cachedImage = loadedImages[key] {
-                image = cachedImage
-            } else if let imageName = imageName {
-                image = UIImage(named: imageName)
-            }
-            
-            guard let finalImage = image else {
-                return createFallbackCircularImage(size: size)
-            }
-            
-            let renderer = UIGraphicsImageRenderer(size: size)
-            return renderer.image { context in
-                let rect = CGRect(origin: .zero, size: size)
-                let path = UIBezierPath(ovalIn: rect)
-                path.addClip()
-                
-                let imageSize = finalImage.size
-                let imageAspect = imageSize.width / imageSize.height
-                let rectAspect = rect.width / rect.height
-                
-                var drawRect = rect
-                
-                if imageAspect > rectAspect {
-                    let scaledWidth = rect.height * imageAspect
-                    drawRect = CGRect(
-                        x: (rect.width - scaledWidth) / 2,
-                        y: 0,
-                        width: scaledWidth,
-                        height: rect.height
-                    )
-                } else {
-                    let scaledHeight = rect.width / imageAspect
-                    drawRect = CGRect(
-                        x: 0,
-                        y: (rect.height - scaledHeight) / 2,
-                        width: rect.width,
-                        height: scaledHeight
-                    )
-                }
-                
-                finalImage.draw(in: drawRect)
-                
-                UIColor.white.withAlphaComponent(0.3).setStroke()
-                path.lineWidth = 2
-                path.stroke()
-            }
-        }
-        
-        private func createFallbackCircularImage(size: CGSize) -> UIImage {
-            let renderer = UIGraphicsImageRenderer(size: size)
-            return renderer.image { context in
-                let rect = CGRect(origin: .zero, size: size)
-                let path = UIBezierPath(ovalIn: rect)
-                
-                UIColor.systemPurple.setFill()
-                path.fill()
-                
-                UIColor.white.withAlphaComponent(0.3).setStroke()
-                path.lineWidth = 2
-                path.stroke()
-            }
-        }
-        
-        func startAutoRotation() {
-            guard isAutoRotating, !isUserInteracting,
-                  let scene = sceneView?.scene,
-                  let container = scene.rootNode.childNode(withName: "contactsContainer", recursively: false) else {
-                return
-            }
-            
-            contactsContainer = container
-            container.removeAction(forKey: "autoRotation")
-            
-            let rotationAction = SCNAction.rotateBy(x: 0, y: CGFloat(rotationSpeed * 0.1), z: 0, duration: 1.0)
-            let repeatRotation = SCNAction.repeatForever(rotationAction)
-            
-            container.runAction(repeatRotation, forKey: "autoRotation")
-            self.rotationAction = repeatRotation
-        }
-        
-        func stopAutoRotation() {
-            contactsContainer?.removeAction(forKey: "autoRotation")
-            rotationAction = nil
-        }
-        
-        @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
-            guard let sceneView = sceneView,
-                  let scene = sceneView.scene,
-                  let container = scene.rootNode.childNode(withName: "contactsContainer", recursively: false) else {
-                return
-            }
-            
-            let location = gesture.location(in: sceneView)
-            
-            switch gesture.state {
-            case .began:
-                lastPanLocation = location
-                isUserInteracting = true
-                stopAutoRotation()
-                
-            case .changed:
-                let deltaX = location.x - lastPanLocation.x
-                let rotationY = Float(deltaX) * 0.01
-                
-                let currentEuler = container.eulerAngles
-                container.eulerAngles = SCNVector3(
-                    currentEuler.x,
-                    currentEuler.y + rotationY,
-                    currentEuler.z
-                )
-                
-                lastPanLocation = location
-                
-            case .ended, .cancelled:
-                isUserInteracting = false
-                if isAutoRotating {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        if !self.isUserInteracting {
-                            self.startAutoRotation()
-                        }
-                    }
-                }
-                
-            default:
-                break
-            }
-        }
-        
-        @objc func handleTap(_ gesture: UITapGestureRecognizer) {
-            guard let sceneView = sceneView else {
-                return
-            }
-            
-            let location = gesture.location(in: sceneView)
-            let hitResults = sceneView.hitTest(location, options: nil)
-            
-            guard let hitResult = hitResults.first else {
-                return
-            }
-            
-            var currentNode: SCNNode? = hitResult.node
-            var contact: Contact?
-            
-            while let node = currentNode {
-                if let nodeName = node.name, nodeName.hasPrefix("contact_") {
-                    let contactIdString = String(nodeName.dropFirst(8))
-                    if let contactId = UUID(uuidString: contactIdString) {
-                        contact = self.contacts.first(where: { $0.id == contactId })
-                        if contact != nil {
-                            break
-                        }
-                    }
-                }
-                
-                if let foundContact = contactNodes[node] {
-                    contact = foundContact
-                    break
-                }
-                
-                currentNode = node.parent
-                
-                if currentNode == sceneView.scene?.rootNode {
-                    break
-                }
-            }
-            
-            if contact == nil {
-                contact = findContactForNode(hitResult.node)
-            }
-            
-            guard let foundContact = contact else {
-                return
-            }
-            
-            onContactTapped?(foundContact)
-        }
-        
-        private func findContactForNode(_ node: SCNNode) -> Contact? {
-            for (contactNode, contact) in contactNodes {
-                if node == contactNode {
-                    return contact
-                }
-                
-                var currentNode: SCNNode? = node
-                while let current = currentNode {
-                    if current == contactNode {
-                        return contact
-                    }
-                    currentNode = current.parent
+    }
+}
+
+private struct StarField: View {
+    let count: Int
+    
+    var body: some View {
+        TimelineView(.animation) { context in
+            Canvas { ctx, size in
+                for i in 0..<count {
+                    let seed = Double(i + 1) * 12.9898
+                    let x = CGFloat(truncating: NSNumber(value: sin(seed) * 43758.5453)).truncatingRemainder(dividingBy: size.width)
+                    let y = CGFloat(truncating: NSNumber(value: cos(seed) * 12345.6789)).truncatingRemainder(dividingBy: size.height)
                     
-                    if current == contactNode.parent {
-                        break
-                    }
+                    let twinkle = 0.5 + 0.5 * sin(context.date.timeIntervalSinceReferenceDate * 1.3 + seed)
+                    let alpha = 0.18 + 0.35 * twinkle
+                    
+                    let starRect = CGRect(x: x.normalized(in: size.width),
+                                          y: y.normalized(in: size.height),
+                                          width: 2.5,
+                                          height: 2.5)
+                    
+                    ctx.fill(Path(ellipseIn: starRect), with: .color(Color.white.opacity(alpha)))
                 }
             }
-            return nil
         }
     }
 }
 
+// MARK: - Models
+
+private struct OrbitConfig {
+    let radius: CGFloat
+    let verticalOffset: CGFloat
+    let speed: Double
+    let phase: Double
+    let size: CGFloat
+    let glow: Color
+}
+
+// MARK: - Helpers
+
+private extension CGFloat {
+    func normalized(in dimension: CGFloat) -> CGFloat {
+        guard dimension != 0 else { return self }
+        let mod = self.truncatingRemainder(dividingBy: dimension)
+        return mod < 0 ? mod + dimension : mod
+    }
+}
