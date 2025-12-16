@@ -30,29 +30,31 @@ class ContactNoteService {
     private init() {}
     
     func saveNote(contactUserId: String, note: String) {
+        let cleanId = clean(contactUserId)
         var notes = getAllNotes()
         
-        if let index = notes.firstIndex(where: { $0.contactUserId == contactUserId }) {
+        if let index = notes.firstIndex(where: { $0.contactUserId == cleanId }) {
             notes[index] = ContactNote(
-                contactUserId: contactUserId,
+                contactUserId: cleanId,
                 note: note,
                 createdAt: notes[index].createdAt,
                 updatedAt: Date()
             )
         } else {
-            notes.append(ContactNote(contactUserId: contactUserId, note: note))
+            notes.append(ContactNote(contactUserId: cleanId, note: note))
         }
         
         saveNotes(notes)
         
         if !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            addFavorite(contactUserId: contactUserId)
+            addFavorite(contactUserId: cleanId)
         }
     }
     
     func getNote(contactUserId: String) -> String? {
+        let cleanId = clean(contactUserId)
         let notes = getAllNotes()
-        return notes.first(where: { $0.contactUserId == contactUserId })?.note
+        return notes.first(where: { $0.contactUserId == cleanId })?.note
     }
     
     func getAllNotes() -> [ContactNote] {
@@ -64,11 +66,10 @@ class ContactNoteService {
     }
     
     func deleteNote(contactUserId: String) {
+        let cleanId = clean(contactUserId)
         var notes = getAllNotes()
-        notes.removeAll(where: { $0.contactUserId == contactUserId })
+        notes.removeAll(where: { $0.contactUserId == cleanId })
         saveNotes(notes)
-        
-        removeFavorite(contactUserId: contactUserId)
     }
     
     private func saveNotes(_ notes: [ContactNote]) {
@@ -78,26 +79,30 @@ class ContactNoteService {
     }
     
     func addFavorite(contactUserId: String) {
+        let cleanId = clean(contactUserId)
         var favorites = getFavoriteUserIds()
-        if !favorites.contains(contactUserId) {
-            favorites.append(contactUserId)
+        if !favorites.contains(cleanId) {
+            favorites.append(cleanId)
             saveFavoriteUserIds(favorites)
         }
     }
     
     func removeFavorite(contactUserId: String) {
+        let cleanId = clean(contactUserId)
         var favorites = getFavoriteUserIds()
-        favorites.removeAll(where: { $0 == contactUserId })
+        favorites.removeAll(where: { $0 == cleanId })
         saveFavoriteUserIds(favorites)
     }
     
     func isFavorite(contactUserId: String) -> Bool {
+        let cleanId = clean(contactUserId)
         let favorites = getFavoriteUserIds()
-        return favorites.contains(contactUserId)
+        return favorites.contains(cleanId)
     }
     
     func getFavoriteUserIds() -> [String] {
-        return UserDefaults.standard.stringArray(forKey: favoritesKey) ?? []
+        let stored = UserDefaults.standard.stringArray(forKey: favoritesKey) ?? []
+        return Array(Set(stored.map { clean($0) }))
     }
     
     private func saveFavoriteUserIds(_ userIds: [String]) {
@@ -112,5 +117,20 @@ class ContactNoteService {
         return favorites.map { userId in
             (userId: userId, note: notesMap[userId])
         }
+    }
+    
+    func clearAll() {
+        UserDefaults.standard.removeObject(forKey: notesKey)
+        UserDefaults.standard.removeObject(forKey: favoritesKey)
+    }
+    
+    private func clean(_ userId: String) -> String {
+        if userId.contains("/") {
+            let components = userId.split(separator: "/")
+            if let last = components.last {
+                return String(last)
+            }
+        }
+        return userId.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

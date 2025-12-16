@@ -52,6 +52,11 @@ struct ContactDetailView: View {
             rotationSpeed = 1.5
             isAutoRotating = true
         }
+        .overlay {
+            if viewModel.isLoading && viewModel.contacts.isEmpty {
+                LoaderView()
+            }
+        }
         .sheet(isPresented: $showQRCode) {
             if let spaceCode = (space ?? spaceSelectionService.selectedSpace)?.code {
                 QRCodeSheetView(code: spaceCode)
@@ -342,6 +347,7 @@ struct ContactDetailView: View {
             try await spaceService.leaveSpace(spaceId: currentSpace.spaceId, userId: userId)
             
             spaceSelectionService.clearSelectedSpace()
+            ContactCacheService.shared.clearCache(for: currentSpace.spaceId)
             viewModel.stopListening()
             
             isLeavingSpace = false

@@ -177,7 +177,7 @@ struct ProfileView: View {
         .alert("Sign Out", isPresented: $showSignOutAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Sign Out", role: .destructive) {
-                authManager.signOut()
+                authManager.signOut(clearLocalData: false)
             }
         } message: {
             Text("If you sign out, you'll need to log in again to access your account.")

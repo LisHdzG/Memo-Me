@@ -42,27 +42,15 @@ struct ContactSphereView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: SCNView, context: Context) {
-        let oldContactIds = Set(context.coordinator.contacts.map { $0.id })
-        let newContactIds = Set(contacts.map { $0.id })
-        let idsChanged = oldContactIds != newContactIds
-        
-        var imagesChanged = false
-        if !idsChanged && context.coordinator.contacts.count == contacts.count {
-            for (oldContact, newContact) in zip(context.coordinator.contacts, contacts) {
-                if oldContact.imageUrl != newContact.imageUrl || oldContact.imageName != newContact.imageName {
-                    imagesChanged = true
-                    break
-                }
-            }
-        }
-        
-        let contactsChanged = idsChanged || imagesChanged
+        let contactsChanged = context.coordinator.contacts != contacts
         let sceneNeedsUpdate = uiView.scene == nil || contactsChanged
         
         if sceneNeedsUpdate {
             context.coordinator.loadedImages.removeAll()
             context.coordinator.contacts = contacts
             context.coordinator.createScene()
+        } else {
+            context.coordinator.contacts = contacts
         }
         
         context.coordinator.rotationSpeed = rotationSpeed

@@ -448,7 +448,7 @@ class ProfileViewModel: ObservableObject {
         do {
             try await userService.deleteUser(userId: userId)
             
-            authenticationManager?.signOut()
+            authenticationManager?.signOut(clearLocalData: true)
             
             isLoading = false
             return true

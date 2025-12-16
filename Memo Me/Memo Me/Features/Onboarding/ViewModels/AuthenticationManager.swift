@@ -88,6 +88,8 @@ class AuthenticationManager: ObservableObject {
     
     private let userService = UserService()
     private let networkMonitor = NetworkMonitor.shared
+    private let spaceSelectionService = SpaceSelectionService.shared
+    private let contactCacheService = ContactCacheService.shared
     private var isSignInFlow = false
     
     init() {
@@ -415,17 +417,17 @@ class AuthenticationManager: ObservableObject {
                     }
                     
                 case .revoked:
-                    self.clearAuthenticationData()
+                    self.clearAuthenticationData(clearLocalData: true)
                     self.authenticationState = .unauthenticated
                     self.handleError(AuthenticationError.credentialRevoked)
                     
                 case .notFound:
-                    self.clearAuthenticationData()
+                    self.clearAuthenticationData(clearLocalData: true)
                     self.authenticationState = .unauthenticated
                     self.handleError(AuthenticationError.credentialNotFound)
                     
                 case .transferred:
-                    self.clearAuthenticationData()
+                    self.clearAuthenticationData(clearLocalData: true)
                     self.authenticationState = .unauthenticated
                     self.handleError(AuthenticationError.credentialNotFound)
                     
@@ -436,7 +438,7 @@ class AuthenticationManager: ObservableObject {
         }
     }
     
-    private func clearAuthenticationData() {
+    private func clearAuthenticationData(clearLocalData: Bool) {
         isAuthenticated = false
         userIdentifier = nil
         userEmail = nil
@@ -447,6 +449,13 @@ class AuthenticationManager: ObservableObject {
         userDefaults.removeObject(forKey: savedUserEmailKey)
         userDefaults.removeObject(forKey: savedUserNameKey)
         userDefaults.removeObject(forKey: cachedUserKey)
+        spaceSelectionService.clearSelectedSpace()
+        spaceSelectionService.resetContinueWithoutSpace()
+        if clearLocalData {
+            contactCacheService.clearAll()
+            ContactNoteService.shared.clearAll()
+            ContactVibeService.shared.clearAll()
+        }
     }
     
     private func saveUserToCache(_ user: User) {
@@ -478,8 +487,8 @@ class AuthenticationManager: ObservableObject {
         self.currentUser = user
     }
     
-    func signOut() {
-        clearAuthenticationData()
+    func signOut(clearLocalData: Bool = false) {
+        clearAuthenticationData(clearLocalData: clearLocalData)
         authenticationState = .unauthenticated
         errorMessage = nil
     }

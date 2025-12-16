@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 
-struct Contact: Identifiable {
+struct Contact: Identifiable, Equatable {
     let id: UUID
     let name: String
     let imageName: String?
@@ -23,3 +23,4 @@ struct Contact: Identifiable {
         self.userId = userId
     }
 }
+

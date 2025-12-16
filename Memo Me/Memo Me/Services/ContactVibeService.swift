@@ -30,35 +30,37 @@ class ContactVibeService {
     private init() {}
     
     func saveVibes(contactUserId: String, vibes: [String]) {
+        let cleanId = clean(contactUserId)
         var allVibes = getAllVibes()
         
         let validVibes = Array(vibes.prefix(2))
         guard !validVibes.isEmpty else {
-            deleteVibes(contactUserId: contactUserId)
+            deleteVibes(contactUserId: cleanId)
             return
         }
         
-        if let index = allVibes.firstIndex(where: { $0.contactUserId == contactUserId }) {
+        if let index = allVibes.firstIndex(where: { $0.contactUserId == cleanId }) {
             allVibes[index] = ContactVibe(
-                contactUserId: contactUserId,
+                contactUserId: cleanId,
                 vibes: validVibes,
                 createdAt: allVibes[index].createdAt,
                 updatedAt: Date()
             )
         } else {
-            allVibes.append(ContactVibe(contactUserId: contactUserId, vibes: validVibes))
+            allVibes.append(ContactVibe(contactUserId: cleanId, vibes: validVibes))
         }
         
         saveVibes(allVibes)
         
         if !validVibes.isEmpty {
-            ContactNoteService.shared.addFavorite(contactUserId: contactUserId)
+            ContactNoteService.shared.addFavorite(contactUserId: cleanId)
         }
     }
     
     func getVibes(contactUserId: String) -> [String] {
+        let cleanId = clean(contactUserId)
         let allVibes = getAllVibes()
-        return allVibes.first(where: { $0.contactUserId == contactUserId })?.vibes ?? []
+        return allVibes.first(where: { $0.contactUserId == cleanId })?.vibes ?? []
     }
     
     func getAllVibes() -> [ContactVibe] {
@@ -70,15 +72,10 @@ class ContactVibeService {
     }
     
     func deleteVibes(contactUserId: String) {
+        let cleanId = clean(contactUserId)
         var allVibes = getAllVibes()
-        allVibes.removeAll(where: { $0.contactUserId == contactUserId })
+        allVibes.removeAll(where: { $0.contactUserId == cleanId })
         saveVibes(allVibes)
-        
-        let noteService = ContactNoteService.shared
-        if noteService.getNote(contactUserId: contactUserId) == nil ||
-           noteService.getNote(contactUserId: contactUserId)?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true {
-            noteService.removeFavorite(contactUserId: contactUserId)
-        }
     }
     
     private func saveVibes(_ vibes: [ContactVibe]) {
@@ -86,6 +83,20 @@ class ContactVibeService {
             UserDefaults.standard.set(data, forKey: vibesKey)
             UserDefaults.standard.synchronize()
         }
+    }
+    
+    func clearAll() {
+        UserDefaults.standard.removeObject(forKey: vibesKey)
+    }
+    
+    private func clean(_ userId: String) -> String {
+        if userId.contains("/") {
+            let components = userId.split(separator: "/")
+            if let last = components.last {
+                return String(last)
+            }
+        }
+        return userId.trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     static let availableVibes: [VibeOption] = [

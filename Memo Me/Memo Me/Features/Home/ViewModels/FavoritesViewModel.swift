@@ -66,9 +66,15 @@ class FavoritesViewModel: ObservableObject {
             filteredContacts = []
         }
         
-        let localFavorites = noteService.getFavoriteUserIds()
+        let localFavorites = noteService.getFavoriteUserIds().map { id in
+            if id.contains("/") {
+                return String(id.split(separator: "/").last ?? "")
+            }
+            return id
+        }
+        let uniqueFavorites = Array(Set(localFavorites)).sorted()
         
-        guard !localFavorites.isEmpty else {
+        guard !uniqueFavorites.isEmpty else {
             favoriteContacts = []
             filteredContacts = []
             hasLoadedOnce = true
@@ -79,7 +85,7 @@ class FavoritesViewModel: ObservableObject {
         
         // Cargar información de espacios desde Firebase primero
         var spaceMap: [String: String] = [:]
-        if let favoritesData = try? await favoriteService.getFavorites(userId: userId) {
+        if let favoritesData = try? await favoriteService.getFavorites(userId: userId), !uniqueFavorites.isEmpty {
             await withTaskGroup(of: (String, String?).self) { group in
                 for favoriteData in favoritesData {
                     group.addTask {
@@ -104,7 +110,7 @@ class FavoritesViewModel: ObservableObject {
         
         // Cargar todos los usuarios en paralelo
         let loadedFavorites = await withTaskGroup(of: FavoriteContact?.self) { group -> [FavoriteContact] in
-            for contactUserId in localFavorites {
+            for contactUserId in uniqueFavorites {
                 group.addTask { @MainActor in
                     guard let user = try? await self.userService.getUser(userId: contactUserId) else {
                         return nil
