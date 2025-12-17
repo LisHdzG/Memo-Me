@@ -18,7 +18,7 @@ struct MainTabView: View {
                 ContactDetailView(space: spaceSelectionService.selectedSpace)
             }
             .tabItem {
-                Label("Contacts", systemImage: "person.3.fill")
+                Label("Home", systemImage: "house.fill")
             }
             .tag(0)
             

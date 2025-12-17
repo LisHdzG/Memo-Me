@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 import CoreImage.CIFilterBuiltins
 
 struct QRCodeView: View {
@@ -18,35 +19,43 @@ struct QRCodeView: View {
     }
     
     var body: some View {
-        if let qrImage = generateQRCode(from: code) {
-            Image(uiImage: qrImage)
-                .interpolation(.none)
-                .resizable()
-                .scaledToFit()
-                .frame(width: size, height: size)
-        } else {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.gray.opacity(0.2))
-                .frame(width: size, height: size)
-                .overlay(
-                    Text("Unable to generate QR code")
-                        .font(.system(size: 12))
-                        .foregroundColor(.gray)
-                        .multilineTextAlignment(.center)
-                        .padding()
-                )
+        ZStack {
+            if let qrImage = generateQRCode(from: code) {
+                Image(uiImage: qrImage)
+                    .interpolation(.none)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: size, height: size)
+            } else {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.gray.opacity(0.15))
+                    .frame(width: size, height: size)
+                    .overlay(
+                        VStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(.orange)
+                            Text("Unable to generate QR code")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 12)
+                        }
+                    )
+            }
         }
     }
     
     private func generateQRCode(from string: String) -> UIImage? {
-        let data = string.data(using: String.Encoding.ascii)
+        let cleaned = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return nil }
+        guard let data = cleaned.data(using: .utf8) else { return nil }
         
-        guard let filter = CIFilter(name: "CIQRCodeGenerator") else {
-            return nil
-        }
-        
+        let filter = CIFilter.qrCodeGenerator()
         filter.setValue(data, forKey: "inputMessage")
-        let transform = CGAffineTransform(scaleX: 5, y: 5)
+        filter.setValue("Q", forKey: "inputCorrectionLevel")
+        
+        let transform = CGAffineTransform(scaleX: 7, y: 7)
         
         guard let outputImage = filter.outputImage?.transformed(by: transform) else {
             return nil
