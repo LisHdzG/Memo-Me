@@ -152,15 +152,28 @@ private struct ContactBubble: View {
                         if isMemo {
                             ZStack {
                                 Circle()
-                                    .fill(Color.white)
-                                Circle()
-                                    .stroke(Color("DeepSpace"), lineWidth: 1.5)
+                                    .fill(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color("DeepSpace"),
+                                                Color("DeepSpace").opacity(0.9)
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .overlay(
+                                        Circle()
+                                            .stroke(Color.white.opacity(0.65), lineWidth: 1.2)
+                                    )
+                                    .shadow(color: Color.black.opacity(0.12), radius: 2, x: 0, y: 1)
                                 Image(systemName: "star.fill")
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundColor(Color("DeepSpace"))
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .shadow(color: Color.white.opacity(0.4), radius: 2, x: 0, y: 0)
                             }
-                            .frame(width: 20, height: 20)
-                            .offset(x: 8, y: -8)
+                            .frame(width: 21, height: 21)
+                            .offset(x: 6, y: -6)
                         }
                     }
             }
