@@ -25,36 +25,83 @@ class ContactDetailViewModel: ObservableObject {
     var currentUserId: String?
     private var currentSpaceId: String?
     private var currentMemberIds: [String] = []
+    private var isInitialized: Bool = false
+    private var areListenersActive: Bool = false
     
     private var hasShownInitialLoader: Bool {
         get { UserDefaults.standard.bool(forKey: initialLoaderKey) }
         set { UserDefaults.standard.set(newValue, forKey: initialLoaderKey) }
     }
     
-    func loadContacts(for space: Space?) async {
+    func hasDataLoaded(for space: Space?) -> Bool {
+        guard let space = space else { return false }
+        return isInitialized && currentSpaceId == space.spaceId && !contacts.isEmpty
+    }
+    
+    func loadContacts(for space: Space?, forceReload: Bool = false) async {
         guard let space = space else {
             stopListening()
             contacts = []
             isLoading = false
             canShowInitialLoader = false
+            isInitialized = false
             return
         }
         
-        let shouldShowInitialLoader = !hasShownInitialLoader
         let previousSpaceId = currentSpaceId
         let isSameSpace = previousSpaceId == space.spaceId
         
-        stopListening()
+        if isSameSpace && isInitialized && !forceReload && !contacts.isEmpty {
+            if !areListenersActive {
+                spaceService.listenToSpace(spaceId: space.spaceId) { [weak self] updatedSpace in
+                    Task { @MainActor in
+                        guard let self = self, let updatedSpace = updatedSpace else {
+                            return
+                        }
+                        await self.processSpaceMembers(updatedSpace.members, shouldCache: true)
+                    }
+                }
+                startUserListeners(memberIds: space.members)
+                areListenersActive = true
+            }
+            return
+        }
+        
+        let shouldShowInitialLoader = !hasShownInitialLoader && !isSameSpace
         currentSpaceId = space.spaceId
         
+        if !isSameSpace {
+            stopListening()
+        }
+        
         let cachedContacts = cacheService.loadContacts(for: space.spaceId)
-        if let cachedContacts {
+        if let cachedContacts, !forceReload {
             contacts = cachedContacts
             isLoading = false
             canShowInitialLoader = false
-        } else if isSameSpace && !contacts.isEmpty {
-            isLoading = true
-            canShowInitialLoader = false
+            
+            Task {
+                let cleanedMemberIds = space.members.map { memberId -> String in
+                    if memberId.contains("/") {
+                        let components = memberId.split(separator: "/")
+                        if let lastComponent = components.last {
+                            return String(lastComponent)
+                        }
+                    }
+                    return memberId
+                }
+                
+                do {
+                    let users = try await userService.getUsers(userIds: cleanedMemberIds)
+                    for user in users {
+                        if let userId = user.id {
+                            usersMap[userId] = user
+                        }
+                    }
+                } catch {
+                    // Silenciar error, los datos están en cache
+                }
+            }
         } else {
             contacts = []
             isLoading = true
@@ -71,23 +118,32 @@ class ContactDetailViewModel: ObservableObject {
                 canShowInitialLoader = false
                 LoaderPresenter.shared.hide()
             }
+            if !isSameSpace {
+                isInitialized = true
+            }
             return
         }
         
-        await processSpaceMembers(space.members, shouldCache: true)
-        
-        spaceService.listenToSpace(spaceId: space.spaceId) { [weak self] updatedSpace in
-            Task { @MainActor in
-                guard let self = self, let updatedSpace = updatedSpace else {
-                    return
-                }
-                await self.processSpaceMembers(updatedSpace.members, shouldCache: true)
-            }
+        if cachedContacts == nil || forceReload {
+            await processSpaceMembers(space.members, shouldCache: true)
         }
         
-        startUserListeners(memberIds: space.members)
+        if !areListenersActive || !isSameSpace {
+            spaceService.listenToSpace(spaceId: space.spaceId) { [weak self] updatedSpace in
+                Task { @MainActor in
+                    guard let self = self, let updatedSpace = updatedSpace else {
+                        return
+                    }
+                    await self.processSpaceMembers(updatedSpace.members, shouldCache: true)
+                }
+            }
+            
+            startUserListeners(memberIds: space.members)
+            areListenersActive = true
+        }
         
         isLoading = false
+        isInitialized = true
         if shouldShowInitialLoader {
             hasShownInitialLoader = true
             canShowInitialLoader = false
@@ -243,7 +299,18 @@ class ContactDetailViewModel: ObservableObject {
     func stopListening() {
         spaceService.stopListeningToSpace()
         stopUserListeners()
+        areListenersActive = false
+    }
+    
+    func reset() {
+        stopListening()
         currentSpaceId = nil
+        contacts = []
+        usersMap.removeAll()
+        currentMemberIds.removeAll()
+        isInitialized = false
+        isLoading = false
+        canShowInitialLoader = false
     }
     
     func getUser(for contact: Contact) -> User? {

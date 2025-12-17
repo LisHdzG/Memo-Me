@@ -73,20 +73,19 @@ struct ContactDetailView: View {
                 .ignoresSafeArea()
             mainContent
         }
-        .task {
+        .task(id: spaceSelectionService.selectedSpace?.spaceId) {
             viewModel.currentUserId = authManager.currentUser?.id
-            await viewModel.loadContacts(for: space ?? spaceSelectionService.selectedSpace)
+            let currentSpace = space ?? spaceSelectionService.selectedSpace
+
+            await viewModel.loadContacts(for: currentSpace, forceReload: false)
         }
         .onChange(of: spaceSelectionService.selectedSpace) { oldValue, newValue in
             Task {
-                await viewModel.loadContacts(for: newValue)
+                await viewModel.loadContacts(for: newValue, forceReload: true)
             }
         }
         .onChange(of: authManager.currentUser?.id) { oldValue, newValue in
             viewModel.currentUserId = newValue
-        }
-        .onDisappear {
-            viewModel.stopListening()
         }
         .onAppear {
             rotationSpeed = 1.5
@@ -337,7 +336,7 @@ struct ContactDetailView: View {
             
             spaceSelectionService.clearSelectedSpace()
             ContactCacheService.shared.clearCache(for: currentSpace.spaceId)
-            viewModel.stopListening()
+            viewModel.reset()
             
             isLeavingSpace = false
         } catch {
