@@ -109,16 +109,6 @@ class ContactNoteService {
         UserDefaults.standard.set(userIds, forKey: favoritesKey)
     }
     
-    func getFavoriteContactsWithNotes() -> [(userId: String, note: String?)] {
-        let favorites = getFavoriteUserIds()
-        let notes = getAllNotes()
-        let notesMap = Dictionary(uniqueKeysWithValues: notes.map { ($0.contactUserId, $0.note) })
-        
-        return favorites.map { userId in
-            (userId: userId, note: notesMap[userId])
-        }
-    }
-    
     func clearAll() {
         UserDefaults.standard.removeObject(forKey: notesKey)
         UserDefaults.standard.removeObject(forKey: favoritesKey)

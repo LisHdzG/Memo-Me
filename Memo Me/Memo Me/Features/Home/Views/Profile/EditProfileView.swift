@@ -21,7 +21,7 @@ struct EditProfileView: View {
         case linkedin
     }
     
-    var body: some View {
+    @MainActor var body: some View {
         ZStack {
             Color(.ghostWhite)
                 .ignoresSafeArea()
@@ -29,15 +29,15 @@ struct EditProfileView: View {
             ScrollView {
                 VStack(spacing: 24) {
                     VStack(spacing: 16) {
+                        let profileImage = viewModel.profileImage
+                        let isLoading = viewModel.isLoading
+                        let photoUrl = authManager.currentUser?.photoUrl
+                        
                         PhotosPicker(
                             selection: $viewModel.selectedPhotoItem,
                             matching: .images,
                             photoLibrary: .shared()
                         ) {
-                            let profileImage = viewModel.profileImage
-                            let isLoading = viewModel.isLoading
-                            let hasPhotoUrl = authManager.currentUser?.photoUrl != nil
-                            
                             ZStack {
                                 Circle()
                                     .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8, 4]))
@@ -51,7 +51,7 @@ struct EditProfileView: View {
                                             .aspectRatio(contentMode: .fill)
                                             .frame(width: 130, height: 130)
                                             .clipShape(Circle())
-                                    } else if let photoUrl = authManager.currentUser?.photoUrl {
+                                    } else if let photoUrl {
                                         AsyncImageView(
                                             imageUrl: photoUrl,
                                             placeholderText: userName,
@@ -83,8 +83,8 @@ struct EditProfileView: View {
                                     .fill(.primaryDark)
                                     .frame(width: 36, height: 36)
                                     .overlay(
-                                        Image(systemName: (profileImage != nil || hasPhotoUrl) ? "arrow.2.circlepath" : "camera.fill")
-                                            .font(.system(size: (profileImage != nil || hasPhotoUrl) ? 14 : 16, weight: .semibold))
+                                        Image(systemName: (profileImage != nil || photoUrl != nil) ? "arrow.2.circlepath" : "camera.fill")
+                                            .font(.system(size: (profileImage != nil || photoUrl != nil) ? 14 : 16, weight: .semibold))
                                             .foregroundColor(.white)
                                     )
                                     .offset(x: 50, y: 50)
@@ -329,7 +329,7 @@ struct EditProfileView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 if viewModel.isDataLoaded && viewModel.hasChanges {
                     Button(action: {
-                        Task {
+                        Task { @MainActor in
                             let success = await viewModel.saveProfile()
                             if success {
                                 dismiss()
@@ -363,7 +363,7 @@ struct EditProfileView: View {
             titleVisibility: .visible
         ) {
             Button("Save", role: .none) {
-                Task {
+                Task { @MainActor in
                     let success = await viewModel.saveProfile()
                     if success {
                         dismiss()

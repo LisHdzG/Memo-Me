@@ -102,9 +102,5 @@ class SpacesViewModel: ObservableObject {
             return nil
         }
     }
-    
-    func joinPrivateSpace(code: String, userId: String) async -> Space? {
-        return await joinSpaceByCode(code: code, userId: userId)
-    }
 }
 

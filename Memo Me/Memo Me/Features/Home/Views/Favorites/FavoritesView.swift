@@ -274,7 +274,6 @@ struct FavoritesView: View {
         var body: some View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
-                    // Filter by vibes (only those with contacts)
                     if !viewModel.availableVibes.isEmpty {
                         ForEach(viewModel.availableVibes, id: \.id) { vibe in
                             FilterChip(
@@ -294,7 +293,6 @@ struct FavoritesView: View {
                         }
                     }
                     
-                    // Filter by spaces (only those with contacts)
                     if !viewModel.availableSpaces.isEmpty {
                         ForEach(viewModel.availableSpaces, id: \.self) { space in
                             FilterChip(
@@ -388,7 +386,6 @@ struct FavoritesView: View {
                 }
             }) {
                 HStack(spacing: 16) {
-                    // Foto del contacto con borde dashed en DeepSpace
                     AsyncImageView(
                         imageUrl: contact.imageUrl,
                         placeholderText: contact.name,
@@ -403,13 +400,11 @@ struct FavoritesView: View {
                     .shadow(color: Color("DeepSpace").opacity(0.1), radius: 4, x: 0, y: 2)
                     
                     VStack(alignment: .leading, spacing: 10) {
-                        // Nombre
                         Text(contact.name)
                             .font(.system(size: 17, weight: .semibold, design: .rounded))
                             .foregroundColor(Color("DeepSpace"))
                             .lineLimit(1)
                         
-                        // Vibe
                         if !vibes.isEmpty {
                             HStack(spacing: 6) {
                                 ForEach(vibes.prefix(2), id: \.self) { vibeId in
@@ -445,7 +440,6 @@ struct FavoritesView: View {
                             }
                         }
                         
-                        // Space where you met
                         HStack(spacing: 6) {
                             Text("Met at")
                                 .font(.system(size: 12, weight: .semibold, design: .rounded))
@@ -527,7 +521,6 @@ struct FavoritesView: View {
                                 .foregroundColor(.primaryDark.opacity(0.7))
                                 .padding(.horizontal, 20)
                             
-                            // Vibes
                             if !viewModel.availableVibes.isEmpty {
                                 VStack(alignment: .leading, spacing: 16) {
                                     Text("Vibes")
@@ -557,7 +550,6 @@ struct FavoritesView: View {
                                 }
                             }
                             
-                            // Spaces
                             if !viewModel.availableSpaces.isEmpty {
                                 VStack(alignment: .leading, spacing: 16) {
                                     Text("Spaces")

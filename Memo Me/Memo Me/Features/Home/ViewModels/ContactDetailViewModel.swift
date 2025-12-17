@@ -42,12 +42,12 @@ class ContactDetailViewModel: ObservableObject {
         } else {
             contacts = []
             isLoading = true
-            await LoaderPresenter.shared.show()
+            LoaderPresenter.shared.show()
         }
         
         guard networkMonitor.isConnectedSync() else {
             isLoading = false
-            await LoaderPresenter.shared.hide()
+            LoaderPresenter.shared.hide()
             return
         }
         
@@ -62,13 +62,13 @@ class ContactDetailViewModel: ObservableObject {
             }
         }
         
-        await startUserListeners(memberIds: space.members)
+        startUserListeners(memberIds: space.members)
         
         isLoading = false
-        await LoaderPresenter.shared.hide()
+        LoaderPresenter.shared.hide()
     }
     
-    private func startUserListeners(memberIds: [String]) async {
+    private func startUserListeners(memberIds: [String]) {
         stopUserListeners()
         
         let cleanedMemberIds = memberIds.map { memberId -> String in
@@ -219,7 +219,6 @@ class ContactDetailViewModel: ObservableObject {
         return usersMap[userId]
     }
     
-    // MARK: - Helpers
     
     private func buildContact(from user: User, forcedId: UUID? = nil) -> Contact {
         let userIdentifier = user.id ?? user.name

@@ -22,7 +22,6 @@ class FavoritesViewModel: ObservableObject {
     @Published var selectedContact: Contact?
     @Published var selectedUser: User?
     
-    // Mantener compatibilidad con filtros individuales para la vista actual
     var selectedVibeFilter: String? {
         get { selectedVibeFilters.first }
         set {
@@ -55,12 +54,10 @@ class FavoritesViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         
-        // Loader solo en la primera carga
         if !hasLoadedOnce {
-            await LoaderPresenter.shared.show()
+            LoaderPresenter.shared.show()
         }
         
-        // Solo limpiar en la primera carga; en refrescos mantenemos datos actuales
         if !hasLoadedOnce {
             favoriteContacts = []
             filteredContacts = []
@@ -79,11 +76,10 @@ class FavoritesViewModel: ObservableObject {
             filteredContacts = []
             hasLoadedOnce = true
             isLoading = false
-            await LoaderPresenter.shared.hide()
+            LoaderPresenter.shared.hide()
             return
         }
         
-        // Cargar información de espacios desde Firebase primero
         var spaceMap: [String: String] = [:]
         if let favoritesData = try? await favoriteService.getFavorites(userId: userId), !uniqueFavorites.isEmpty {
             await withTaskGroup(of: (String, String?).self) { group in
@@ -108,7 +104,6 @@ class FavoritesViewModel: ObservableObject {
             }
         }
         
-        // Cargar todos los usuarios en paralelo
         let loadedFavorites = await withTaskGroup(of: FavoriteContact?.self) { group -> [FavoriteContact] in
             for contactUserId in uniqueFavorites {
                 group.addTask { @MainActor in
@@ -127,7 +122,6 @@ class FavoritesViewModel: ObservableObject {
                         userId: contactUserId
                     )
                     
-                    // Obtener el espacio donde se conoció (desde Firebase si está disponible, sino "Personal")
                     let spaceName = spaceMap[contactUserId] ?? "Personal"
                     
                     return FavoriteContact(
@@ -148,15 +142,13 @@ class FavoritesViewModel: ObservableObject {
             return results
         }
         
-        // Solo actualizar cuando todos los datos estén listos
         let sortedFavorites = loadedFavorites.sorted { $0.contact.name < $1.contact.name }
         
-        // Actualizar ambas listas al mismo tiempo para evitar inconsistencias
         favoriteContacts = sortedFavorites
         filteredContacts = sortedFavorites
         hasLoadedOnce = true
         isLoading = false
-        await LoaderPresenter.shared.hide()
+        LoaderPresenter.shared.hide()
     }
     
     func getVibes(for contactUserId: String) -> [String] {
@@ -196,22 +188,18 @@ class FavoritesViewModel: ObservableObject {
     func applyFilters() {
         var filtered = favoriteContacts
         
-        // Filtro por texto de búsqueda
         if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let searchLower = searchText.lowercased()
             
             filtered = filtered.filter { favoriteContact in
-                // Buscar por nombre
                 if favoriteContact.contact.name.lowercased().contains(searchLower) {
                     return true
                 }
                 
-                // Buscar por espacio
                 if favoriteContact.spaceName.lowercased().contains(searchLower) {
                     return true
                 }
                 
-                // Buscar por vibes
                 if let userId = favoriteContact.contact.userId {
                     let vibes = getVibes(for: userId)
                     for vibeId in vibes {
@@ -224,7 +212,6 @@ class FavoritesViewModel: ObservableObject {
                     }
                 }
                 
-                // Buscar por notas
                 if let userId = favoriteContact.contact.userId,
                    let note = noteService.getNote(contactUserId: userId),
                    !note.isEmpty {
@@ -237,7 +224,6 @@ class FavoritesViewModel: ObservableObject {
             }
         }
         
-        // Filtro por vibes (múltiples)
         if !selectedVibeFilters.isEmpty {
             filtered = filtered.filter { favoriteContact in
                 guard let userId = favoriteContact.contact.userId else { return false }
@@ -248,7 +234,6 @@ class FavoritesViewModel: ObservableObject {
             }
         }
         
-        // Filtro por espacios (múltiples)
         if !selectedSpaceFilters.isEmpty {
             filtered = filtered.filter { favoriteContact in
                 selectedSpaceFilters.contains(favoriteContact.spaceName)

@@ -425,10 +425,6 @@ class SpaceService: ObservableObject {
         return space
     }
     
-    func joinPrivateSpace(code: String, userId: String) async throws {
-        _ = try await joinSpaceByCode(code: code, userId: userId)
-    }
-    
     func generateCode(from name: String) -> String {
         let uppercased = name.uppercased()
         let withoutSpaces = uppercased.replacingOccurrences(of: " ", with: "_")

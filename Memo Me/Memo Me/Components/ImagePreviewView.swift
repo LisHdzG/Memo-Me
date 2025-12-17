@@ -17,7 +17,6 @@ struct ImagePreviewOverlay: View {
     
     var body: some View {
         ZStack {
-            // Fondo negro sólido
             Color.black
                 .ignoresSafeArea()
                 .onTapGesture {
@@ -60,7 +59,6 @@ struct ImagePreviewOverlay: View {
                                     height: lastOffset.height + value.translation.height
                                 )
                                 
-                                // Limitar el desplazamiento cuando está zoomed
                                 if scale > 1.0 {
                                     let maxOffsetX = (geometry.size.width * (scale - 1)) / 2
                                     let maxOffsetY = (geometry.size.height * (scale - 1)) / 2
@@ -89,7 +87,6 @@ struct ImagePreviewOverlay: View {
                     }
             }
             
-            // Botón X en la esquina superior izquierda
             VStack {
                 HStack {
                     Button(action: {
@@ -127,7 +124,6 @@ struct ImagePreviewOverlay: View {
     }
 }
 
-// Mantener la versión anterior para compatibilidad si se usa en otros lugares
 struct ImagePreviewView: View {
     let image: UIImage
     @Environment(\.dismiss) private var dismiss

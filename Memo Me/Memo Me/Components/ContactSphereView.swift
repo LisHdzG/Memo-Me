@@ -8,8 +8,6 @@
 import SwiftUI
 import UIKit
 
-/// Universo 2D animado para mostrar los contactos flotando.
-/// Mantiene la misma API pública que la versión previa en SceneKit.
 struct ContactSphereView: View {
     let contacts: [Contact]
     @Binding var rotationSpeed: Double
@@ -71,7 +69,6 @@ struct ContactSphereView: View {
         }
     }
     
-    // MARK: - Layout Helpers
     
     private func orbitConfig(for contact: Contact, index: Int, in size: CGSize) -> OrbitConfig {
         let seed = abs(contact.id.hashValue &+ index * 9973)
@@ -100,7 +97,6 @@ struct ContactSphereView: View {
     }
 }
 
-// MARK: - Support Views
 
 private struct ContactBubble: View {
     let contact: Contact
@@ -159,7 +155,7 @@ private struct ContactBubble: View {
                         )
                 )
                 .shadow(color: Color.black.opacity(0.16), radius: 3, x: 0, y: 2)
-                .allowsHitTesting(false) // Solo la foto es interactiva
+                .allowsHitTesting(false)
         }
     }
     
@@ -217,34 +213,6 @@ private struct ContactAvatar: View {
     }
 }
 
-private struct StarField: View {
-    let count: Int
-    
-    var body: some View {
-        TimelineView(.animation) { context in
-            Canvas { ctx, size in
-                for i in 0..<count {
-                    let seed = Double(i + 1) * 12.9898
-                    let x = CGFloat(truncating: NSNumber(value: sin(seed) * 43758.5453)).truncatingRemainder(dividingBy: size.width)
-                    let y = CGFloat(truncating: NSNumber(value: cos(seed) * 12345.6789)).truncatingRemainder(dividingBy: size.height)
-                    
-                    let twinkle = 0.5 + 0.5 * sin(context.date.timeIntervalSinceReferenceDate * 1.3 + seed)
-                    let alpha = 0.18 + 0.35 * twinkle
-                    
-                    let starRect = CGRect(x: x.normalized(in: size.width),
-                                          y: y.normalized(in: size.height),
-                                          width: 2.5,
-                                          height: 2.5)
-                    
-                    ctx.fill(Path(ellipseIn: starRect), with: .color(Color.white.opacity(alpha)))
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Models
-
 private struct OrbitConfig {
     let radius: CGFloat
     let verticalOffset: CGFloat
@@ -254,7 +222,6 @@ private struct OrbitConfig {
     let glow: Color
 }
 
-// MARK: - Helpers
 
 private extension CGFloat {
     func normalized(in dimension: CGFloat) -> CGFloat {
@@ -264,7 +231,6 @@ private extension CGFloat {
     }
 }
 
-// MARK: - Rotation State
 
 private enum RotationAccumulator {
     static var accumulatedTime: TimeInterval = 0

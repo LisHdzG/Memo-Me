@@ -15,7 +15,7 @@ class ImageLoaderService {
     private var imageCache: NSCache<NSString, UIImage> = {
         let cache = NSCache<NSString, UIImage>()
         cache.countLimit = 100
-        cache.totalCostLimit = 50 * 1024 * 1024 // 50 MB
+        cache.totalCostLimit = 50 * 1024 * 1024
         return cache
     }()
     

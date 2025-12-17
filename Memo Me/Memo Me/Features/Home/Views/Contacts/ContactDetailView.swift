@@ -41,12 +41,6 @@ private struct SpaceBannerView: View {
             )
     }
 }
-//
-//  ContactDetailView.swift
-//  Memo Me
-//
-//  Created by Marian Lisette Hernandez Guzman on 03/12/25.
-//
 
 import SwiftUI
 
@@ -58,7 +52,6 @@ struct ContactDetailView: View {
     @State private var isAutoRotating: Bool = true
     @State private var selectedContact: Contact?
     @State private var selectedUser: User?
-    @State private var isLoadingUser: Bool = false
     @State private var showQRCode: Bool = false
     @State private var showLeaveSpaceAlert: Bool = false
     @State private var isLeavingSpace: Bool = false
@@ -285,7 +278,7 @@ struct ContactDetailView: View {
                     .padding(.horizontal, 40)
             }
             
-            if let spaceCode = (space ?? spaceSelectionService.selectedSpace)?.code {
+            if (space ?? spaceSelectionService.selectedSpace)?.code != nil {
                 Button(action: {
                     showQRCode = true
                 }) {
@@ -411,32 +404,23 @@ struct ContactDetailView: View {
                 spaceId: space?.spaceId ?? spaceSelectionService.selectedSpace?.spaceId
             )
             .onDisappear {
-                // Asegura limpiar la selección al salir del detalle
                 selectedContact = nil
                 selectedUser = nil
-                isLoadingUser = false
             }
         }
         .onChange(of: selectedContact) { oldValue, newValue in
             if oldValue != nil && newValue == nil {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     selectedUser = nil
-                    isLoadingUser = false
                 }
             }
         }
-        .onChange(of: viewModel.contacts) { newContacts in
-            // Si el contacto seleccionado ya no existe, reseteamos para evitar navegaciones fantasma
+        .onChange(of: viewModel.contacts) { oldContacts, newContacts in
             if let current = selectedContact, !newContacts.contains(current) {
                 selectedContact = nil
                 selectedUser = nil
-                isLoadingUser = false
             }
         }
-    }
-    
-    private var layoutSelector: some View {
-        layoutToggleButton
     }
     
     private var layoutToggleButton: some View {
@@ -523,19 +507,16 @@ struct ContactDetailView: View {
         selectedUser = viewModel.getUser(for: contact)
         
         if selectedUser == nil, let userId = contact.userId {
-            isLoadingUser = true
             Task {
                 do {
                     let userService = UserService()
                     let loadedUser = try await userService.getUser(userId: userId)
                     await MainActor.run {
                         selectedUser = loadedUser
-                        isLoadingUser = false
                         selectedContact = contact
                     }
                 } catch {
                     await MainActor.run {
-                        isLoadingUser = false
                         selectedContact = contact
                     }
                 }
@@ -764,7 +745,6 @@ private struct ContactListView: View {
     }
 }
 
-// Layout toggle is now handled with a single button in the header.
 
 private struct ContactListRow: View {
     let contact: Contact
