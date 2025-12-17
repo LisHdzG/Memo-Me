@@ -14,6 +14,8 @@ struct ProfileView: View {
     @State private var showEditProfile: Bool = false
     @State private var showDeleteAccountAlert: Bool = false
     @State private var showSignOutAlert: Bool = false
+    @State private var showImagePreview: Bool = false
+    @State private var previewImage: UIImage?
     
     var body: some View {
         NavigationStack {
@@ -23,19 +25,6 @@ struct ProfileView: View {
                 
                 ScrollView {
                     VStack(spacing: 24) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "person.2.fill")
-                                .font(.system(size: 14, weight: .light))
-                                .foregroundColor(.primaryDark.opacity(0.4))
-                            
-                            Text("This is how others see your profile")
-                                .font(.system(size: 15, weight: .regular, design: .rounded))
-                                .foregroundColor(.primaryDark.opacity(0.5))
-                        }
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 8)
-                        .padding(.horizontal, 20)
-                        
                         let photoUrl = authManager.currentUser?.photoUrl
                         let instagramUrl = authManager.currentUser?.instagramUrl
                         let linkedinUrl = authManager.currentUser?.linkedinUrl
@@ -54,6 +43,10 @@ struct ProfileView: View {
                                     size: 140
                                 )
                                 .clipShape(Circle())
+                            }
+                            .contentShape(Circle())
+                            .onTapGesture {
+                                showImagePreview = true
                             }
                             .shadow(color: .primaryDark.opacity(0.15), radius: 12, x: 0, y: 4)
                             
@@ -174,9 +167,21 @@ struct ProfileView: View {
         .onAppear {
             viewModel.authenticationManager = authManager
         }
+        .sheet(isPresented: $showImagePreview) {
+            ImagePreviewOverlay(
+                image: previewImage,
+                imageUrl: authManager.currentUser?.photoUrl,
+                placeholderText: userName,
+                isPresented: $showImagePreview
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
         .alert("Sign Out", isPresented: $showSignOutAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Sign Out", role: .destructive) {
+                SpaceSelectionService.shared.clearSelectedSpace()
+                SpaceSelectionService.shared.resetContinueWithoutSpace()
                 authManager.signOut(clearLocalData: false)
             }
         } message: {
@@ -309,28 +314,6 @@ struct ProfileProgressView: View {
                 )
             }
             .buttonStyle(PlainButtonStyle())
-        } else {
-            HStack(spacing: 8) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 16))
-                    .foregroundColor(Color("DeepSpace"))
-                
-                Text("Your profile is complete!")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundColor(.primaryDark.opacity(0.7))
-                
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white.opacity(0.6))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color("DeepSpace").opacity(0.1), lineWidth: 1)
-                    )
-            )
         }
     }
 }

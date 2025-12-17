@@ -7,6 +7,7 @@
 
 import SwiftUI
 import PhotosUI
+import UIKit
 
 struct EditProfileView: View {
     @EnvironmentObject var authManager: AuthenticationManager
@@ -86,6 +87,7 @@ struct EditProfileView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 if viewModel.isDataLoaded && viewModel.hasChanges {
                     Button(action: {
+                        dismissKeyboard()
                         Task { @MainActor in
                             let success = await viewModel.saveProfile()
                             if success {
@@ -120,6 +122,7 @@ struct EditProfileView: View {
             titleVisibility: .visible
         ) {
             Button("Save", role: .none) {
+                dismissKeyboard()
                 Task { @MainActor in
                     let success = await viewModel.saveProfile()
                     if success {
@@ -428,23 +431,38 @@ struct EditProfileView: View {
                 if !viewModel.selectedInterests.isEmpty {
                     FlowLayout(spacing: 8) {
                         ForEach(viewModel.selectedInterests, id: \.self) { interest in
-                            HStack(spacing: 6) {
+                            HStack(spacing: 8) {
                                 Text(interest)
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.primaryDark)
+                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    .foregroundColor(Color("DeepSpace"))
                                 
                                 Button(action: {
                                     viewModel.removeInterest(interest)
                                 }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(Color(.electricRuby))
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(Color("DeepSpace").opacity(0.8))
                                 }
                             }
-                            .padding(.horizontal, 12)
+                            .padding(.horizontal, 14)
                             .padding(.vertical, 8)
-                            .background(Color.white.opacity(0.3))
-                            .cornerRadius(16)
+                            .background(
+                                Capsule()
+                                    .fill(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color("DeepSpace").opacity(0.15),
+                                                Color("DeepSpace").opacity(0.08)
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                            )
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color("DeepSpace").opacity(0.2), lineWidth: 1)
+                            )
                         }
                     }
                     .padding(.top, 4)
@@ -500,7 +518,7 @@ struct EditProfileView: View {
                         .foregroundColor(.primaryDark)
                 }
                 
-                TextField("your_profile", text: $viewModel.linkedinUrl)
+                TextField("https://www.linkedin.com/in/tu-perfil", text: $viewModel.linkedinUrl)
                     .textFieldStyle(CustomTextFieldStyle())
                     .focused($focusedField, equals: .linkedin)
                     .keyboardType(.default)
@@ -508,7 +526,7 @@ struct EditProfileView: View {
                     .autocorrectionDisabled()
                     .submitLabel(.done)
                 
-                Text("Enter only your profile name (without URL)")
+                Text("Pega la URL de tu perfil de LinkedIn")
                     .font(.system(size: 12))
                     .foregroundColor(.primaryDark.opacity(0.5))
                     .padding(.leading, 4)
@@ -593,5 +611,10 @@ struct EditProfileView: View {
                 .frame(height: 1)
                 .overlay(Color.primaryDark.opacity(0.15))
         }
+    }
+    
+    private func dismissKeyboard() {
+        focusedField = nil
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }

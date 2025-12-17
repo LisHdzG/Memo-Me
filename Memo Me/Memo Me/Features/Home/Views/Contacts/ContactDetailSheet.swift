@@ -44,141 +44,15 @@ struct ContactDetailPageView: View {
     }
     
     var body: some View {
+        rootView
+    }
+
+    private var rootView: some View {
         ZStack {
             Color(.ghostWhite)
                 .ignoresSafeArea()
             
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    VStack(spacing: 12) {
-                        ZStack(alignment: .center) {
-                            Circle()
-                                .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8, 4]))
-                                .foregroundColor(.primaryDark)
-                                .frame(width: 144, height: 144)
-                            
-                            AsyncImageView(
-                                imageUrl: photoUrl,
-                                placeholderText: displayName,
-                                contentMode: .fill,
-                                size: 140
-                            )
-                            .clipShape(Circle())
-                            .frame(width: 140, height: 140)
-                            .contentShape(Circle())
-                            .onTapGesture {
-                                if let url = photoUrl, !url.isEmpty {
-                                    loadPreviewImage(from: url)
-                                    showImagePreview = true
-                                }
-                            }
-                        }
-                        .shadow(color: .primaryDark.opacity(0.15), radius: 12, x: 0, y: 4)
-                        
-                        VStack(spacing: 4) {
-                            Text(displayName)
-                                .font(.system(size: 28, weight: .bold, design: .rounded))
-                                .foregroundColor(.primaryDark)
-                            
-                            if let user = user {
-                                if let country = user.country, !country.isEmpty {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "location.fill")
-                                            .font(.system(size: 12, weight: .medium))
-                                            .foregroundColor(.primaryDark.opacity(0.5))
-                                        Text("From \(country)")
-                                            .font(.system(size: 15, weight: .regular, design: .rounded))
-                                            .foregroundColor(.primaryDark.opacity(0.6))
-                                            .fixedSize(horizontal: false, vertical: true)
-                                            .lineLimit(1)
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.top, 4)
-                                }
-                                
-                                HStack(spacing: 10) {
-                                    if let linkedinUrl = user.linkedinUrl, !linkedinUrl.isEmpty {
-                                        SocialButton(imageName: "LinkedInLogo", url: linkedinUrl)
-                                    }
-                                    if let instagramUrl = user.instagramUrl, !instagramUrl.isEmpty {
-                                        SocialButton(imageName: "InstagramLogo", url: instagramUrl)
-                                    }
-                                }
-                                .padding(.top, 8)
-                            }
-                        }
-                    }
-                    .padding(.top, 20)
-                    .padding(.bottom, 10)
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 20)
-                    
-                    if let userId = contactUserId {
-                        VibeSection(
-                            selectedVibes: $selectedVibes,
-                            hasVibes: $hasVibes,
-                            isFavorite: $isFavorite,
-                            contactUserId: userId,
-                            vibeService: vibeService
-                        )
-                        .padding(.horizontal, 20)
-                    }
-                    
-                    if let userId = contactUserId {
-                        NoteSection(
-                            noteText: $noteText,
-                            isEditingNote: $isEditingNote,
-                            hasNote: $hasNote,
-                            isFavorite: $isFavorite,
-                            contactUserId: userId,
-                            noteService: noteService
-                        )
-                        .padding(.horizontal, 20)
-                    }
-                    
-                    if let user = user {
-                        VStack(spacing: 20) {
-                            if let areas = user.areas, !areas.isEmpty {
-                                ProfileTagsRow(
-                                    icon: "sparkles",
-                                    prefix: "Passionate about",
-                                    items: areas
-                                )
-                            }
-                            
-                            if let interests = user.interests, !interests.isEmpty {
-                                ProfileTagsRow(
-                                    icon: "heart.fill",
-                                    prefix: "Loves",
-                                    items: interests
-                                )
-                            }
-                            
-                            if (user.country == nil || user.country?.isEmpty == true) &&
-                               (user.areas == nil || user.areas?.isEmpty == true) &&
-                               (user.interests == nil || user.interests?.isEmpty == true) &&
-                               (user.instagramUrl == nil || user.instagramUrl?.isEmpty == true) &&
-                               (user.linkedinUrl == nil || user.linkedinUrl?.isEmpty == true) {
-                                StoryTellingMessage(
-                                    message: "This contact hasn't completed their profile yet",
-                                    icon: "info.circle.fill"
-                                )
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                    } else {
-                        StoryTellingMessage(
-                            message: "Complete information not available",
-                            icon: "exclamationmark.circle.fill"
-                        )
-                        .padding(.horizontal, 20)
-                    }
-                    
-                    Spacer()
-                        .frame(height: 40)
-                }
-                .frame(maxWidth: .infinity)
-            }
+            mainScroll
         }
         .contentShape(Rectangle())
         .onTapGesture {
@@ -194,10 +68,15 @@ struct ContactDetailPageView: View {
             loadNote()
             loadVibes()
         }
-        .overlay {
-            if showImagePreview, let image = previewImage {
-                ImagePreviewOverlay(image: image, isPresented: $showImagePreview)
-            }
+        .sheet(isPresented: $showImagePreview) {
+            ImagePreviewOverlay(
+                image: previewImage,
+                imageUrl: user?.photoUrl ?? contact.imageUrl,
+                placeholderText: user?.name ?? contact.name,
+                isPresented: $showImagePreview
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
         .alert("Remove from memos?", isPresented: $showRemoveFavoriteAlert) {
             Button("Cancel", role: .cancel) { }
@@ -224,6 +103,159 @@ struct ContactDetailPageView: View {
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(isFavorite ? .yellow : .primaryDark)
                 }
+            }
+        }
+    }
+
+    private var mainScroll: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 24) {
+                headerSection
+                vibeSection
+                noteSection
+                profileInfoSection
+                
+                Spacer()
+                    .frame(height: 40)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var headerSection: some View {
+        VStack(spacing: 12) {
+            ZStack(alignment: .center) {
+                Circle()
+                    .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8, 4]))
+                    .foregroundColor(.primaryDark)
+                    .frame(width: 144, height: 144)
+                
+                AsyncImageView(
+                    imageUrl: photoUrl,
+                    placeholderText: displayName,
+                    contentMode: .fill,
+                    size: 140
+                )
+                .clipShape(Circle())
+                .frame(width: 140, height: 140)
+                .contentShape(Circle())
+                .onTapGesture {
+                    if let url = photoUrl, !url.isEmpty {
+                        loadPreviewImage(from: url)
+                        showImagePreview = true
+                    }
+                }
+            }
+            .shadow(color: .primaryDark.opacity(0.15), radius: 12, x: 0, y: 4)
+            
+            VStack(spacing: 4) {
+                Text(displayName)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(.primaryDark)
+                
+                if let user = user {
+                    if let country = user.country, !country.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.primaryDark.opacity(0.5))
+                            Text("From \(country)")
+                                .font(.system(size: 15, weight: .regular, design: .rounded))
+                                .foregroundColor(.primaryDark.opacity(0.6))
+                                .fixedSize(horizontal: false, vertical: true)
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 4)
+                    }
+                    
+                    HStack(spacing: 10) {
+                        if let linkedinUrl = user.linkedinUrl, !linkedinUrl.isEmpty {
+                            SocialButton(imageName: "LinkedInLogo", url: linkedinUrl)
+                        }
+                        if let instagramUrl = user.instagramUrl, !instagramUrl.isEmpty {
+                            SocialButton(imageName: "InstagramLogo", url: instagramUrl)
+                        }
+                    }
+                    .padding(.top, 8)
+                }
+            }
+        }
+        .padding(.top, 20)
+        .padding(.bottom, 10)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 20)
+    }
+
+    private var vibeSection: some View {
+        Group {
+            if let userId = contactUserId {
+                VibeSection(
+                    selectedVibes: $selectedVibes,
+                    hasVibes: $hasVibes,
+                    isFavorite: $isFavorite,
+                    contactUserId: userId,
+                    vibeService: vibeService
+                )
+                .padding(.horizontal, 20)
+            }
+        }
+    }
+
+    private var noteSection: some View {
+        Group {
+            if let userId = contactUserId {
+                NoteSection(
+                    noteText: $noteText,
+                    isEditingNote: $isEditingNote,
+                    hasNote: $hasNote,
+                    isFavorite: $isFavorite,
+                    contactUserId: userId,
+                    noteService: noteService
+                )
+                .padding(.horizontal, 20)
+            }
+        }
+    }
+
+    private var profileInfoSection: some View {
+        Group {
+            if let user = user {
+                VStack(spacing: 20) {
+                    if let areas = user.areas, !areas.isEmpty {
+                        ProfileTagsRow(
+                            icon: "sparkles",
+                            prefix: "Passionate about",
+                            items: areas
+                        )
+                    }
+                    
+                    if let interests = user.interests, !interests.isEmpty {
+                        ProfileTagsRow(
+                            icon: "heart.fill",
+                            prefix: "Loves",
+                            items: interests
+                        )
+                    }
+                    
+                    if (user.country == nil || user.country?.isEmpty == true) &&
+                       (user.areas == nil || user.areas?.isEmpty == true) &&
+                       (user.interests == nil || user.interests?.isEmpty == true) &&
+                       (user.instagramUrl == nil || user.instagramUrl?.isEmpty == true) &&
+                       (user.linkedinUrl == nil || user.linkedinUrl?.isEmpty == true) {
+                        StoryTellingMessage(
+                            message: "This contact hasn't completed their profile yet",
+                            icon: "info.circle.fill"
+                        )
+                    }
+                }
+                .padding(.horizontal, 20)
+            } else {
+                StoryTellingMessage(
+                    message: "Complete information not available",
+                    icon: "exclamationmark.circle.fill"
+                )
+                .padding(.horizontal, 20)
             }
         }
     }

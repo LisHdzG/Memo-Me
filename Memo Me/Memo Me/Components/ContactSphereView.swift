@@ -25,47 +25,7 @@ struct ContactSphereView: View {
     
     var body: some View {
         GeometryReader { geo in
-            ZStack {
-                Color.clear
-                
-                TimelineView(.animation) { timelineContext in
-                    let time = timelineContext.date.timeIntervalSinceReferenceDate
-                    let delta: TimeInterval
-                    if let last = RotationAccumulator.lastTime {
-                        delta = max(0, time - last)
-                    } else {
-                        delta = 0
-                    }
-                    RotationAccumulator.lastTime = time
-                    
-                    if isAutoRotating {
-                        RotationAccumulator.accumulatedTime += delta
-                    }
-                    
-                    let baseRotation = RotationAccumulator.accumulatedTime * 0.07 * max(rotationSpeed, 0.25)
-                    
-                    return AnyView(
-                        ZStack {
-                            ForEach(Array(contacts.enumerated()), id: \.element.id) { index, contact in
-                                let config = orbitConfig(for: contact, index: index, in: geo.size)
-                                let angle = baseRotation * config.speed + config.phase
-                                let x = cos(angle) * config.radius
-                                let y = sin(angle) * config.radius * 0.62 + config.verticalOffset
-                                let isMemo = memoProvider?(contact) ?? false
-                                
-                                ContactBubble(
-                                    contact: contact,
-                                    size: config.size,
-                                    glow: config.glow,
-                                    isMemo: isMemo,
-                                    onTap: { onContactTapped?(contact) }
-                                )
-                                .position(x: geo.size.width / 2 + x, y: geo.size.height / 2 + y)
-                            }
-                        }
-                    )
-                }
-            }
+            rootContent(geoSize: geo.size)
         }
     }
     
@@ -94,6 +54,64 @@ struct ContactSphereView: View {
                            phase: phase,
                            size: sizeValue,
                            glow: glow)
+    }
+    
+    @ViewBuilder
+    private func timelineView(geoSize: CGSize) -> some View {
+        TimelineView(.animation) { timelineContext in
+            let baseRotation = self.computeBaseRotation(from: timelineContext)
+            return self.sphereContent(baseRotation: baseRotation, size: geoSize)
+        }
+    }
+
+    private func rootContent(geoSize: CGSize) -> some View {
+        ZStack {
+            Color.clear
+            timelineView(geoSize: geoSize)
+        }
+    }
+    
+    private func computeBaseRotation(from timelineContext: TimelineViewDefaultContext) -> Double {
+        let time = timelineContext.date.timeIntervalSinceReferenceDate
+        let delta: TimeInterval
+        if let last = RotationAccumulator.lastTime {
+            delta = max(0, time - last)
+        } else {
+            delta = 0
+        }
+        RotationAccumulator.lastTime = time
+        
+        if isAutoRotating {
+            RotationAccumulator.accumulatedTime += delta
+        }
+        
+        return RotationAccumulator.accumulatedTime * 0.07 * max(rotationSpeed, 0.25)
+    }
+    
+    @ViewBuilder
+    private func sphereContent(baseRotation: Double, size: CGSize) -> some View {
+        let items = Array(contacts.enumerated())
+        
+        ZStack {
+            ForEach(items, id: \.element.id) { pair in
+                let index = pair.offset
+                let contact = pair.element
+                let config = self.orbitConfig(for: contact, index: index, in: size)
+                let angle = baseRotation * config.speed + config.phase
+                let x = cos(angle) * config.radius
+                let y = sin(angle) * config.radius * 0.62 + config.verticalOffset
+                let isMemo = self.memoProvider?(contact) ?? false
+                
+                ContactBubble(
+                    contact: contact,
+                    size: config.size,
+                    glow: config.glow,
+                    isMemo: isMemo,
+                    onTap: { self.onContactTapped?(contact) }
+                )
+                .position(x: size.width / 2 + x, y: size.height / 2 + y)
+            }
+        }
     }
 }
 
