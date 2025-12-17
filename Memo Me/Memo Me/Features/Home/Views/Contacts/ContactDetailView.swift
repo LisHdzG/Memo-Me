@@ -66,6 +66,7 @@ struct ContactDetailView: View {
     @State private var searchText: String = ""
     @State private var selectedVibeFilter: String?
     @State private var showFiltersBar: Bool = false
+    @State private var isSpaceInfoExpanded: Bool = true
     @ObservedObject private var spaceSelectionService = SpaceSelectionService.shared
     @EnvironmentObject var authManager: AuthenticationManager
     
@@ -132,11 +133,7 @@ struct ContactDetailView: View {
             }
             
             if spaceSelectionService.selectedSpace != nil {
-                VStack {
-                    Spacer()
-                    leaveSpaceButton
-                        .padding(.bottom, 30)
-                }
+                VStack { Spacer() }
             }
         }
         .animation(.easeInOut(duration: 0.3), value: spaceSelectionService.selectedSpace?.spaceId)
@@ -144,11 +141,15 @@ struct ContactDetailView: View {
     
     private var headerSection: some View {
         VStack(spacing: 12) {
-            HStack {
+            HStack(spacing: 10) {
                 if spaceSelectionService.selectedSpace != nil {
-                    Text(currentSpace?.name ?? "Contacts")
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
-                        .foregroundColor(Color("DeepSpace"))
+                    HStack(spacing: 10) {
+                        Text(currentSpace?.name ?? "Contacts")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .foregroundColor(Color("DeepSpace"))
+                        
+                        layoutToggleButton
+                    }
                 }
                 
                 Spacer()
@@ -164,10 +165,7 @@ struct ContactDetailView: View {
                     spaceSummary
                     
                     if !viewModel.contacts.isEmpty {
-                        VStack(spacing: 10) {
-                            filterBar
-                            layoutSelector
-                        }
+                        filterBar
                     }
                 }
                 .padding(.horizontal, 20)
@@ -176,6 +174,7 @@ struct ContactDetailView: View {
         .padding(.top, 20)
         .padding(.bottom, 16)
         .background(Color(.ghostWhite))
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: layoutMode)
     }
     
     private var changeSpaceButton: some View {
@@ -368,14 +367,17 @@ struct ContactDetailView: View {
             Group {
                 switch layoutMode {
                 case .sphere:
-                    ContactSphereView(
-                        contacts: displayedContacts,
-                        rotationSpeed: $rotationSpeed,
-                        isAutoRotating: $isAutoRotating,
-                        onContactTapped: { contact in
-                            handleContactSelection(contact)
-                        }
-                    )
+            ContactSphereView(
+                contacts: displayedContacts,
+                rotationSpeed: $rotationSpeed,
+                isAutoRotating: $isAutoRotating,
+                onContactTapped: { contact in
+                    handleContactSelection(contact)
+                },
+                memoProvider: { contact in
+                    isMemo(contact)
+                }
+            )
                 case .list:
                     ContactListView(
                         contacts: displayedContacts,
@@ -392,6 +394,13 @@ struct ContactDetailView: View {
                     .padding(.top, 6)
                 }
             }
+            .rotation3DEffect(
+                .degrees(layoutMode == .sphere ? 0 : 180),
+                axis: (x: 0, y: 1, z: 0),
+                perspective: 0.7
+            )
+            .scaleEffect(x: layoutMode == .list ? 1 : 1, y: 1, anchor: .center)
+            .animation(.spring(response: 0.55, dampingFraction: 0.9), value: layoutMode)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .transition(.opacity.combined(with: .scale(scale: 0.95)))
@@ -427,7 +436,44 @@ struct ContactDetailView: View {
     }
     
     private var layoutSelector: some View {
-        LayoutCapsuleToggle(selection: $layoutMode)
+        layoutToggleButton
+    }
+    
+    private var layoutToggleButton: some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                toggleLayout()
+            }
+        }) {
+            HStack(spacing: 10) {
+                Image(systemName: layoutMode.iconName)
+                    .font(.system(size: 12, weight: .semibold))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("View mode")
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .foregroundColor(.primaryDark.opacity(0.5))
+                    Text(layoutMode.title)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color("DeepSpace"))
+                }
+                Spacer()
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color("DeepSpace").opacity(0.75))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.white.opacity(0.7))
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .stroke(Color("DeepSpace").opacity(0.12), lineWidth: 1)
+            )
+            .shadow(color: Color("DeepSpace").opacity(0.04), radius: 6, x: 0, y: 3)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
     
     private var filterBar: some View {
@@ -514,56 +560,110 @@ struct ContactDetailView: View {
         let isOfficial = currentSpace?.isOfficial ?? false
         let contactCount = viewModel.contacts.count
         
-        return HStack(spacing: 12) {
-            SpaceBannerView(imageUrl: bannerUrl)
-            
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
-                    Text(currentSpace?.name ?? "Contacts")
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color("DeepSpace"))
-                        .lineLimit(1)
-                    
-                    if isOfficial {
-                        Label("Official", systemImage: "checkmark.seal.fill")
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(
-                                Capsule()
-                                    .fill(Color("DeepSpace").opacity(0.14))
-                            )
-                            .foregroundColor(Color("DeepSpace"))
-                    }
+        return VStack(spacing: 8) {
+            Button(action: {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    isSpaceInfoExpanded.toggle()
                 }
-                
-                Text(description.isEmpty ? "No description yet" : description)
-                    .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundColor(.primaryDark.opacity(0.7))
-                    .lineLimit(2)
-                
-                HStack(spacing: 6) {
-                    Image(systemName: "person.3.fill")
-                        .font(.system(size: 12, weight: .semibold))
+            }) {
+                HStack(spacing: 8) {
+                    SpaceBannerView(imageUrl: bannerUrl)
+                        .frame(width: 54, height: 54)
+                    
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 8) {
+                            if isOfficial {
+                                Label("Official", systemImage: "checkmark.seal.fill")
+                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color("DeepSpace").opacity(0.16))
+                                    )
+                                    .foregroundColor(Color("DeepSpace"))
+                            }
+                        }
+                        
+                        if let types = currentSpace?.types, !types.isEmpty, let first = types.first {
+                            Text(first)
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundColor(Color("DeepSpace"))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule()
+                                        .fill(Color("DeepSpace").opacity(0.12))
+                                )
+                        }
+                        
+                        HStack(spacing: 6) {
+                            Image(systemName: "person.3.fill")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.primaryDark.opacity(0.6))
+                            Text("\(contactCount) contacts")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundColor(.primaryDark.opacity(0.7))
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: isSpaceInfoExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.primaryDark.opacity(0.6))
-                    Text("\(contactCount) contacts")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                }
+                .padding(.vertical, 4)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .contentShape(Rectangle())
+            
+            if isSpaceInfoExpanded {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(description.isEmpty ? "No description yet" : description)
+                        .font(.system(size: 13, weight: .regular, design: .rounded))
+                        .foregroundColor(.primaryDark.opacity(0.7))
+                        .lineLimit(3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    
+                    if let code = currentSpace?.code, !code.isEmpty {
+                        Button(action: { showQRCode = true }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "qrcode")
+                                    .font(.system(size: 14, weight: .semibold))
+                                Text("Share QR")
+                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(Color("DeepSpace"))
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .frame(maxWidth: .infinity)
+                    }
+                    
+                    leaveSpaceButton
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.system(size: 13, weight: .regular, design: .rounded))
                         .foregroundColor(.primaryDark.opacity(0.7))
                 }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
-            
-            Spacer()
         }
         .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.ultraThinMaterial)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.white.opacity(0.35), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color("DeepSpace").opacity(0.08), lineWidth: 1)
         )
-        .shadow(color: Color("DeepSpace").opacity(0.05), radius: 8, x: 0, y: 4)
+        .shadow(color: Color("DeepSpace").opacity(0.06), radius: 10, x: 0, y: 6)
     }
     
     private var displayedContacts: [Contact] {
@@ -607,6 +707,10 @@ struct ContactDetailView: View {
     private func clearFilters() {
         searchText = ""
         selectedVibeFilter = nil
+    }
+    
+    private func toggleLayout() {
+        layoutMode = layoutMode == .sphere ? .list : .sphere
     }
 }
 
@@ -660,75 +764,7 @@ private struct ContactListView: View {
     }
 }
 
-private struct LayoutCapsuleToggle: View {
-    @Binding var selection: ContactLayoutMode
-    
-    var body: some View {
-        HStack(spacing: 0) {
-            toggleButton(for: .sphere)
-            toggleButton(for: .list)
-        }
-        .padding(6)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(.ultraThinMaterial)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.35), lineWidth: 1)
-        )
-        .shadow(color: Color("DeepSpace").opacity(0.06), radius: 10, x: 0, y: 6)
-        .animation(.spring(response: 0.25, dampingFraction: 0.85), value: selection)
-    }
-    
-    private func toggleButton(for mode: ContactLayoutMode) -> some View {
-        let isSelected = selection == mode
-        
-        return Button(action: {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                selection = mode
-            }
-        }) {
-            HStack(spacing: 6) {
-                Image(systemName: mode.iconName)
-                    .font(.system(size: 14, weight: .semibold))
-                Text(mode.title)
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-            }
-            .foregroundColor(isSelected ? .white : Color("DeepSpace"))
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(
-                ZStack {
-                    if isSelected {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color("DeepSpace"),
-                                        Color("DeepSpace").opacity(0.85)
-                                    ]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .matchedGeometryEffect(id: "layoutSelection", in: NamespaceHolder.shared.namespace)
-                    } else {
-                        Color.clear
-                    }
-                }
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
-private final class NamespaceHolder {
-    static let shared = NamespaceHolder()
-    @Namespace var namespace
-    private init() {}
-}
+// Layout toggle is now handled with a single button in the header.
 
 private struct ContactListRow: View {
     let contact: Contact

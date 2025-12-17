@@ -15,6 +15,7 @@ struct ContactSphereView: View {
     @Binding var rotationSpeed: Double
     @Binding var isAutoRotating: Bool
     var onContactTapped: ((Contact) -> Void)?
+    var memoProvider: ((Contact) -> Bool)?
     
     private let glowPalette: [Color] = [
         Color(red: 0.61, green: 0.80, blue: 1.0),
@@ -52,11 +53,13 @@ struct ContactSphereView: View {
                                 let angle = baseRotation * config.speed + config.phase
                                 let x = cos(angle) * config.radius
                                 let y = sin(angle) * config.radius * 0.62 + config.verticalOffset
+                                let isMemo = memoProvider?(contact) ?? false
                                 
                                 ContactBubble(
                                     contact: contact,
                                     size: config.size,
                                     glow: config.glow,
+                                    isMemo: isMemo,
                                     onTap: { onContactTapped?(contact) }
                                 )
                                 .position(x: geo.size.width / 2 + x, y: geo.size.height / 2 + y)
@@ -103,6 +106,7 @@ private struct ContactBubble: View {
     let contact: Contact
     let size: CGFloat
     let glow: Color
+    let isMemo: Bool
     var onTap: (() -> Void)?
     
     var body: some View {
@@ -131,6 +135,14 @@ private struct ContactBubble: View {
                         Circle()
                             .strokeBorder(Color.white.opacity(0.5), lineWidth: 1.2)
                     )
+                    .overlay(alignment: .topTrailing) {
+                        if isMemo {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.yellow)
+                                .padding(6)
+                        }
+                    }
             }
             
             Text(firstName(from: contact.name))
