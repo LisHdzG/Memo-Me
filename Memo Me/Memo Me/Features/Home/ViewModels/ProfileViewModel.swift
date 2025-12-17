@@ -127,7 +127,12 @@ class ProfileViewModel: ObservableObject {
         ]),
         InterestCategory(name: "Music", interests: [
             "Classical Music", "Country Music", "Electronic Music", "Hip-Hop",
-            "Indie Music", "Jazz", "K-Pop", "Pop Music", "Rock Music"
+            "Indie Music", "Jazz", "K-Pop", "Pop Music", "Rock Music",
+            "Live Music", "Songwriting", "Playing Guitar"
+        ]),
+        InterestCategory(name: "Pets & Animals", interests: [
+            "Dogs", "Cats", "Pet Training", "Animal Rescue", "Exotic Pets",
+            "Bird Watching", "Aquarium Keeping"
         ]),
         InterestCategory(name: "Nature & Outdoor", interests: [
             "Astronomy", "Bird Watching", "Camping", "Hiking",
@@ -148,7 +153,8 @@ class ProfileViewModel: ObservableObject {
         ]),
         InterestCategory(name: "Travel", interests: [
             "Adventure Travel", "Backpacking", "Beach Travel", "City Breaks",
-            "Cultural Tourism", "Ecotourism", "Food Tourism", "Solo Travel"
+            "Cultural Tourism", "Ecotourism", "Food Tourism", "Solo Travel",
+            "Road Trips", "Digital Nomad Life"
         ])
     ]
     
@@ -251,30 +257,39 @@ class ProfileViewModel: ObservableObject {
     private func loadPhoto(from item: PhotosPickerItem) async {
         isLoading = true
         errorMessage = nil
+        LoaderPresenter.shared.show()
+        
+        defer {
+            LoaderPresenter.shared.hide()
+            isLoading = false
+        }
         
         do {
             if let data = try await item.loadTransferable(type: Data.self) {
                 if let image = UIImage(data: data) {
-                    await MainActor.run {
-                        self.profileImage = image
-                        self.isLoading = false
-                    }
+                    profileImage = image
                 } else {
-                    await MainActor.run {
-                        self.errorMessage = "Could not load image"
-                        self.isLoading = false
+                    errorMessage = "Could not load image"
+                    ErrorPresenter.shared.showServiceError { [weak self] in
+                        Task { @MainActor in
+                            await self?.loadPhoto(from: item)
+                        }
                     }
                 }
             } else {
-                await MainActor.run {
-                    self.errorMessage = "Error processing image"
-                    self.isLoading = false
+                errorMessage = "Error processing image"
+                ErrorPresenter.shared.showServiceError { [weak self] in
+                    Task { @MainActor in
+                        await self?.loadPhoto(from: item)
+                    }
                 }
             }
         } catch {
-            await MainActor.run {
-                self.errorMessage = "Error: \(error.localizedDescription)"
-                self.isLoading = false
+            errorMessage = "Error: \(error.localizedDescription)"
+            ErrorPresenter.shared.showServiceError { [weak self] in
+                Task { @MainActor in
+                    await self?.loadPhoto(from: item)
+                }
             }
         }
     }
@@ -356,6 +371,11 @@ class ProfileViewModel: ObservableObject {
         }
         
         isLoading = true
+        LoaderPresenter.shared.show()
+        defer {
+            LoaderPresenter.shared.hide()
+            isLoading = false
+        }
         errorMessage = nil
         successMessage = nil
         
@@ -417,7 +437,6 @@ class ProfileViewModel: ObservableObject {
             originalLinkedinUsername = trimmedLinkedinUrl.isEmpty ? "" : (SocialMediaService.shared.extractLinkedInUsername(from: trimmedLinkedinUrl) ?? "")
             selectedPhotoItem = nil
             
-            isLoading = false
             successMessage = "Profile updated successfully"
             
             Task {
@@ -429,8 +448,12 @@ class ProfileViewModel: ObservableObject {
             
             return true
         } catch {
-            isLoading = false
             errorMessage = "Error updating profile: \(error.localizedDescription)"
+            ErrorPresenter.shared.showServiceError { [weak self] in
+                Task { @MainActor in
+                    _ = await self?.saveProfile()
+                }
+            }
             return false
         }
     }
@@ -443,6 +466,11 @@ class ProfileViewModel: ObservableObject {
         }
         
         isLoading = true
+        LoaderPresenter.shared.show()
+        defer {
+            LoaderPresenter.shared.hide()
+            isLoading = false
+        }
         errorMessage = nil
         
         do {
@@ -450,11 +478,14 @@ class ProfileViewModel: ObservableObject {
             
             authenticationManager?.signOut(clearLocalData: true)
             
-            isLoading = false
             return true
         } catch {
-            isLoading = false
             errorMessage = "Error deleting account: \(error.localizedDescription)"
+            ErrorPresenter.shared.showServiceError { [weak self] in
+                Task { @MainActor in
+                    _ = await self?.deleteAccount()
+                }
+            }
             return false
         }
     }
