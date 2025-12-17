@@ -199,6 +199,12 @@ struct ContactDetailView: View {
                     contact: contact,
                     spaceId: space?.spaceId ?? spaceSelectionService.selectedSpace?.spaceId
                 )
+                .onDisappear {
+                    // Asegura limpiar la selección al salir del detalle
+                    selectedContact = nil
+                    selectedUser = nil
+                    isLoadingUser = false
+                }
             }
             .onChange(of: selectedContact) { oldValue, newValue in
                 if oldValue != nil && newValue == nil {
@@ -206,6 +212,14 @@ struct ContactDetailView: View {
                         selectedUser = nil
                         isLoadingUser = false
                     }
+                }
+            }
+            .onChange(of: viewModel.contacts) { newContacts in
+                // Si el contacto seleccionado ya no existe, reseteamos para evitar navegaciones fantasma
+                if let current = selectedContact, !newContacts.contains(current) {
+                    selectedContact = nil
+                    selectedUser = nil
+                    isLoadingUser = false
                 }
             }
         } else {

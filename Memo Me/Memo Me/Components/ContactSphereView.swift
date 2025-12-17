@@ -53,12 +53,13 @@ struct ContactSphereView: View {
                                 let x = cos(angle) * config.radius
                                 let y = sin(angle) * config.radius * 0.62 + config.verticalOffset
                                 
-                                ContactBubble(contact: contact, size: config.size, glow: config.glow)
-                                    .position(x: geo.size.width / 2 + x, y: geo.size.height / 2 + y)
-                                    .contentShape(Circle())
-                                    .onTapGesture {
-                                        onContactTapped?(contact)
-                                    }
+                                ContactBubble(
+                                    contact: contact,
+                                    size: config.size,
+                                    glow: config.glow,
+                                    onTap: { onContactTapped?(contact) }
+                                )
+                                .position(x: geo.size.width / 2 + x, y: geo.size.height / 2 + y)
                             }
                         }
                     )
@@ -102,6 +103,7 @@ private struct ContactBubble: View {
     let contact: Contact
     let size: CGFloat
     let glow: Color
+    var onTap: (() -> Void)?
     
     var body: some View {
         let accent = Color(red: 0.63, green: 0.46, blue: 1.0)
@@ -110,6 +112,10 @@ private struct ContactBubble: View {
             ZStack {
                 ContactAvatar(contact: contact)
                     .frame(width: size, height: size)
+                    .contentShape(Circle())
+                    .onTapGesture {
+                        onTap?()
+                    }
                     .overlay(
                         Circle()
                             .stroke(Color.white.opacity(0.85), lineWidth: 2)
@@ -141,6 +147,7 @@ private struct ContactBubble: View {
                         )
                 )
                 .shadow(color: Color.black.opacity(0.16), radius: 3, x: 0, y: 2)
+                .allowsHitTesting(false) // Solo la foto es interactiva
         }
     }
     
