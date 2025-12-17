@@ -167,7 +167,13 @@ class RegistrationViewModel: ObservableObject {
         }
         
         isLoading = true
+        LoaderPresenter.shared.show()
         errorMessage = nil
+        
+        defer {
+            isLoading = false
+            LoaderPresenter.shared.hide()
+        }
         
         do {
             var photoUrl: String?
@@ -208,10 +214,8 @@ class RegistrationViewModel: ObservableObject {
             
             authenticationManager?.completeRegistration(user: savedUser)
             
-            isLoading = false
             return true
         } catch {
-            isLoading = false
             errorMessage = "Error saving registration: \(error.localizedDescription)"
             
             if isNetworkError(error) {

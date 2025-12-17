@@ -389,14 +389,8 @@ struct RegistrationView: View {
             }
         }) {
             HStack {
-                if isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        .scaleEffect(0.9)
-                } else {
-                    Text("Continue")
-                        .font(.system(size: 18, weight: .semibold))
-                }
+                Text(isLoading ? "Registrando..." : "Continue")
+                    .font(.system(size: 18, weight: .semibold))
             }
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
