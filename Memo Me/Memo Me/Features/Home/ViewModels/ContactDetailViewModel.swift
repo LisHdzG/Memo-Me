@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import CryptoKit
 
 @MainActor
 class ContactDetailViewModel: ObservableObject {
@@ -112,15 +113,9 @@ class ContactDetailViewModel: ObservableObject {
             if let userId = contact.userId,
                let updatedUser = updatedUsers.first(where: { $0.id == userId }) {
                 
-                let imageIndex = abs(userId.hashValue) % 37 + 1
-                let imageNumber = String(format: "%02d", imageIndex)
-                
-                let newContact = Contact(
-                    id: contact.id,
-                    name: updatedUser.name,
-                    imageName: updatedUser.photoUrl == nil ? "dummy_profile_\(imageNumber)" : nil,
-                    imageUrl: updatedUser.photoUrl,
-                    userId: userId
+                let newContact = buildContact(
+                    from: updatedUser,
+                    forcedId: contact.id
                 )
                 
                 if contacts[index] != newContact {
@@ -181,18 +176,9 @@ class ContactDetailViewModel: ObservableObject {
                 return userId != currentUserId
             }
             
-            let newContacts = filteredUsers.map { user in
-                let imageIndex = abs(user.id?.hashValue ?? 0) % 37 + 1
-                let imageNumber = String(format: "%02d", imageIndex)
-                
-                return Contact(
-                    id: UUID(uuidString: user.id ?? UUID().uuidString) ?? UUID(),
-                    name: user.name,
-                    imageName: user.photoUrl == nil ? "dummy_profile_\(imageNumber)" : nil,
-                    imageUrl: user.photoUrl,
-                    userId: user.id
-                )
-            }.sorted { lhs, rhs in
+            let newContacts = filteredUsers
+                .map { buildContact(from: $0) }
+                .sorted { lhs, rhs in
                 let lhsId = lhs.userId ?? lhs.id.uuidString
                 let rhsId = rhs.userId ?? rhs.id.uuidString
                 return lhsId < rhsId
@@ -231,5 +217,47 @@ class ContactDetailViewModel: ObservableObject {
     func getUser(for contact: Contact) -> User? {
         guard let userId = contact.userId else { return nil }
         return usersMap[userId]
+    }
+    
+    // MARK: - Helpers
+    
+    private func buildContact(from user: User, forcedId: UUID? = nil) -> Contact {
+        let userIdentifier = user.id ?? user.name
+        let resolvedId = forcedId ?? contactId(for: userIdentifier)
+        
+        let imageIndex = stableIndex(from: userIdentifier, modulo: 37) + 1
+        let imageNumber = String(format: "%02d", imageIndex)
+        
+        return Contact(
+            id: resolvedId,
+            name: user.name,
+            imageName: user.photoUrl == nil ? "dummy_profile_\(imageNumber)" : nil,
+            imageUrl: user.photoUrl,
+            userId: user.id
+        )
+    }
+    
+    private func contactId(for identifier: String) -> UUID {
+        if let uuid = UUID(uuidString: identifier) {
+            return uuid
+        }
+        
+        let digest = SHA256.hash(data: Data(identifier.utf8))
+        var uuidBytes: uuid_t = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        
+        withUnsafeMutableBytes(of: &uuidBytes) { buffer in
+            let bytes = Array(digest.prefix(16))
+            buffer.copyBytes(from: bytes)
+        }
+        
+        return UUID(uuid: uuidBytes)
+    }
+    
+    private func stableIndex(from identifier: String, modulo: Int) -> Int {
+        let digest = SHA256.hash(data: Data(identifier.utf8))
+        let value = digest.prefix(4).reduce(UInt32(0)) { partial, byte in
+            (partial << 8) | UInt32(byte)
+        }
+        return Int(value % UInt32(modulo))
     }
 }

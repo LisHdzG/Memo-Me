@@ -15,7 +15,6 @@ struct ContactDetailView: View {
     @State private var isAutoRotating: Bool = true
     @State private var selectedContact: Contact?
     @State private var selectedUser: User?
-    @State private var showContactDetail: Bool = false
     @State private var isLoadingUser: Bool = false
     @State private var showQRCode: Bool = false
     @State private var showLeaveSpaceAlert: Bool = false
@@ -166,7 +165,6 @@ struct ContactDetailView: View {
                     rotationSpeed: $rotationSpeed,
                     isAutoRotating: $isAutoRotating,
                     onContactTapped: { contact in
-                        selectedContact = contact
                         selectedUser = viewModel.getUser(for: contact)
                         
                         if selectedUser == nil, let userId = contact.userId {
@@ -178,38 +176,33 @@ struct ContactDetailView: View {
                                     await MainActor.run {
                                         selectedUser = loadedUser
                                         isLoadingUser = false
-                                        showContactDetail = true
+                                        selectedContact = contact
                                     }
                                 } catch {
                                     await MainActor.run {
                                         isLoadingUser = false
-                                        showContactDetail = true
+                                        selectedContact = contact
                                     }
                                 }
                             }
                         } else {
-                            showContactDetail = true
+                            selectedContact = contact
                         }
                     }
                 )
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .transition(.opacity.combined(with: .scale(scale: 0.95)))
-            .navigationDestination(isPresented: $showContactDetail) {
-                if let contact = selectedContact {
-                    ContactDetailPageView(
-                        user: selectedUser,
-                        contact: contact,
-                        spaceId: space?.spaceId ?? spaceSelectionService.selectedSpace?.spaceId
-                    )
-                } else {
-                    EmptyView()
-                }
+            .navigationDestination(item: $selectedContact) { contact in
+                ContactDetailPageView(
+                    user: selectedUser,
+                    contact: contact,
+                    spaceId: space?.spaceId ?? spaceSelectionService.selectedSpace?.spaceId
+                )
             }
-            .onChange(of: showContactDetail) { oldValue, newValue in
-                if oldValue == true && newValue == false {
+            .onChange(of: selectedContact) { oldValue, newValue in
+                if oldValue != nil && newValue == nil {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        selectedContact = nil
                         selectedUser = nil
                         isLoadingUser = false
                     }

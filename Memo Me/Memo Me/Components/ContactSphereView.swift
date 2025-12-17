@@ -31,18 +31,37 @@ struct ContactSphereView: View {
                 
                 TimelineView(.animation) { timelineContext in
                     let time = timelineContext.date.timeIntervalSinceReferenceDate
-                    let baseRotation = isAutoRotating ? time * 0.12 * max(rotationSpeed, 0.25) : 0
-                    
-                    ForEach(Array(contacts.enumerated()), id: \.element.id) { index, contact in
-                        let config = orbitConfig(for: contact, index: index, in: geo.size)
-                        let angle = baseRotation * config.speed + config.phase
-                        let x = cos(angle) * config.radius
-                        let y = sin(angle) * config.radius * 0.62 + config.verticalOffset
-                        
-                        ContactBubble(contact: contact, size: config.size, glow: config.glow)
-                            .position(x: geo.size.width / 2 + x, y: geo.size.height / 2 + y)
-                            .allowsHitTesting(false)
+                    let delta: TimeInterval
+                    if let last = RotationAccumulator.lastTime {
+                        delta = max(0, time - last)
+                    } else {
+                        delta = 0
                     }
+                    RotationAccumulator.lastTime = time
+                    
+                    if isAutoRotating {
+                        RotationAccumulator.accumulatedTime += delta
+                    }
+                    
+                    let baseRotation = RotationAccumulator.accumulatedTime * 0.07 * max(rotationSpeed, 0.25)
+                    
+                    return AnyView(
+                        ZStack {
+                            ForEach(Array(contacts.enumerated()), id: \.element.id) { index, contact in
+                                let config = orbitConfig(for: contact, index: index, in: geo.size)
+                                let angle = baseRotation * config.speed + config.phase
+                                let x = cos(angle) * config.radius
+                                let y = sin(angle) * config.radius * 0.62 + config.verticalOffset
+                                
+                                ContactBubble(contact: contact, size: config.size, glow: config.glow)
+                                    .position(x: geo.size.width / 2 + x, y: geo.size.height / 2 + y)
+                                    .contentShape(Circle())
+                                    .onTapGesture {
+                                        onContactTapped?(contact)
+                                    }
+                            }
+                        }
+                    )
                 }
             }
         }
@@ -53,11 +72,11 @@ struct ContactSphereView: View {
     private func orbitConfig(for contact: Contact, index: Int, in size: CGSize) -> OrbitConfig {
         let seed = abs(contact.id.hashValue &+ index * 9973)
         let baseRadius = min(size.width, size.height) * 0.32
-        let radiusJitter = CGFloat((seed % 75) - 35)
-        let radius = max(baseRadius + radiusJitter, baseRadius * 0.65)
+        let radiusJitter = CGFloat((seed % 45) - 22)
+        let radius = max(baseRadius + radiusJitter, baseRadius * 0.7)
         
-        let verticalSpread = min(size.height * 0.18, 110)
-        let verticalOffset = CGFloat((seed % 200) - 100) / 100 * verticalSpread
+        let verticalSpread = min(size.height * 0.14, 85)
+        let verticalOffset = CGFloat((seed % 160) - 80) / 80 * verticalSpread
         
         let speed = 0.6 + Double(seed % 60) / 120.0
         let phase = Double(seed % 360) * (.pi / 180)
@@ -89,55 +108,39 @@ private struct ContactBubble: View {
         
         VStack(spacing: 6) {
             ZStack {
-                Circle()
-                    .fill(glow.opacity(0.55))
-                    .frame(width: size * 0.82, height: size * 0.82)
-                    .blur(radius: 18)
-                
-                Circle()
-                    .strokeBorder(glow.opacity(0.45), lineWidth: 2)
-                    .frame(width: size + 10, height: size + 10)
-                    .blur(radius: 1)
-                
                 ContactAvatar(contact: contact)
                     .frame(width: size, height: size)
                     .overlay(
                         Circle()
-                            .stroke(Color.white.opacity(0.9), lineWidth: 2)
+                            .stroke(Color.white.opacity(0.85), lineWidth: 2)
                     )
                     .overlay(
                         Circle()
-                            .stroke(style: StrokeStyle(lineWidth: 2.2, lineCap: .round, dash: [6, 6]))
-                            .foregroundColor(accent.opacity(0.85))
+                            .stroke(style: StrokeStyle(lineWidth: 2.2, lineCap: .round, dash: [5, 5]))
+                            .foregroundColor(Color.white.opacity(0.65))
                     )
-                    .shadow(color: accent.opacity(0.55), radius: 10, x: 0, y: 6)
-                    .shadow(color: glow.opacity(0.35), radius: 6, x: 0, y: 3)
+                    .shadow(color: accent.opacity(0.32), radius: 6, x: 0, y: 3)
+                    .shadow(color: Color.black.opacity(0.18), radius: 4, x: 0, y: 2)
                     .overlay(
                         Circle()
-                            .strokeBorder(accent.opacity(0.35), lineWidth: 1.2)
+                            .strokeBorder(Color.white.opacity(0.5), lineWidth: 1.2)
                     )
             }
             
             Text(firstName(from: contact.name))
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundColor(Color.white.opacity(0.9))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
                 .background(
                     Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [accent.opacity(0.9), glow.opacity(0.85)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                        .fill(Color("SplashTextColor"))
                         .overlay(
                             Capsule()
-                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
                         )
                 )
-                .shadow(color: accent.opacity(0.45), radius: 8, x: 0, y: 3)
+                .shadow(color: Color.black.opacity(0.16), radius: 3, x: 0, y: 2)
         }
     }
     
@@ -240,4 +243,11 @@ private extension CGFloat {
         let mod = self.truncatingRemainder(dividingBy: dimension)
         return mod < 0 ? mod + dimension : mod
     }
+}
+
+// MARK: - Rotation State
+
+private enum RotationAccumulator {
+    static var accumulatedTime: TimeInterval = 0
+    static var lastTime: TimeInterval?
 }
