@@ -1,3 +1,46 @@
+private struct SpaceBannerView: View {
+    let imageUrl: String
+    
+    var body: some View {
+        if let url = URL(string: imageUrl), !imageUrl.isEmpty {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                default:
+                    placeholder
+                }
+            }
+            .frame(width: 64, height: 64)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        } else {
+            placeholder
+                .frame(width: 64, height: 64)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+    }
+    
+    private var placeholder: some View {
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .fill(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color("DeepSpace").opacity(0.18),
+                        Color("DeepSpace").opacity(0.08)
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                Image(systemName: "photo.fill.on.rectangle.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(Color.white.opacity(0.8))
+            )
+    }
+}
 //
 //  ContactDetailView.swift
 //  Memo Me
@@ -19,6 +62,10 @@ struct ContactDetailView: View {
     @State private var showQRCode: Bool = false
     @State private var showLeaveSpaceAlert: Bool = false
     @State private var isLeavingSpace: Bool = false
+    @State private var layoutMode: ContactLayoutMode = .sphere
+    @State private var searchText: String = ""
+    @State private var selectedVibeFilter: String?
+    @State private var showFiltersBar: Bool = false
     @ObservedObject private var spaceSelectionService = SpaceSelectionService.shared
     @EnvironmentObject var authManager: AuthenticationManager
     
@@ -99,7 +146,7 @@ struct ContactDetailView: View {
         VStack(spacing: 12) {
             HStack {
                 if spaceSelectionService.selectedSpace != nil {
-                    Text(space?.name ?? spaceSelectionService.selectedSpace?.name ?? "My Contacts")
+                    Text(currentSpace?.name ?? "Contacts")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
                         .foregroundColor(Color("DeepSpace"))
                 }
@@ -111,6 +158,20 @@ struct ContactDetailView: View {
                 }
             }
             .padding(.horizontal, 20)
+            
+            if spaceSelectionService.selectedSpace != nil {
+                VStack(spacing: 12) {
+                    spaceSummary
+                    
+                    if !viewModel.contacts.isEmpty {
+                        VStack(spacing: 10) {
+                            filterBar
+                            layoutSelector
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
         }
         .padding(.top, 20)
         .padding(.bottom, 16)
@@ -156,72 +217,7 @@ struct ContactDetailView: View {
             noSpaceSelectedView
                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
         } else if !viewModel.contacts.isEmpty {
-            ZStack {
-                Color(.ghostWhite)
-                    .ignoresSafeArea()
-                
-                ContactSphereView(
-                    contacts: viewModel.contacts,
-                    rotationSpeed: $rotationSpeed,
-                    isAutoRotating: $isAutoRotating,
-                    onContactTapped: { contact in
-                        selectedUser = viewModel.getUser(for: contact)
-                        
-                        if selectedUser == nil, let userId = contact.userId {
-                            isLoadingUser = true
-                            Task {
-                                do {
-                                    let userService = UserService()
-                                    let loadedUser = try await userService.getUser(userId: userId)
-                                    await MainActor.run {
-                                        selectedUser = loadedUser
-                                        isLoadingUser = false
-                                        selectedContact = contact
-                                    }
-                                } catch {
-                                    await MainActor.run {
-                                        isLoadingUser = false
-                                        selectedContact = contact
-                                    }
-                                }
-                            }
-                        } else {
-                            selectedContact = contact
-                        }
-                    }
-                )
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .transition(.opacity.combined(with: .scale(scale: 0.95)))
-            .navigationDestination(item: $selectedContact) { contact in
-                ContactDetailPageView(
-                    user: selectedUser,
-                    contact: contact,
-                    spaceId: space?.spaceId ?? spaceSelectionService.selectedSpace?.spaceId
-                )
-                .onDisappear {
-                    // Asegura limpiar la selección al salir del detalle
-                    selectedContact = nil
-                    selectedUser = nil
-                    isLoadingUser = false
-                }
-            }
-            .onChange(of: selectedContact) { oldValue, newValue in
-                if oldValue != nil && newValue == nil {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        selectedUser = nil
-                        isLoadingUser = false
-                    }
-                }
-            }
-            .onChange(of: viewModel.contacts) { newContacts in
-                // Si el contacto seleccionado ya no existe, reseteamos para evitar navegaciones fantasma
-                if let current = selectedContact, !newContacts.contains(current) {
-                    selectedContact = nil
-                    selectedUser = nil
-                    isLoadingUser = false
-                }
-            }
+            contactsPresentation
         } else {
             emptyContactsView
                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
@@ -363,4 +359,652 @@ struct ContactDetailView: View {
             viewModel.errorMessage = "Error leaving space: \(error.localizedDescription)"
         }
     }
+    
+    private var contactsPresentation: some View {
+        ZStack {
+            Color(.ghostWhite)
+                .ignoresSafeArea()
+            
+            Group {
+                switch layoutMode {
+                case .sphere:
+                    ContactSphereView(
+                        contacts: displayedContacts,
+                        rotationSpeed: $rotationSpeed,
+                        isAutoRotating: $isAutoRotating,
+                        onContactTapped: { contact in
+                            handleContactSelection(contact)
+                        }
+                    )
+                case .list:
+                    ContactListView(
+                        contacts: displayedContacts,
+                        userProvider: { contact in
+                            viewModel.getUser(for: contact)
+                        },
+                        memoProvider: { contact in
+                            isMemo(contact)
+                        },
+                        onSelect: { contact in
+                            handleContactSelection(contact)
+                        }
+                    )
+                    .padding(.top, 6)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+        .navigationDestination(item: $selectedContact) { contact in
+            ContactDetailPageView(
+                user: selectedUser,
+                contact: contact,
+                spaceId: space?.spaceId ?? spaceSelectionService.selectedSpace?.spaceId
+            )
+            .onDisappear {
+                // Asegura limpiar la selección al salir del detalle
+                selectedContact = nil
+                selectedUser = nil
+                isLoadingUser = false
+            }
+        }
+        .onChange(of: selectedContact) { oldValue, newValue in
+            if oldValue != nil && newValue == nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    selectedUser = nil
+                    isLoadingUser = false
+                }
+            }
+        }
+        .onChange(of: viewModel.contacts) { newContacts in
+            // Si el contacto seleccionado ya no existe, reseteamos para evitar navegaciones fantasma
+            if let current = selectedContact, !newContacts.contains(current) {
+                selectedContact = nil
+                selectedUser = nil
+                isLoadingUser = false
+            }
+        }
+    }
+    
+    private var layoutSelector: some View {
+        LayoutCapsuleToggle(selection: $layoutMode)
+    }
+    
+    private var filterBar: some View {
+        VStack(spacing: 10) {
+            ContactsSearchBar(
+                searchText: $searchText,
+                hasActiveFilters: hasActiveFilters,
+                onSearch: {},
+                onClearFilters: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        clearFilters()
+                    }
+                },
+                onToggleFilters: availableVibeFilters.isEmpty ? nil : {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        showFiltersBar.toggle()
+                    }
+                }
+            )
+            
+            if showFiltersBar, !availableVibeFilters.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(availableVibeFilters, id: \.id) { vibe in
+                            FilterChip(
+                                title: "\(vibe.emoji) \(vibe.name)",
+                                isSelected: selectedVibeFilter == vibe.id
+                            ) {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                                    if selectedVibeFilter == vibe.id {
+                                        selectedVibeFilter = nil
+                                    } else {
+                                        selectedVibeFilter = vibe.id
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+    }
+    
+    private func handleContactSelection(_ contact: Contact) {
+        selectedUser = viewModel.getUser(for: contact)
+        
+        if selectedUser == nil, let userId = contact.userId {
+            isLoadingUser = true
+            Task {
+                do {
+                    let userService = UserService()
+                    let loadedUser = try await userService.getUser(userId: userId)
+                    await MainActor.run {
+                        selectedUser = loadedUser
+                        isLoadingUser = false
+                        selectedContact = contact
+                    }
+                } catch {
+                    await MainActor.run {
+                        isLoadingUser = false
+                        selectedContact = contact
+                    }
+                }
+            }
+        } else {
+            selectedContact = contact
+        }
+    }
+    
+    private func isMemo(_ contact: Contact) -> Bool {
+        guard let userId = contact.userId else { return false }
+        return ContactNoteService.shared.isFavorite(contactUserId: userId)
+    }
+    
+    private var currentSpace: Space? {
+        space ?? spaceSelectionService.selectedSpace
+    }
+    
+    private var spaceSummary: some View {
+        let bannerUrl = currentSpace?.bannerUrl ?? ""
+        let description = currentSpace?.description.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let isOfficial = currentSpace?.isOfficial ?? false
+        let contactCount = viewModel.contacts.count
+        
+        return HStack(spacing: 12) {
+            SpaceBannerView(imageUrl: bannerUrl)
+            
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Text(currentSpace?.name ?? "Contacts")
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color("DeepSpace"))
+                        .lineLimit(1)
+                    
+                    if isOfficial {
+                        Label("Official", systemImage: "checkmark.seal.fill")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                Capsule()
+                                    .fill(Color("DeepSpace").opacity(0.14))
+                            )
+                            .foregroundColor(Color("DeepSpace"))
+                    }
+                }
+                
+                Text(description.isEmpty ? "No description yet" : description)
+                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .foregroundColor(.primaryDark.opacity(0.7))
+                    .lineLimit(2)
+                
+                HStack(spacing: 6) {
+                    Image(systemName: "person.3.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.primaryDark.opacity(0.6))
+                    Text("\(contactCount) contacts")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(.primaryDark.opacity(0.7))
+                }
+            }
+            
+            Spacer()
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white.opacity(0.35), lineWidth: 1)
+        )
+        .shadow(color: Color("DeepSpace").opacity(0.05), radius: 8, x: 0, y: 4)
+    }
+    
+    private var displayedContacts: [Contact] {
+        viewModel.contacts.filter { contact in
+            let matchesSearch = searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+            contact.name.localizedCaseInsensitiveContains(searchText)
+            
+            let matchesVibe: Bool
+            if let selected = selectedVibeFilter, let userId = contact.userId {
+                let vibes = ContactVibeService.shared.getVibes(contactUserId: userId)
+                matchesVibe = vibes.contains(selected)
+            } else {
+                matchesVibe = true
+            }
+            
+            return matchesSearch && matchesVibe
+        }
+    }
+    
+    private var availableVibeFilters: [VibeOption] {
+        var set: Set<String> = []
+        var vibes: [VibeOption] = []
+        for contact in viewModel.contacts {
+            if let userId = contact.userId {
+                let ids = ContactVibeService.shared.getVibes(contactUserId: userId)
+                for id in ids {
+                    if set.insert(id).inserted,
+                       let vibe = ContactVibeService.availableVibes.first(where: { $0.id == id }) {
+                        vibes.append(vibe)
+                    }
+                }
+            }
+        }
+        return vibes
+    }
+    
+    private var hasActiveFilters: Bool {
+        !(searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) || selectedVibeFilter != nil
+    }
+    
+    private func clearFilters() {
+        searchText = ""
+        selectedVibeFilter = nil
+    }
 }
+
+private enum ContactLayoutMode: String, CaseIterable, Identifiable {
+    case sphere
+    case list
+    
+    var id: String { rawValue }
+    
+    var title: String {
+        switch self {
+        case .sphere: return "Spheres"
+        case .list: return "List"
+        }
+    }
+    
+    var iconName: String {
+        switch self {
+        case .sphere: return "sparkles"
+        case .list: return "rectangle.grid.1x2.fill"
+        }
+    }
+}
+
+private struct ContactListView: View {
+    let contacts: [Contact]
+    let userProvider: (Contact) -> User?
+    let memoProvider: (Contact) -> Bool
+    let onSelect: (Contact) -> Void
+    
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                ForEach(contacts, id: \.id) { contact in
+                    let user = userProvider(contact)
+                    ContactListRow(
+                        contact: contact,
+                        user: user,
+                        isMemo: memoProvider(contact),
+                        onTap: {
+                            onSelect(contact)
+                        }
+                    )
+                    .padding(.horizontal, 20)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
+            }
+            .padding(.top, 8)
+            .padding(.bottom, 32)
+        }
+    }
+}
+
+private struct LayoutCapsuleToggle: View {
+    @Binding var selection: ContactLayoutMode
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            toggleButton(for: .sphere)
+            toggleButton(for: .list)
+        }
+        .padding(6)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(.ultraThinMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.35), lineWidth: 1)
+        )
+        .shadow(color: Color("DeepSpace").opacity(0.06), radius: 10, x: 0, y: 6)
+        .animation(.spring(response: 0.25, dampingFraction: 0.85), value: selection)
+    }
+    
+    private func toggleButton(for mode: ContactLayoutMode) -> some View {
+        let isSelected = selection == mode
+        
+        return Button(action: {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                selection = mode
+            }
+        }) {
+            HStack(spacing: 6) {
+                Image(systemName: mode.iconName)
+                    .font(.system(size: 14, weight: .semibold))
+                Text(mode.title)
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+            }
+            .foregroundColor(isSelected ? .white : Color("DeepSpace"))
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(
+                ZStack {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color("DeepSpace"),
+                                        Color("DeepSpace").opacity(0.85)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .matchedGeometryEffect(id: "layoutSelection", in: NamespaceHolder.shared.namespace)
+                    } else {
+                        Color.clear
+                    }
+                }
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+private final class NamespaceHolder {
+    static let shared = NamespaceHolder()
+    @Namespace var namespace
+    private init() {}
+}
+
+private struct ContactListRow: View {
+    let contact: Contact
+    let user: User?
+    let isMemo: Bool
+    let onTap: () -> Void
+    
+    private var displayName: String {
+        user?.name ?? contact.name
+    }
+    
+    private var infoText: String {
+        var parts: [String] = []
+        
+        if let country = user?.country, !country.isEmpty {
+            parts.append(country)
+        }
+        
+        if let area = user?.areas?.first, !area.isEmpty {
+            parts.append(area)
+        } else if let interest = user?.interests?.first, !interest.isEmpty {
+            parts.append(interest)
+        }
+        
+        return parts.isEmpty ? "No shared info yet" : parts.joined(separator: " • ")
+    }
+    
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 14) {
+                AsyncImageView(
+                    imageUrl: user?.photoUrl ?? contact.imageUrl,
+                    placeholderText: displayName,
+                    contentMode: .fill,
+                    size: 64
+                )
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(Color("DeepSpace"), style: StrokeStyle(lineWidth: 2.5, dash: [6, 4]))
+                )
+                .shadow(color: Color("DeepSpace").opacity(0.1), radius: 4, x: 0, y: 2)
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Text(displayName)
+                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                            .foregroundColor(Color("DeepSpace"))
+                            .lineLimit(1)
+                        
+                        if isMemo {
+                            Label("Memo", systemImage: "star.fill")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule(style: .continuous)
+                                        .fill(Color("DeepSpace").opacity(0.12))
+                                )
+                                .foregroundColor(Color("DeepSpace"))
+                        }
+                    }
+                    
+                    Text(infoText)
+                        .font(.system(size: 14, weight: .regular, design: .rounded))
+                        .foregroundColor(.primaryDark.opacity(0.65))
+                        .lineLimit(2)
+                    
+                    let instagram = user?.instagramUrl ?? ""
+                    let linkedin = user?.linkedinUrl ?? ""
+                    
+                    if !instagram.isEmpty || !linkedin.isEmpty {
+                        HStack(spacing: 6) {
+                            if !instagram.isEmpty {
+                                SocialPill(icon: "camera.fill", label: "Instagram")
+                            }
+                            if !linkedin.isEmpty {
+                                SocialPill(icon: "link", label: "LinkedIn")
+                            }
+                        }
+                    }
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.primaryDark.opacity(0.35))
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color("DeepSpace").opacity(0.08),
+                                        Color("DeepSpace").opacity(0.03)
+                                    ]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1
+                            )
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.white.opacity(0.55),
+                                Color("DeepSpace").opacity(0.08)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: Color("DeepSpace").opacity(0.05), radius: 12, x: 0, y: 6)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+private struct ContactsSearchBar: View {
+    @Binding var searchText: String
+    var hasActiveFilters: Bool
+    var onSearch: () -> Void
+    var onClearFilters: () -> Void
+    var onToggleFilters: (() -> Void)?
+    @FocusState private var isSearchFocused: Bool
+    
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.primaryDark.opacity(0.5))
+            
+            TextField("Search contacts...", text: $searchText)
+                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .foregroundColor(Color("DeepSpace"))
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .focused($isSearchFocused)
+                .onSubmit {
+                    onSearch()
+                }
+                .onChange(of: searchText) { _, _ in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        onSearch()
+                    }
+                }
+            
+            if !searchText.isEmpty {
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        searchText = ""
+                        onSearch()
+                    }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primaryDark.opacity(0.5))
+                }
+                .transition(.scale.combined(with: .opacity))
+            }
+            
+            if let toggleAction = onToggleFilters {
+                Button(action: {
+                    toggleAction()
+                }) {
+                    ZStack(alignment: .center) {
+                        Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(hasActiveFilters ? Color("DeepSpace") : Color("DeepSpace").opacity(0.6))
+                        
+                        if hasActiveFilters {
+                            Circle()
+                                .fill(Color(.electricRuby))
+                                .frame(width: 8, height: 8)
+                                .offset(x: 7, y: -7)
+                        }
+                    }
+                }
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color("DeepSpace").opacity(0.1),
+                                    Color("DeepSpace").opacity(0.05)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.5
+                        )
+                )
+        )
+        .shadow(color: Color("DeepSpace").opacity(0.05), radius: 8, x: 0, y: 2)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: searchText.isEmpty)
+    }
+}
+
+private struct FilterChip: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundColor(isSelected ? .white : Color("DeepSpace"))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(isSelected ?
+                              LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color("DeepSpace"),
+                                    Color("DeepSpace").opacity(0.8)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                              ) :
+                              LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color("DeepSpace").opacity(0.15),
+                                    Color("DeepSpace").opacity(0.08)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                              )
+                        )
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(isSelected ? Color.clear : Color("DeepSpace").opacity(0.2), lineWidth: 1)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+private struct SocialPill: View {
+    let icon: String
+    let label: String
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+            Text(label)
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            Capsule(style: .continuous)
+                .fill(Color("DeepSpace").opacity(0.08))
+        )
+        .foregroundColor(Color("DeepSpace"))
+    }
+}
+

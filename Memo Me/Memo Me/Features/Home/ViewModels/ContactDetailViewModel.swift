@@ -187,7 +187,7 @@ class ContactDetailViewModel: ObservableObject {
             applyNewContacts(newContacts, shouldCache: shouldCache)
             isLoading = false
         } catch {
-            errorMessage = "Error al cargar contactos: \(error.localizedDescription)"
+            errorMessage = "Error loading contacts: \(error.localizedDescription)"
             if contacts.isEmpty {
                 contacts = []
             }
