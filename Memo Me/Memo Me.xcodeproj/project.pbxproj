@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C30911192EF2F3E400A8E92F /* Icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = C30911182EF2F3E400A8E92F /* Icon.icon */; };
 		C39DF5F92EEDDDEB0019BC60 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = C39DF5F82EEDDDEB0019BC60 /* FirebaseAnalytics */; };
 		C39DF5FB2EEDDDEB0019BC60 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = C39DF5FA2EEDDDEB0019BC60 /* FirebaseAuth */; };
 		C39DF5FD2EEDDDEB0019BC60 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = C39DF5FC2EEDDDEB0019BC60 /* FirebaseCore */; };
@@ -16,12 +17,11 @@
 		C39DF6052EEDDDEB0019BC60 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = C39DF6042EEDDDEB0019BC60 /* FirebaseRemoteConfig */; };
 		C39DF6072EEDDDEB0019BC60 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = C39DF6062EEDDDEB0019BC60 /* FirebaseStorage */; };
 		C39DF6102EEDE0930019BC60 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = C39DF60F2EEDE0930019BC60 /* FirebaseFirestore */; };
-		C3EFF60A2EF05ABE0033DF30 /* Icon.icon in Resources */ = {isa = PBXBuildFile; fileRef = C3EFF6092EF05ABE0033DF30 /* Icon.icon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		C30911182EF2F3E400A8E92F /* Icon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = Icon.icon; sourceTree = "<group>"; };
 		C3E904802EE08FCE00278D2E /* Memo Me.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Memo Me.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		C3EFF6092EF05ABE0033DF30 /* Icon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = Icon.icon; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -57,7 +57,7 @@
 			children = (
 				C3E904822EE08FCE00278D2E /* Memo Me */,
 				C3E904812EE08FCE00278D2E /* Products */,
-				C3EFF6092EF05ABE0033DF30 /* Icon.icon */,
+				C30911182EF2F3E400A8E92F /* Icon.icon */,
 			);
 			sourceTree = "<group>";
 		};
@@ -146,7 +146,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C3EFF60A2EF05ABE0033DF30 /* Icon.icon in Resources */,
+				C30911192EF2F3E400A8E92F /* Icon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

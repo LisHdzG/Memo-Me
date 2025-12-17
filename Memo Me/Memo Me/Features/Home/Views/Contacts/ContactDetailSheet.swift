@@ -109,8 +109,9 @@ struct ContactDetailPageView: View {
 
     private var mainScroll: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 24) {
+            VStack(spacing: 20) {
                 headerSection
+                notePrivacyHint
                 vibeSection
                 noteSection
                 profileInfoSection
@@ -202,6 +203,22 @@ struct ContactDetailPageView: View {
         }
     }
 
+    private var notePrivacyHint: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "lock.shield.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.primaryDark.opacity(0.65))
+            
+            Text("Notes here are only visible to you.")
+                .font(.system(size: 13, weight: .regular, design: .rounded))
+                .foregroundColor(.primaryDark.opacity(0.65))
+                .fixedSize(horizontal: false, vertical: true)
+            
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+    }
+
     private var noteSection: some View {
         Group {
             if let userId = contactUserId {
@@ -243,10 +260,7 @@ struct ContactDetailPageView: View {
                        (user.interests == nil || user.interests?.isEmpty == true) &&
                        (user.instagramUrl == nil || user.instagramUrl?.isEmpty == true) &&
                        (user.linkedinUrl == nil || user.linkedinUrl?.isEmpty == true) {
-                        StoryTellingMessage(
-                            message: "This contact hasn't completed their profile yet",
-                            icon: "info.circle.fill"
-                        )
+                        EmptyView()
                     }
                 }
                 .padding(.horizontal, 20)

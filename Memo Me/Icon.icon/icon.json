@@ -6,6 +6,19 @@
     {
       "layers" : [
         {
+          "glass" : false,
+          "hidden" : false,
+          "image-name" : "Pet Christmas.svg",
+          "name" : "Pet Christmas",
+          "position" : {
+            "scale" : 1.1,
+            "translation-in-points" : [
+              0,
+              506
+            ]
+          }
+        },
+        {
           "blend-mode-specializations" : [
             {
               "value" : "normal"
@@ -17,6 +30,7 @@
           ],
           "fill" : "none",
           "glass" : false,
+          "hidden" : true,
           "image-name" : "Pet Base.svg",
           "name" : "Pet Base",
           "opacity" : 1,
