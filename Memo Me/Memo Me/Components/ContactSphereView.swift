@@ -62,6 +62,7 @@ struct ContactSphereView: View {
             let baseRotation = self.computeBaseRotation(from: timelineContext)
             return self.sphereContent(baseRotation: baseRotation, size: geoSize)
         }
+        .animation(.spring(response: 0.45, dampingFraction: 0.9), value: contacts)
     }
 
     private func rootContent(geoSize: CGSize) -> some View {
@@ -143,36 +144,30 @@ private struct ContactBubble: View {
                             .stroke(style: StrokeStyle(lineWidth: 2.2, lineCap: .round, dash: [5, 5]))
                             .foregroundColor(Color.white.opacity(0.65))
                     )
-                    .shadow(color: accent.opacity(0.32), radius: 6, x: 0, y: 3)
-                    .shadow(color: Color.black.opacity(0.18), radius: 4, x: 0, y: 2)
                     .overlay(
                         Circle()
                             .strokeBorder(Color.white.opacity(0.5), lineWidth: 1.2)
                     )
                     .overlay(alignment: .topTrailing) {
                         if isMemo {
-                            Image(systemName: "star.fill")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(.yellow)
-                                .padding(6)
+                            ZStack {
+                                Circle()
+                                    .fill(Color.white)
+                                Circle()
+                                    .stroke(Color("DeepSpace"), lineWidth: 1.5)
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(Color("DeepSpace"))
+                            }
+                            .frame(width: 20, height: 20)
+                            .offset(x: 8, y: -8)
                         }
                     }
             }
             
             Text(firstName(from: contact.name))
                 .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundColor(Color.white.opacity(0.9))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(
-                    Capsule()
-                        .fill(Color("SplashTextColor"))
-                        .overlay(
-                            Capsule()
-                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                        )
-                )
-                .shadow(color: Color.black.opacity(0.16), radius: 3, x: 0, y: 2)
+                .foregroundColor(Color("DeepSpace"))
                 .allowsHitTesting(false)
         }
     }

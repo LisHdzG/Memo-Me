@@ -93,7 +93,7 @@ struct ContactDetailView: View {
             isAutoRotating = true
         }
         .overlay {
-            if viewModel.isLoading && viewModel.contacts.isEmpty {
+            if viewModel.canShowInitialLoader && viewModel.isLoading && viewModel.contacts.isEmpty {
                 LoaderView()
             }
         }
@@ -134,28 +134,21 @@ struct ContactDetailView: View {
     
     private var headerSection: some View {
         VStack(spacing: 12) {
-            HStack(spacing: 10) {
-                if spaceSelectionService.selectedSpace != nil {
-                    HStack(spacing: 10) {
-                        Text(currentSpace?.name ?? "Contacts")
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
-                            .foregroundColor(Color("DeepSpace"))
-                        
-                        layoutToggleButton
-                    }
-                }
-                
-                Spacer()
-                
-                if spaceSelectionService.selectedSpace != nil {
-                    changeSpaceButton
-                }
-            }
-            .padding(.horizontal, 20)
-            
             if spaceSelectionService.selectedSpace != nil {
                 VStack(spacing: 12) {
+                    HStack {
+                        Spacer()
+                        changeSpaceButton
+                    }
+                    .padding(.horizontal, 20)
+                    
                     spaceSummary
+                    
+                    HStack {
+                        Spacer()
+                        layoutToggleButton
+                    }
+                    .padding(.horizontal, 12)
                     
                     if !viewModel.contacts.isEmpty {
                         filterBar
@@ -318,13 +311,14 @@ struct ContactDetailView: View {
         Button(action: {
             showLeaveSpaceAlert = true
         }) {
-            HStack(spacing: 8) {
-                Image(systemName: "rectangle.portrait.and.arrow.right")
-                    .font(.system(size: 14, weight: .medium))
-                Text("Leave Space")
-                    .font(.system(size: 15, weight: .regular, design: .rounded))
-            }
-            .foregroundColor(.primaryDark.opacity(0.6))
+            Image(systemName: "rectangle.portrait.and.arrow.right")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.primaryDark.opacity(0.6))
+                .padding(8)
+                .background(
+                    Circle()
+                        .fill(Color("DeepSpace").opacity(0.08))
+                )
         }
         .disabled(isLeavingSpace)
     }
@@ -387,12 +381,6 @@ struct ContactDetailView: View {
                     .padding(.top, 6)
                 }
             }
-            .rotation3DEffect(
-                .degrees(layoutMode == .sphere ? 0 : 180),
-                axis: (x: 0, y: 1, z: 0),
-                perspective: 0.7
-            )
-            .scaleEffect(x: layoutMode == .list ? 1 : 1, y: 1, anchor: .center)
             .animation(.spring(response: 0.55, dampingFraction: 0.9), value: layoutMode)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -429,33 +417,37 @@ struct ContactDetailView: View {
                 toggleLayout()
             }
         }) {
-            HStack(spacing: 10) {
-                Image(systemName: layoutMode.iconName)
-                    .font(.system(size: 12, weight: .semibold))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("View mode")
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .foregroundColor(.primaryDark.opacity(0.5))
-                    Text(layoutMode.title)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color("DeepSpace"))
-                }
-                Spacer()
-                Image(systemName: "arrow.triangle.2.circlepath")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(Color("DeepSpace").opacity(0.75))
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(layoutMode == .sphere ? Color("DeepSpace") : Color("DeepSpace").opacity(0.45))
+                    .padding(8)
+                    .background(
+                        Circle()
+                            .fill(layoutMode == .sphere ? Color.white : Color.white.opacity(0.7))
+                            .shadow(color: Color("DeepSpace").opacity(layoutMode == .sphere ? 0.14 : 0.05), radius: 4, x: 0, y: 2)
+                    )
+                
+                Image(systemName: "rectangle.grid.1x2.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(layoutMode == .list ? Color("DeepSpace") : Color("DeepSpace").opacity(0.45))
+                    .padding(8)
+                    .background(
+                        Circle()
+                            .fill(layoutMode == .list ? Color.white : Color.white.opacity(0.7))
+                            .shadow(color: Color("DeepSpace").opacity(layoutMode == .list ? 0.14 : 0.05), radius: 4, x: 0, y: 2)
+                    )
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(6)
             .background(
                 Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.7))
+                    .fill(Color("DeepSpace").opacity(0.12))
             )
             .overlay(
                 Capsule(style: .continuous)
-                    .stroke(Color("DeepSpace").opacity(0.12), lineWidth: 1)
+                    .stroke(Color("DeepSpace").opacity(0.16), lineWidth: 1)
             )
-            .shadow(color: Color("DeepSpace").opacity(0.04), radius: 6, x: 0, y: 3)
+            .shadow(color: Color("DeepSpace").opacity(0.05), radius: 8, x: 0, y: 4)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -539,52 +531,55 @@ struct ContactDetailView: View {
         let bannerUrl = currentSpace?.bannerUrl ?? ""
         let description = currentSpace?.description.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let isOfficial = currentSpace?.isOfficial ?? false
-        let contactCount = viewModel.contacts.count
         
-        return VStack(spacing: 8) {
+        return VStack(spacing: 12) {
             Button(action: {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                     isSpaceInfoExpanded.toggle()
                 }
             }) {
-                HStack(spacing: 8) {
+                HStack(spacing: 12) {
                     SpaceBannerView(imageUrl: bannerUrl)
-                        .frame(width: 54, height: 54)
+                        .frame(width: 60, height: 60)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
                     
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 8) {
+                            Text(currentSpace?.name ?? "Contacts")
+                                .font(.system(size: 20, weight: .semibold, design: .rounded))
+                                .foregroundColor(Color("DeepSpace"))
+                                .lineLimit(1)
+                            
                             if isOfficial {
                                 Label("Official", systemImage: "checkmark.seal.fill")
-                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 11, weight: .bold, design: .rounded))
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 6)
                                     .background(
                                         Capsule()
-                                            .fill(Color("DeepSpace").opacity(0.16))
+                                            .fill(Color.white.opacity(0.18))
                                     )
                                     .foregroundColor(Color("DeepSpace"))
                             }
                         }
                         
                         if let types = currentSpace?.types, !types.isEmpty, let first = types.first {
-                            Text(first)
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color("DeepSpace"))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(
-                                    Capsule()
-                                        .fill(Color("DeepSpace").opacity(0.12))
-                                )
-                        }
-                        
-                        HStack(spacing: 6) {
-                            Image(systemName: "person.3.fill")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.primaryDark.opacity(0.6))
-                            Text("\(contactCount) contacts")
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundColor(.primaryDark.opacity(0.7))
+                            HStack(spacing: 8) {
+                                Label(first, systemImage: "leaf.fill")
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.white.opacity(0.22))
+                                    )
+                                    .foregroundColor(Color("DeepSpace"))
+                                
+                                Spacer(minLength: 0)
+                            }
                         }
                     }
                     
@@ -592,7 +587,12 @@ struct ContactDetailView: View {
                     
                     Image(systemName: isSpaceInfoExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.primaryDark.opacity(0.6))
+                        .foregroundColor(Color("DeepSpace").opacity(0.8))
+                        .padding(8)
+                        .background(
+                            Circle()
+                                .fill(Color.white.opacity(0.18))
+                        )
                 }
                 .padding(.vertical, 4)
             }
@@ -600,51 +600,71 @@ struct ContactDetailView: View {
             .contentShape(Rectangle())
             
             if isSpaceInfoExpanded {
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 12) {
                     Text(description.isEmpty ? "No description yet" : description)
                         .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundColor(.primaryDark.opacity(0.7))
-                        .lineLimit(3)
+                        .foregroundColor(.primaryDark.opacity(0.78))
+                        .lineSpacing(4)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     
-                    if let code = currentSpace?.code, !code.isEmpty {
-                        Button(action: { showQRCode = true }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "qrcode")
-                                    .font(.system(size: 14, weight: .semibold))
-                                Text("Share QR")
-                                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    HStack(spacing: 10) {
+                        if let code = currentSpace?.code, !code.isEmpty {
+                            Button(action: { showQRCode = true }) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "qrcode")
+                                        .font(.system(size: 14, weight: .semibold))
+                                    Text("Compartir QR")
+                                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color("DeepSpace"),
+                                            Color("DeepSpace").opacity(0.9)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Color("DeepSpace"))
-                            )
+                            .buttonStyle(PlainButtonStyle())
                         }
-                        .buttonStyle(PlainButtonStyle())
-                        .frame(maxWidth: .infinity)
+                        
+                        leaveSpaceButton
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundColor(Color("DeepSpace"))
                     }
-                    
-                    leaveSpaceButton
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundColor(.primaryDark.opacity(0.7))
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(12)
+        .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white)
+            ZStack {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color("DeepSpace").opacity(0.12),
+                                Color("DeepSpace").opacity(0.07)
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.65))
+            }
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(Color("DeepSpace").opacity(0.08), lineWidth: 1)
         )
-        .shadow(color: Color("DeepSpace").opacity(0.06), radius: 10, x: 0, y: 6)
+        .shadow(color: Color("DeepSpace").opacity(0.07), radius: 12, x: 0, y: 6)
     }
     
     private var displayedContacts: [Contact] {

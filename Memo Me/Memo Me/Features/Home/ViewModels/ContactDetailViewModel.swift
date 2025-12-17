@@ -14,7 +14,9 @@ class ContactDetailViewModel: ObservableObject {
     @Published var contacts: [Contact] = []
     @Published var isLoading: Bool = true
     @Published var errorMessage: String?
+    @Published var canShowInitialLoader: Bool = false
     
+    private let initialLoaderKey = "hasShownContactsLoader"
     private let userService = UserService()
     private let spaceService = SpaceService()
     private let cacheService = ContactCacheService.shared
@@ -24,14 +26,21 @@ class ContactDetailViewModel: ObservableObject {
     private var currentSpaceId: String?
     private var currentMemberIds: [String] = []
     
+    private var hasShownInitialLoader: Bool {
+        get { UserDefaults.standard.bool(forKey: initialLoaderKey) }
+        set { UserDefaults.standard.set(newValue, forKey: initialLoaderKey) }
+    }
+    
     func loadContacts(for space: Space?) async {
         guard let space = space else {
             stopListening()
             contacts = []
             isLoading = false
+            canShowInitialLoader = false
             return
         }
         
+        let shouldShowInitialLoader = !hasShownInitialLoader
         stopListening()
         currentSpaceId = space.spaceId
         
@@ -39,15 +48,23 @@ class ContactDetailViewModel: ObservableObject {
         if let cachedContacts {
             contacts = cachedContacts
             isLoading = false
+            canShowInitialLoader = false
         } else {
             contacts = []
             isLoading = true
-            LoaderPresenter.shared.show()
+            canShowInitialLoader = shouldShowInitialLoader
+            if shouldShowInitialLoader {
+                LoaderPresenter.shared.show()
+            }
         }
         
         guard networkMonitor.isConnectedSync() else {
             isLoading = false
-            LoaderPresenter.shared.hide()
+            if shouldShowInitialLoader {
+                hasShownInitialLoader = true
+                canShowInitialLoader = false
+                LoaderPresenter.shared.hide()
+            }
             return
         }
         
@@ -65,7 +82,11 @@ class ContactDetailViewModel: ObservableObject {
         startUserListeners(memberIds: space.members)
         
         isLoading = false
-        LoaderPresenter.shared.hide()
+        if shouldShowInitialLoader {
+            hasShownInitialLoader = true
+            canShowInitialLoader = false
+            LoaderPresenter.shared.hide()
+        }
     }
     
     private func startUserListeners(memberIds: [String]) {
@@ -192,6 +213,11 @@ class ContactDetailViewModel: ObservableObject {
                 contacts = []
             }
             isLoading = false
+            canShowInitialLoader = false
+            if !hasShownInitialLoader {
+                hasShownInitialLoader = true
+                LoaderPresenter.shared.hide()
+            }
         }
     }
     
