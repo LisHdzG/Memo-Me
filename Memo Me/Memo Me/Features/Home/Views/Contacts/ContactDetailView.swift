@@ -144,15 +144,15 @@ struct ContactDetailView: View {
                     
                     spaceSummary
                     
+                    if !viewModel.contacts.isEmpty {
+                        filterBar
+                    }
+                    
                     HStack {
                         Spacer()
                         layoutToggleButton
                     }
                     .padding(.horizontal, 12)
-                    
-                    if !viewModel.contacts.isEmpty {
-                        filterBar
-                    }
                 }
                 .padding(.horizontal, 20)
             }

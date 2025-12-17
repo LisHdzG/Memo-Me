@@ -41,6 +41,9 @@ class ContactDetailViewModel: ObservableObject {
         }
         
         let shouldShowInitialLoader = !hasShownInitialLoader
+        let previousSpaceId = currentSpaceId
+        let isSameSpace = previousSpaceId == space.spaceId
+        
         stopListening()
         currentSpaceId = space.spaceId
         
@@ -48,6 +51,9 @@ class ContactDetailViewModel: ObservableObject {
         if let cachedContacts {
             contacts = cachedContacts
             isLoading = false
+            canShowInitialLoader = false
+        } else if isSameSpace && !contacts.isEmpty {
+            isLoading = true
             canShowInitialLoader = false
         } else {
             contacts = []

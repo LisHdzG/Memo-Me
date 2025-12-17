@@ -125,8 +125,6 @@ private struct ContactBubble: View {
     var onTap: (() -> Void)?
     
     var body: some View {
-        let accent = Color(red: 0.63, green: 0.46, blue: 1.0)
-        
         VStack(spacing: 6) {
             ZStack {
                 ContactAvatar(contact: contact)
