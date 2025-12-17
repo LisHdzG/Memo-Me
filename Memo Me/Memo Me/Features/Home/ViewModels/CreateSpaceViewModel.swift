@@ -23,20 +23,24 @@ class CreateSpaceViewModel: ObservableObject {
     @Published var nameError: String?
     
     let availableTypes: [String] = [
-        "Trabajo",
+        "Work",
         "Personal",
-        "Estudio",
+        "Study",
         "Social",
-        "Deportes",
-        "Arte",
-        "Tecnología",
-        "Educación",
-        "Viajes",
-        "Música",
-        "Gastronomía",
-        "Salud",
-        "Negocios",
-        "Entretenimiento"
+        "Sports",
+        "Art",
+        "Technology",
+        "Education",
+        "Travel",
+        "Music",
+        "Food",
+        "Health",
+        "Business",
+        "Entertainment",
+        "Gaming",
+        "Community",
+        "Family",
+        "Friends"
     ]
     
     private let spaceService = SpaceService()
@@ -90,11 +94,11 @@ class CreateSpaceViewModel: ObservableObject {
     func validateName() {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmedName.isEmpty {
-            nameError = "El nombre es obligatorio"
+            nameError = "Name is required"
         } else if trimmedName.count < 2 {
-            nameError = "El nombre debe tener al menos 2 caracteres"
+            nameError = "Name must be at least 2 characters"
         } else if trimmedName.count > 50 {
-            nameError = "El nombre no puede exceder 50 caracteres"
+            nameError = "Name cannot exceed 50 characters"
         } else {
             nameError = nil
         }
@@ -108,7 +112,7 @@ class CreateSpaceViewModel: ObservableObject {
         }
         
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            nameError = "El nombre es obligatorio"
+            nameError = "Name is required"
             return nil
         }
         
@@ -152,14 +156,14 @@ class CreateSpaceViewModel: ObservableObject {
             return createdSpace
         } catch {
             isLoading = false
-            errorMessage = "Error al crear el espacio: \(error.localizedDescription)"
+            errorMessage = "Failed to create space: \(error.localizedDescription)"
             return nil
         }
     }
     
     private func uploadBannerImage(_ image: UIImage, spaceId: String) async throws -> String {
         guard let imageData = image.jpegData(compressionQuality: 0.8) else {
-            throw NSError(domain: "CreateSpaceViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "Error al convertir la imagen"])
+            throw NSError(domain: "CreateSpaceViewModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to convert image"])
         }
         
         let fileName = "\(spaceId)_\(UUID().uuidString).jpg"
@@ -182,7 +186,7 @@ class CreateSpaceViewModel: ObservableObject {
                     }
                     
                     guard let downloadURL = url else {
-                        continuation.resume(throwing: NSError(domain: "CreateSpaceViewModel", code: 2, userInfo: [NSLocalizedDescriptionKey: "No se pudo obtener la URL de descarga"]))
+                        continuation.resume(throwing: NSError(domain: "CreateSpaceViewModel", code: 2, userInfo: [NSLocalizedDescriptionKey: "Could not get download URL"]))
                         return
                     }
                     

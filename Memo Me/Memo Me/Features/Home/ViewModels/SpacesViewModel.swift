@@ -19,6 +19,7 @@ class SpacesViewModel: ObservableObject {
     
     private let spaceService = SpaceService()
     private var currentUserId: String?
+    private let encoder = JSONEncoder()
     
     func loadSpaces(userId: String) async {
         currentUserId = userId
@@ -48,12 +49,12 @@ class SpacesViewModel: ObservableObject {
             userId: userId,
             onPublicSpacesUpdate: { [weak self] spaces in
                 Task { @MainActor in
-                    self?.publicSpaces = spaces
+                    self?.updatePublicSpacesIfNeeded(spaces)
                 }
             },
             onUserSpacesUpdate: { [weak self] spaces in
                 Task { @MainActor in
-                    self?.userSpaces = spaces
+                    self?.updateUserSpacesIfNeeded(spaces)
                 }
             }
         )
@@ -101,6 +102,22 @@ class SpacesViewModel: ObservableObject {
             isJoiningPrivateSpace = false
             return nil
         }
+    }
+    
+    private func updatePublicSpacesIfNeeded(_ spaces: [Space]) {
+        guard spacesChanged(newSpaces: spaces, currentSpaces: publicSpaces) else { return }
+        publicSpaces = spaces
+    }
+    
+    private func updateUserSpacesIfNeeded(_ spaces: [Space]) {
+        guard spacesChanged(newSpaces: spaces, currentSpaces: userSpaces) else { return }
+        userSpaces = spaces
+    }
+    
+    private func spacesChanged(newSpaces: [Space], currentSpaces: [Space]) -> Bool {
+        guard let newData = try? encoder.encode(newSpaces),
+              let currentData = try? encoder.encode(currentSpaces) else { return true }
+        return newData != currentData
     }
 }
 

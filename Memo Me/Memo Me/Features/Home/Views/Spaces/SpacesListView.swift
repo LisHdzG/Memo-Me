@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct SpacesListView: View {
     @StateObject private var viewModel = SpacesViewModel()
@@ -24,10 +25,17 @@ struct SpacesListView: View {
     @State private var showCreateSpace = false
     @State private var showJoinConfirmation = false
     @State private var spaceToJoin: Space?
+    @State private var hasLoadedOnce = false
     
     init(isPresentedAsSheet: Bool = false, shouldDismissOnSelection: Bool = false) {
         self.isPresentedAsSheet = isPresentedAsSheet
         self.shouldDismissOnSelection = shouldDismissOnSelection
+    }
+    
+    private var shouldShowSkipForNow: Bool {
+        !isPresentedAsSheet &&
+        !spaceSelectionService.hasContinuedWithoutSpace &&
+        spaceSelectionService.selectedSpace == nil
     }
     
     var body: some View {
@@ -70,16 +78,6 @@ struct SpacesListView: View {
                     .background(Color(.ghostWhite))
                     
                     if viewModel.isLoading && viewModel.publicSpaces.isEmpty && viewModel.userSpaces.isEmpty {
-                        Spacer()
-                        VStack(spacing: 20) {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: Color("DeepSpace")))
-                                .scaleEffect(1.5)
-                            
-                            Text("Loading spaces...")
-                                .font(.system(size: 16, weight: .medium, design: .rounded))
-                                .foregroundColor(.primaryDark.opacity(0.6))
-                        }
                         Spacer()
                     } else {
                         ScrollView {
@@ -174,35 +172,22 @@ struct SpacesListView: View {
                                 }
                                 .padding(.top, 40)
                                 .padding(.horizontal, 20)
+                                .transition(.asymmetric(
+                                    insertion: .scale(scale: 0.94).combined(with: .opacity),
+                                    removal: .scale(scale: 0.96).combined(with: .opacity)
+                                ))
                             }
                             
-                            if !isPresentedAsSheet && !spaceSelectionService.hasContinuedWithoutSpace {
-                                VStack(spacing: 4) {
-                                    Button(action: {
-                                        spaceSelectionService.markAsContinuedWithoutSpace()
-                                    }) {
-                                        Text("Skip for now")
-                                            .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                            .foregroundColor(Color("DeepSpace"))
-                                            .underline()
-                                    }
-                                    
-                                    Text("(Enter without space)")
-                                        .font(.system(size: 14, weight: .regular, design: .rounded))
-                                        .foregroundColor(Color("DeepSpace").opacity(0.7))
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.top, 20)
-                                .padding(.bottom, 40)
-                            }
                             }
                             .padding(.bottom, 20)
                         }
+                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: viewModel.publicSpaces.count + viewModel.userSpaces.count)
                         .refreshable {
                             if let userId = authManager.currentUser?.id {
                                 await viewModel.refreshSpaces(userId: userId)
                             }
                         }
+                        .animation(.spring(response: 0.55, dampingFraction: 0.88), value: viewModel.publicSpaces.isEmpty && viewModel.userSpaces.isEmpty)
                     }
                 }
                 
@@ -220,6 +205,8 @@ struct SpacesListView: View {
                             .shadow(color: Color(.electricRuby).opacity(0.3), radius: 8, x: 0, y: 4)
                     }
                 }
+                
+                LoaderView()
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -299,15 +286,63 @@ struct SpacesListView: View {
                     Text("Do you want to join \"\(space.name)\"?\n\nOnce you join, members of this space will be able to see your profile.")
                 }
             }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                hideKeyboard()
+            }
+            
+            // Bottom-safe inset for "Skip for now" to avoid overlay artifacts
+            .safeAreaInset(edge: .bottom) {
+                if shouldShowSkipForNow {
+                    VStack(spacing: 4) {
+                        Button(action: {
+                            withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) {
+                                spaceSelectionService.markAsContinuedWithoutSpace()
+                            }
+                        }) {
+                            Text("Skip for now")
+                                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                .foregroundColor(Color("DeepSpace"))
+                                .underline()
+                        }
+                        
+                        Text("(Enter without space)")
+                            .font(.system(size: 14, weight: .regular, design: .rounded))
+                            .foregroundColor(Color("DeepSpace").opacity(0.7))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .padding(.horizontal, 20)
+                    .background(
+                        Color(.ghostWhite).opacity(0.95)
+                    )
+                    .shadow(color: Color.black.opacity(0.05), radius: 6, x: 0, y: -2)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(response: 0.55, dampingFraction: 0.9), value: shouldShowSkipForNow)
         }
         .task {
             if let userId = authManager.currentUser?.id {
-                await viewModel.loadSpaces(userId: userId)
+                if !hasLoadedOnce {
+                    await LoaderPresenter.shared.show()
+                    await viewModel.loadSpaces(userId: userId)
+                    await LoaderPresenter.shared.hide()
+                    hasLoadedOnce = true
+                } else {
+                    await viewModel.loadSpaces(userId: userId)
+                }
             }
         }
         .onDisappear {
             viewModel.stopListeningToSpaces()
         }
+    }
+}
+
+private extension View {
+    func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 
@@ -378,6 +413,7 @@ struct QRCodeScannerView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @StateObject private var viewModel = SpacesViewModel()
     @State private var isJoining = false
+    @State private var logoBounce = false
     
     var body: some View {
         ZStack {
@@ -462,6 +498,13 @@ struct QRCodeScannerView: View {
                     .offset(y: -geometry.size.height * 0.1)
                     
                     Spacer()
+                    
+                    Image("MemoMeQR")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 220)
+                        .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 4)
+                        .padding(.bottom, -90)
                 }
             }
             
@@ -486,6 +529,9 @@ struct QRCodeScannerView: View {
                     await joinSpaceByCode(code: code)
                 }
             }
+        }
+        .onAppear {
+            logoBounce = true
         }
     }
     
