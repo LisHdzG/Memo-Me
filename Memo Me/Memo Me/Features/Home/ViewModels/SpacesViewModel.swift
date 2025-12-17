@@ -17,12 +17,19 @@ class SpacesViewModel: ObservableObject {
     @Published var isJoiningSpace = false
     @Published var isJoiningPrivateSpace = false
     
+    private static var hasShownInitialLoader = false
+    
     private let spaceService = SpaceService()
     private var currentUserId: String?
     private let encoder = JSONEncoder()
     
-    func loadSpaces(userId: String) async {
+    func loadSpaces(userId: String, showInitialLoader: Bool = true) async {
         currentUserId = userId
+        
+        let shouldShowInitialLoader = showInitialLoader && !Self.hasShownInitialLoader
+        if shouldShowInitialLoader {
+            LoaderPresenter.shared.show()
+        }
         
         isLoading = true
         errorMessage = nil
@@ -35,8 +42,16 @@ class SpacesViewModel: ObservableObject {
             userSpaces = try await userSpacesTask
             
             startListeningToSpaces(userId: userId)
+            
+            if shouldShowInitialLoader {
+                Self.hasShownInitialLoader = true
+            }
         } catch {
             errorMessage = "Error al cargar los espacios: \(error.localizedDescription)"
+        }
+        
+        if shouldShowInitialLoader {
+            LoaderPresenter.shared.hide()
         }
         
         isLoading = false
@@ -65,7 +80,7 @@ class SpacesViewModel: ObservableObject {
     }
     
     func refreshSpaces(userId: String) async {
-        await loadSpaces(userId: userId)
+        await loadSpaces(userId: userId, showInitialLoader: false)
     }
     
     func isUserMember(space: Space, userId: String) -> Bool {
@@ -78,7 +93,7 @@ class SpacesViewModel: ObservableObject {
         
         do {
             try await spaceService.joinSpace(spaceId: space.spaceId, userId: userId)
-            await loadSpaces(userId: userId)
+            await loadSpaces(userId: userId, showInitialLoader: false)
         } catch {
             errorMessage = "Error al unirse al espacio: \(error.localizedDescription)"
         }
@@ -93,7 +108,7 @@ class SpacesViewModel: ObservableObject {
         do {
             let joinedSpace = try await spaceService.joinSpaceByCode(code: code, userId: userId)
             
-            await loadSpaces(userId: userId)
+            await loadSpaces(userId: userId, showInitialLoader: false)
             
             isJoiningPrivateSpace = false
             return joinedSpace

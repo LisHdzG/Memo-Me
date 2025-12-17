@@ -109,8 +109,13 @@ struct SpacesListView: View {
                                                 },
                                                 isJoining: false
                                             )
+                                            .transition(.asymmetric(
+                                                insertion: .scale(scale: 0.95).combined(with: .opacity),
+                                                removal: .opacity
+                                            ))
                                         }
                                     }
+                                    .animation(.spring(response: 0.5, dampingFraction: 0.85), value: viewModel.userSpaces)
                                     .padding(.horizontal, 20)
                                 }
                             }
@@ -148,9 +153,14 @@ struct SpacesListView: View {
                                                     },
                                                     isJoining: viewModel.isJoiningSpace
                                                 )
+                                                .transition(.asymmetric(
+                                                    insertion: .move(edge: .bottom).combined(with: .opacity),
+                                                    removal: .opacity
+                                                ))
                                             }
                                         }
                                     }
+                                    .animation(.spring(response: 0.55, dampingFraction: 0.88), value: viewModel.publicSpaces)
                                     .padding(.horizontal, 20)
                                 }
                             }
@@ -219,7 +229,14 @@ struct SpacesListView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showCreateSpace) {
+            .background {
+                NavigationLink(
+                    value: showCreateSpace,
+                    label: { EmptyView() }
+                )
+                .hidden()
+            }
+            .navigationDestination(isPresented: $showCreateSpace) {
                 CreateSpaceView()
                     .environmentObject(authManager)
                     .onDisappear {
@@ -324,14 +341,8 @@ struct SpacesListView: View {
         }
         .task {
             if let userId = authManager.currentUser?.id {
-                if !hasLoadedOnce {
-                    await LoaderPresenter.shared.show()
-                    await viewModel.loadSpaces(userId: userId)
-                    await LoaderPresenter.shared.hide()
-                    hasLoadedOnce = true
-                } else {
-                    await viewModel.loadSpaces(userId: userId)
-                }
+                await viewModel.loadSpaces(userId: userId, showInitialLoader: !hasLoadedOnce)
+                hasLoadedOnce = true
             }
         }
         .onDisappear {
