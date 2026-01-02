@@ -42,8 +42,8 @@ struct ContactSphereView: View {
         let speed = 0.6 + Double(seed % 60) / 120.0
         let phase = Double(seed % 360) * (.pi / 180)
         
-        let minSize: CGFloat = 52
-        let maxSize: CGFloat = 78
+        let minSize: CGFloat = 80
+        let maxSize: CGFloat = 120
         let sizeValue = minSize + CGFloat(seed % 100) / 100 * (maxSize - minSize)
         
         let glow = glowPalette[seed % glowPalette.count]
@@ -191,11 +191,11 @@ private struct ContactBubble: View {
 
 private struct ContactAvatar: View {
     let contact: Contact
+    @State private var imageLoaded: Bool = false
     
     var body: some View {
         ZStack {
-            Circle()
-                .fill(Color(red: 0.63, green: 0.46, blue: 1.0))
+            placeholderInitial
             
             if let urlString = contact.imageUrl, let url = URL(string: urlString) {
                 AsyncImage(url: url) { phase in
@@ -204,6 +204,11 @@ private struct ContactAvatar: View {
                         image
                             .resizable()
                             .scaledToFill()
+                            .opacity(imageLoaded ? 1.0 : 0.0)
+                            .animation(.easeIn(duration: 0.4), value: imageLoaded)
+                            .onAppear {
+                                imageLoaded = true
+                            }
                     case .empty:
                         placeholderInitial
                     case .failure:
@@ -218,6 +223,11 @@ private struct ContactAvatar: View {
                     .resizable()
                     .scaledToFill()
                     .clipShape(Circle())
+                    .opacity(imageLoaded ? 1.0 : 0.0)
+                    .animation(.easeIn(duration: 0.4), value: imageLoaded)
+                    .onAppear {
+                        imageLoaded = true
+                    }
             } else {
                 placeholderInitial
             }
@@ -228,11 +238,20 @@ private struct ContactAvatar: View {
     private var placeholderInitial: some View {
         let initial = contact.name.first.map { String($0).uppercased() } ?? "?"
         return Circle()
-            .fill(Color(red: 0.63, green: 0.46, blue: 1.0))
+            .fill(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color("DeepSpace").opacity(0.18),
+                        Color("DeepSpace").opacity(0.08)
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             .overlay(
                 Text(initial)
                     .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(Color("DeepSpace").opacity(0.6))
             )
     }
 }

@@ -78,7 +78,7 @@ struct OnboardingView: View {
             }
             .padding(.top, 8)
             .padding(.trailing, 20)
-            .buttonStyle(.glass)
+            //.buttonStyle(.glass)
             .foregroundStyle(.primaryDark)
         }
     }

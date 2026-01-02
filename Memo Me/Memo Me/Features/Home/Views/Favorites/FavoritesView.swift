@@ -97,9 +97,14 @@ struct FavoritesView: View {
                         .transition(.opacity.combined(with: .scale(scale: 0.96)))
                         } else {
                             ScrollView {
-                                LazyVStack(spacing: 12) {
+                                let columns = [
+                                    GridItem(.flexible(), spacing: 12),
+                                    GridItem(.flexible(), spacing: 12)
+                                ]
+                                
+                                LazyVGrid(columns: columns, spacing: 12) {
                                     ForEach(viewModel.filteredContacts) { favoriteContact in
-                                        FavoriteContactCard(
+                                        FavoriteGridItem(
                                             favoriteContact: favoriteContact,
                                             viewModel: viewModel
                                         )
@@ -358,12 +363,11 @@ struct FavoritesView: View {
         }
     }
     
-    struct FavoriteContactCard: View {
+    struct FavoriteGridItem: View {
         let favoriteContact: FavoriteContact
         @ObservedObject var viewModel: FavoritesViewModel
-        @State private var isPressed: Bool = false
+        @State private var imageLoaded: Bool = false
         
-        private let noteService = ContactNoteService.shared
         private let userService = UserService()
         
         var contact: Contact {
@@ -373,6 +377,25 @@ struct FavoritesView: View {
         var vibes: [String] {
             guard let userId = contact.userId else { return [] }
             return viewModel.getVibes(for: userId)
+        }
+        
+        private var placeholderImage: some View {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color("DeepSpace").opacity(0.18),
+                            Color("DeepSpace").opacity(0.08)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    Text(String(contact.name.prefix(1)).uppercased())
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .foregroundColor(Color("DeepSpace").opacity(0.4))
+                )
         }
         
         var body: some View {
@@ -385,85 +408,98 @@ struct FavoritesView: View {
                     viewModel.showContactDetail = true
                 }
             }) {
-                HStack(spacing: 16) {
-                    AsyncImageView(
-                        imageUrl: contact.imageUrl,
-                        placeholderText: contact.name,
-                        contentMode: .fill,
-                        size: 64
-                    )
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(Color("DeepSpace"), style: StrokeStyle(lineWidth: 2.5, dash: [6, 4]))
-                    )
-                    .shadow(color: Color("DeepSpace").opacity(0.1), radius: 4, x: 0, y: 2)
+                VStack(spacing: 12) {
+                    ZStack {
+                        Group {
+                            if let imageUrl = contact.imageUrl, let url = URL(string: imageUrl), !imageUrl.isEmpty {
+                                ZStack {
+                                    placeholderImage
+                                    
+                                    AsyncImage(url: url) { phase in
+                                        switch phase {
+                                        case .success(let image):
+                                            image
+                                                .resizable()
+                                                .scaledToFill()
+                                                .opacity(imageLoaded ? 1.0 : 0.0)
+                                                .animation(.easeIn(duration: 0.4), value: imageLoaded)
+                                                .onAppear {
+                                                    imageLoaded = true
+                                                }
+                                        case .empty:
+                                            Color.clear
+                                        case .failure:
+                                            Color.clear
+                                        @unknown default:
+                                            Color.clear
+                                        }
+                                    }
+                                }
+                            } else {
+                                placeholderImage
+                            }
+                        }
+                        .frame(width: 140, height: 140)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color("DeepSpace").opacity(0.15), lineWidth: 2)
+                        )
+                        .shadow(color: Color("DeepSpace").opacity(0.12), radius: 8, x: 0, y: 4)
+                    }
                     
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(spacing: 6) {
                         Text(contact.name)
-                            .font(.system(size: 17, weight: .semibold, design: .rounded))
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
                             .foregroundColor(Color("DeepSpace"))
                             .lineLimit(1)
                         
-                        if !vibes.isEmpty {
-                            HStack(spacing: 6) {
-                                ForEach(vibes.prefix(2), id: \.self) { vibeId in
-                                    if let vibe = ContactVibeService.availableVibes.first(where: { $0.id == vibeId }) {
-                                        HStack(spacing: 4) {
-                                            Text(vibe.emoji)
-                                                .font(.system(size: 11))
-                                            Text(vibe.name)
-                                                .font(.system(size: 10, weight: .medium, design: .rounded))
-                                        }
-                                        .foregroundColor(Color("DeepSpace"))
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(
-                                            Capsule()
-                                                .fill(
-                                                    LinearGradient(
-                                                        gradient: Gradient(colors: [
-                                                            Color("DeepSpace").opacity(0.12),
-                                                            Color("DeepSpace").opacity(0.06)
-                                                        ]),
-                                                        startPoint: .topLeading,
-                                                        endPoint: .bottomTrailing
-                                                    )
-                                                )
-                                        )
-                                        .overlay(
-                                            Capsule()
-                                                .stroke(Color("DeepSpace").opacity(0.15), lineWidth: 1)
-                                        )
-                                    }
-                                }
+                        if !vibes.isEmpty, let firstVibe = vibes.first, let vibe = ContactVibeService.availableVibes.first(where: { $0.id == firstVibe }) {
+                            HStack(spacing: 4) {
+                                Text(vibe.emoji)
+                                    .font(.system(size: 12))
+                                Text(vibe.name)
+                                    .font(.system(size: 11, weight: .medium, design: .rounded))
                             }
+                            .foregroundColor(Color("DeepSpace"))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule()
+                                    .fill(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color("DeepSpace").opacity(0.12),
+                                                Color("DeepSpace").opacity(0.06)
+                                            ]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                            )
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color("DeepSpace").opacity(0.15), lineWidth: 1)
+                            )
                         }
                         
-                        HStack(spacing: 6) {
-                            Text("Met at")
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .foregroundColor(.primaryDark.opacity(0.55))
+                        HStack(spacing: 4) {
+                            Text("📍")
+                                .font(.system(size: 10))
                             Text(favoriteContact.spaceName)
-                                .font(.system(size: 12, weight: .regular, design: .rounded))
-                                .foregroundColor(.primaryDark.opacity(0.75))
+                                .font(.system(size: 11, weight: .regular, design: .rounded))
+                                .foregroundColor(.primaryDark.opacity(0.65))
                                 .lineLimit(1)
                         }
                     }
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.primaryDark.opacity(0.3))
                 }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 16)
+                .padding(12)
+                .frame(maxWidth: .infinity)
                 .background(
-                    RoundedRectangle(cornerRadius: 18)
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(Color.white)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 18)
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .stroke(
                                     LinearGradient(
                                         gradient: Gradient(colors: [
@@ -477,24 +513,23 @@ struct FavoritesView: View {
                                 )
                         )
                 )
-                .shadow(color: Color("DeepSpace").opacity(0.08), radius: 12, x: 0, y: 4)
-                .shadow(color: Color("DeepSpace").opacity(0.03), radius: 4, x: 0, y: 2)
-                .scaleEffect(isPressed ? 0.98 : 1.0)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                gradient: Gradient(colors: [
+                                    Color.white.opacity(0.55),
+                                    Color("DeepSpace").opacity(0.08)
+                                ]),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
+                .shadow(color: Color("DeepSpace").opacity(0.05), radius: 12, x: 0, y: 6)
             }
             .buttonStyle(PlainButtonStyle())
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in
-                        withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
-                            isPressed = true
-                        }
-                    }
-                    .onEnded { _ in
-                        withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
-                            isPressed = false
-                        }
-                    }
-            )
         }
     }
     

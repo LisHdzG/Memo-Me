@@ -59,7 +59,7 @@ struct ContactDetailView: View {
     @State private var searchText: String = ""
     @State private var selectedVibeFilter: String?
     @State private var showFiltersBar: Bool = false
-    @State private var isSpaceInfoExpanded: Bool = true
+    @State private var isSpaceInfoExpanded: Bool = false
     @ObservedObject private var spaceSelectionService = SpaceSelectionService.shared
     @EnvironmentObject var authManager: AuthenticationManager
     
@@ -111,6 +111,13 @@ struct ContactDetailView: View {
         } message: {
             Text("If you leave this space, no one will be able to view your profile in this context. You can always rejoin later.")
         }
+        .toolbar {
+            if spaceSelectionService.selectedSpace != nil {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    changeSpaceButton
+                }
+            }
+        }
     }
     
     private var mainContent: some View {
@@ -135,23 +142,11 @@ struct ContactDetailView: View {
         VStack(spacing: 12) {
             if spaceSelectionService.selectedSpace != nil {
                 VStack(spacing: 12) {
-                    HStack {
-                        Spacer()
-                        changeSpaceButton
-                    }
-                    .padding(.horizontal, 20)
-                    
                     spaceSummary
                     
                     if !viewModel.contacts.isEmpty {
                         filterBar
                     }
-                    
-                    HStack {
-                        Spacer()
-                        layoutToggleButton
-                    }
-                    .padding(.horizontal, 12)
                 }
                 .padding(.horizontal, 20)
             }
@@ -164,19 +159,13 @@ struct ContactDetailView: View {
     
     private var changeSpaceButton: some View {
         NavigationLink(destination: SpacesListView(shouldDismissOnSelection: true)) {
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
                 Image(systemName: "rectangle.3.group")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 16, weight: .medium))
                 Text("Spaces")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
             }
             .foregroundColor(Color("DeepSpace"))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color("DeepSpace").opacity(0.12))
-            )
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -453,21 +442,25 @@ struct ContactDetailView: View {
     
     private var filterBar: some View {
         VStack(spacing: 10) {
-            ContactsSearchBar(
-                searchText: $searchText,
-                hasActiveFilters: hasActiveFilters,
-                onSearch: {},
-                onClearFilters: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                        clearFilters()
+            HStack(spacing: 10) {
+                ContactsSearchBar(
+                    searchText: $searchText,
+                    hasActiveFilters: hasActiveFilters,
+                    onSearch: {},
+                    onClearFilters: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            clearFilters()
+                        }
+                    },
+                    onToggleFilters: availableVibeFilters.isEmpty ? nil : {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            showFiltersBar.toggle()
+                        }
                     }
-                },
-                onToggleFilters: availableVibeFilters.isEmpty ? nil : {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                        showFiltersBar.toggle()
-                    }
-                }
-            )
+                )
+                
+                layoutToggleButton
+            }
             
             if showFiltersBar, !availableVibeFilters.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -538,49 +531,10 @@ struct ContactDetailView: View {
                 }
             }) {
                 HStack(spacing: 12) {
-                    SpaceBannerView(imageUrl: bannerUrl)
-                        .frame(width: 60, height: 60)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                        )
-                    
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 8) {
-                            Text(currentSpace?.name ?? "Contacts")
-                                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color("DeepSpace"))
-                                .lineLimit(1)
-                            
-                            if isOfficial {
-                                Label("Official", systemImage: "checkmark.seal.fill")
-                                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        Capsule()
-                                            .fill(Color.white.opacity(0.18))
-                                    )
-                                    .foregroundColor(Color("DeepSpace"))
-                            }
-                        }
-                        
-                        if let types = currentSpace?.types, !types.isEmpty, let first = types.first {
-                            HStack(spacing: 8) {
-                                Label(first, systemImage: "leaf.fill")
-                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        Capsule()
-                                            .fill(Color.white.opacity(0.22))
-                                    )
-                                    .foregroundColor(Color("DeepSpace"))
-                                
-                                Spacer(minLength: 0)
-                            }
-                        }
-                    }
+                    Text(currentSpace?.name ?? "Contacts")
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color("DeepSpace"))
+                        .lineLimit(1)
                     
                     Spacer()
                     
@@ -600,6 +554,45 @@ struct ContactDetailView: View {
             
             if isSpaceInfoExpanded {
                 VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
+                        SpaceBannerView(imageUrl: bannerUrl)
+                            .frame(width: 60, height: 60)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                            )
+                        
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 8) {
+                                if isOfficial {
+                                    Label("Official", systemImage: "checkmark.seal.fill")
+                                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color.white.opacity(0.18))
+                                        )
+                                        .foregroundColor(Color("DeepSpace"))
+                                }
+                                
+                                if let types = currentSpace?.types, !types.isEmpty, let first = types.first {
+                                    Label(first, systemImage: "leaf.fill")
+                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color.white.opacity(0.22))
+                                        )
+                                        .foregroundColor(Color("DeepSpace"))
+                                }
+                            }
+                        }
+                        
+                        Spacer()
+                    }
+                    
                     Text(description.isEmpty ? "No description yet" : description)
                         .font(.system(size: 13, weight: .regular, design: .rounded))
                         .foregroundColor(.primaryDark.opacity(0.78))
@@ -741,12 +734,17 @@ private struct ContactListView: View {
     let memoProvider: (Contact) -> Bool
     let onSelect: (Contact) -> Void
     
+    private let columns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
+    ]
+    
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 12) {
+            LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(contacts, id: \.id) { contact in
                     let user = userProvider(contact)
-                    ContactListRow(
+                    ContactGridItem(
                         contact: contact,
                         user: user,
                         isMemo: memoProvider(contact),
@@ -754,10 +752,10 @@ private struct ContactListView: View {
                             onSelect(contact)
                         }
                     )
-                    .padding(.horizontal, 20)
                     .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
+            .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 32)
         }
@@ -765,11 +763,12 @@ private struct ContactListView: View {
 }
 
 
-private struct ContactListRow: View {
+private struct ContactGridItem: View {
     let contact: Contact
     let user: User?
     let isMemo: Bool
     let onTap: () -> Void
+    @State private var imageLoaded: Bool = false
     
     private var displayName: String {
         user?.name ?? contact.name
@@ -791,69 +790,114 @@ private struct ContactListRow: View {
         return parts.isEmpty ? "No shared info yet" : parts.joined(separator: " • ")
     }
     
+    private var placeholderImage: some View {
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color("DeepSpace").opacity(0.18),
+                        Color("DeepSpace").opacity(0.08)
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                Text(String(displayName.prefix(1)).uppercased())
+                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                    .foregroundColor(Color("DeepSpace").opacity(0.4))
+            )
+    }
+    
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 14) {
-                AsyncImageView(
-                    imageUrl: user?.photoUrl ?? contact.imageUrl,
-                    placeholderText: displayName,
-                    contentMode: .fill,
-                    size: 64
-                )
-                .clipShape(Circle())
-                .overlay(
-                    Circle()
-                        .stroke(Color("DeepSpace"), style: StrokeStyle(lineWidth: 2.5, dash: [6, 4]))
-                )
-                .shadow(color: Color("DeepSpace").opacity(0.1), radius: 4, x: 0, y: 2)
-                
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 8) {
-                        Text(displayName)
-                            .font(.system(size: 17, weight: .semibold, design: .rounded))
-                            .foregroundColor(Color("DeepSpace"))
-                            .lineLimit(1)
-                        
-                        if isMemo {
-                            Label("Memo", systemImage: "star.fill")
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(
-                                    Capsule(style: .continuous)
-                                        .fill(Color("DeepSpace").opacity(0.12))
-                                )
-                                .foregroundColor(Color("DeepSpace"))
+            VStack(spacing: 12) {
+                ZStack {
+                    Group {
+                        if let imageUrl = user?.photoUrl ?? contact.imageUrl, let url = URL(string: imageUrl), !imageUrl.isEmpty {
+                            ZStack {
+                                placeholderImage
+                                
+                                AsyncImage(url: url) { phase in
+                                    switch phase {
+                                    case .success(let image):
+                                        image
+                                            .resizable()
+                                            .scaledToFill()
+                                            .opacity(imageLoaded ? 1.0 : 0.0)
+                                            .animation(.easeIn(duration: 0.4), value: imageLoaded)
+                                            .onAppear {
+                                                imageLoaded = true
+                                            }
+                                    case .empty:
+                                        Color.clear
+                                    case .failure:
+                                        Color.clear
+                                    @unknown default:
+                                        Color.clear
+                                    }
+                                }
+                            }
+                        } else {
+                            placeholderImage
                         }
                     }
+                    .frame(width: 140, height: 140)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color("DeepSpace").opacity(0.15), lineWidth: 2)
+                    )
+                    .shadow(color: Color("DeepSpace").opacity(0.12), radius: 8, x: 0, y: 4)
                     
-                    Text(infoText)
-                        .font(.system(size: 14, weight: .regular, design: .rounded))
-                        .foregroundColor(.primaryDark.opacity(0.65))
-                        .lineLimit(2)
-                    
-                    let instagram = user?.instagramUrl ?? ""
-                    let linkedin = user?.linkedinUrl ?? ""
-                    
-                    if !instagram.isEmpty || !linkedin.isEmpty {
-                        HStack(spacing: 6) {
-                            if !instagram.isEmpty {
-                                SocialPill(icon: "camera.fill", label: "Instagram")
+                    if isMemo {
+                        VStack {
+                            HStack {
+                                Spacer()
+                                ZStack {
+                                    Circle()
+                                        .fill(
+                                            LinearGradient(
+                                                gradient: Gradient(colors: [
+                                                    Color("DeepSpace"),
+                                                    Color("DeepSpace").opacity(0.9)
+                                                ]),
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .overlay(
+                                            Circle()
+                                                .stroke(Color.white.opacity(0.8), lineWidth: 1.5)
+                                        )
+                                        .shadow(color: Color.black.opacity(0.15), radius: 3, x: 0, y: 2)
+                                    Image(systemName: "star.fill")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.white)
+                                }
+                                .frame(width: 24, height: 24)
+                                .padding(8)
                             }
-                            if !linkedin.isEmpty {
-                                SocialPill(icon: "link", label: "LinkedIn")
-                            }
+                            Spacer()
                         }
                     }
                 }
                 
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.primaryDark.opacity(0.35))
+                VStack(spacing: 6) {
+                    Text(displayName)
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color("DeepSpace"))
+                        .lineLimit(1)
+                    
+                    Text(infoText)
+                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                        .foregroundColor(.primaryDark.opacity(0.65))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                }
             }
-            .padding(16)
+            .padding(12)
+            .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(Color.white)
